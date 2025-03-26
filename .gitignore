@@ -19,7 +19,7 @@
 
 # production
 /build
-
+.dockerignore
 # misc
 .DS_Store
 *.pem

@@ -1,0 +1,94 @@
+.matatuContainer {
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+    background-image: linear-gradient(to bottom, #1a1c1e 0%, #330867 100%);
+    border-radius: 10px;
+}
+
+.seatGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.seatRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.seatGroup {
+    display: flex;
+    gap: 10px;
+}
+
+.seatRow:last-child .seatGroup:last-child {
+    flex-grow: 1;
+    justify-content: space-between;
+}
+
+.seat {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #333;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #e5e3e3;
+    text-shadow: 1px 1px 3px #000;
+    text-transform: uppercase;
+    transition: all 0.5s;
+}
+
+.seat.available {
+    background-image: linear-gradient(to right, #ff4500 0%, #ff8c00 50%, #ff4500 100%); /* Orange gradient */
+    background-size: 200% auto;
+}
+
+.seat.selected {
+    background-image: linear-gradient(to right, #006400 0%, #00ff7f 50%, #228b22 100%); /* Green gradient */
+    background-size: 200% auto;
+}
+
+.seat.reserved {
+    background-image: linear-gradient(to right, #800000 0%, #b22222 50%, #800000 100%); /* Burgundy to red gradient */
+    background-size: 200% auto;
+    cursor: not-allowed;
+}
+
+.seat.available:hover,
+.seat.selected:hover {
+    background-image: linear-gradient(to right, #4b0082 0%, #9400d3 50%, #4b0082 100%); /* Purple hover */
+    background-size: 200% auto;
+    background-position: right center;
+}
+
+.aisleSpace {
+    width: 50px;
+    height: 40px;
+    background-color: transparent;
+}
+
+.legend {
+    margin-top: 20px;
+    display: flex;
+    gap: 20px;
+}
+
+.legendItem {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #e5e3e3;
+    text-shadow: 1px 1px 3px #000;
+}
+
+.legendItem .seat {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+}
