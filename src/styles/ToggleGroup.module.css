@@ -1,0 +1,53 @@
+.toggleGroupRoot {
+    display: flex;
+    gap: 4px;
+    background: #ddd;
+    border-radius: 18px;
+    padding: 3px;
+    width: fit-content;
+}
+
+.toggleGroupItem {
+    width: 80px;
+    height: 30px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.toggleItemInactive {
+    background: #121212;
+    color: white;
+}
+
+.toggleItemPassenger {
+    background: #007bff;
+    color: white;
+}
+
+.toggleItemDriver {
+    background: #f0ad4e;
+    color: white;
+}
+
+.toggleItemOwner {
+    background: #5cb85c;
+    color: white;
+}
+
+/* For disabled state */
+.toggleGroupRoot[data-disabled='true'] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.toggleGroupItem[data-disabled='true'] {
+    cursor: not-allowed;
+}

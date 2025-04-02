@@ -11,12 +11,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className="scrollbar">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className="scrollbar overflow-x-visible overflow-y-visible"  // Ensure overflow is also set on the html element
+    >
       <body
         className={cn(
-          'min-h-screen overflow-x-hidden bg-background !font-default text-foreground antialiased',
+          'min-h-screen overflow-x-visible overflow-y-visible bg-background !font-default text-foreground antialiased',  // Body overflow
           aeonik.variable,
-          inter.variable,
+          inter.variable
         )}
       >
         <Providers>

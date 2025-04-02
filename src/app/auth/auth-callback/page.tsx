@@ -1,6 +1,6 @@
 'use client';
 
-import { getAuthStatus } from '@/actions';
+import { getAuthStatus } from '@/actions/get-auth-status';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';

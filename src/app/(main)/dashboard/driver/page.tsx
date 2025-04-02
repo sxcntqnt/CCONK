@@ -1,96 +1,146 @@
-// src/app/dashboard/driver/page.tsx
-'use server';
+// pages/driver-dashboard.tsx
+// No 'use client' - this is a server component
 
 import { currentUser } from '@clerk/nextjs/server';
-import { getBuses, getSeats } from '@/lib/prisma/dbClient';
-import { notifyDriverArrival } from '@/actions/notifyDriverArrival';
+import { prisma } from '@/lib/prisma';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { notifyDriverArrival } from '@/actions/notify-driver-arrival';
+import { Suspense } from 'react';
+import RealTimeTripUpdates from './RTU';
 
-import { Badge } from '@/components/Badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/Table';
-import Container from '@/components/Container';
-import { cn } from '@/lib/utils';
+// Fetch driver and trip data server-side
+async function getDriverData(clerkId: string) {
+  const driver = await prisma.user.findUnique({
+    where: { clerkId },
+    include: {
+      driver: {
+        include: {
+          trips: {
+            where: { status: { in: ['scheduled', 'in_progress'] }, arrivalTime: null },
+            include: { bus: true },
+            orderBy: { departureTime: 'desc' },
+            take: 1, // Most recent active trip
+          },
+        },
+      },
+    },
+  });
 
-export default async function DriverDashboard() {
-  const driver = await currentUser();
-  if (!driver || driver.publicMetadata.role !== 'driver') {
-    return <Container><p>Unauthorized: Drivers only.</p></Container>;
+  if (!driver || driver.role !== 'DRIVER' || !driver.driver) {
+    throw new Error('User is not a driver or has no driver profile');
   }
 
-  const { buses } = await getBuses(1, 1, driver.id); // Fetch driver's bus
-  if (!buses.length) {
+  return {
+    driver,
+    trip: driver.driver.trips[0] || null, // Active trip or null
+  };
+}
+
+// Server action wrapper for notifyDriverArrival
+async function handleArrival(formData: FormData) {
+  'use server';
+  await notifyDriverArrival(formData);
+}
+
+export default async function DriverDashboard() {
+  const user = await currentUser();
+  if (!user) {
     return (
-      <Container>
-        <h2 className="text-3xl font-semibold mb-6">Driver Dashboard</h2>
-        <p>No bus assigned to you.</p>
-      </Container>
+      <div className="container mx-auto py-8">
+        <p>Please sign in to access the driver dashboard.</p>
+      </div>
     );
   }
 
-  const bus = buses[0];
-  const seats = await getSeats(bus.id);
-  const reservedSeats = Object.values(seats).filter(seat => seat.status === 'reserved');
+  let driverData;
+  try {
+    driverData = await getDriverData(user.id);
+  } catch (error) {
+    return (
+      <div className="container mx-auto py-8">
+        <p>{error instanceof Error ? error.message : 'Failed to load driver data'}</p>
+      </div>
+    );
+  }
 
-  async function handleArrival(formData: FormData) {
-    'use server';
-    await notifyDriverArrival(formData);
+  const { driver, trip } = driverData;
+
+  if (!trip) {
+    return (
+      <div className="container mx-auto py-8">
+        <h1 className="text-3xl font-bold mb-6">Driver Dashboard</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>No Active Trip</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>You have no active trips assigned at the moment.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <Container>
-      <div className="flex justify-between items-center w-full mb-6">
-        <h2 className="text-3xl font-semibold">
-          Driver Dashboard - Bus {bus.licensePlate}
-        </h2>
-        <form action={handleArrival} className="flex items-center gap-4">
-          <input
-            type="text"
-            name="destination"
-            placeholder="Enter destination"
-            className="border rounded p-2"
-            required
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Notify Arrival
-          </button>
-        </form>
-      </div>
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-6">Driver Dashboard</h1>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Trip Card */}
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Active Trip #{trip.id}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-sm text-muted-foreground">Bus</Label>
+              <p className="text-lg">
+                {trip.bus.licensePlate} (Capacity: {trip.bus.capacity})
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground">Route</Label>
+              <p className="text-lg">
+                {trip.departureCity} → {trip.arrivalCity}
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground">Departure</Label>
+              <p className="text-lg">{new Date(trip.departureTime).toLocaleString()}</p>
+            </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead>Seat Number</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Position</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {reservedSeats.map(seat => (
-            <TableRow key={seat.id}>
-              <TableCell>{seat.label}</TableCell>
-              <TableCell>
-                <Badge className={cn("text-xs", seat.status === 'reserved' && 'bg-red-600')}>
-                  {seat.status}
-                </Badge>
-              </TableCell>
-              <TableCell>${seat.price}</TableCell>
-              <TableCell>
-                Row {seat.row}, Col {seat.column} ({seat.category})
-              </TableCell>
-            </TableRow>
-          ))}
-          {reservedSeats.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center">
-                No reservations for this bus yet.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </Container>
+            {/* Notify Arrival Form */}
+            <form action={handleArrival} className="space-y-4">
+              <input type="hidden" name="tripId" value={trip.id} />
+              <div>
+                <Label htmlFor="destination">Arrival Destination</Label>
+                <Input
+                  id="destination"
+                  name="destination"
+                  placeholder="Enter arrival destination"
+                  defaultValue={trip.arrivalCity}
+                  disabled={trip.status === 'completed'}
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={trip.status === 'completed'}
+              >
+                Notify Arrival
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Real-Time Updates Card */}
+        <Suspense fallback={<Card><CardContent>Loading updates...</CardContent></Card>}>
+          <RealTimeTripUpdates tripId={trip.id} />
+        </Suspense>
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSignUp } from '@clerk/nextjs';
 import { ROLE_ORDER, ROLE } from '@/utils/constants/roles';
@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, LoaderIcon } from 'lucide-react';
-import { TriStateSwitch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import Link from 'next/link';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import styles from '@/styles/ToggleGroup.module.css';
 
 const SignUpForm = () => {
   const router = useRouter();
@@ -28,19 +30,20 @@ const SignUpForm = () => {
 
   const role: Role = ROLE_ORDER[roleIndex];
 
+  useEffect(() => {
+    console.log('Clerk state:', { isLoaded, signUp });
+  }, [isLoaded, signUp]);
+
   const sanitizeName = (input: string): string => {
-    // Allow letters, spaces, hyphens; max 50 chars
     const sanitized = input.replace(/[^a-zA-Z\s-]/g, '').substring(0, 50);
     return sanitized.trim();
   };
 
   const sanitizeEmail = (input: string): string => {
-    // Trim and lowercase; max 255 chars
     return input.trim().toLowerCase().substring(0, 255);
   };
 
   const sanitizePassword = (input: string): string => {
-    // Trim; max 128 chars (arbitrary but reasonable limit)
     return input.trim().substring(0, 128);
   };
 
@@ -56,7 +59,6 @@ const SignUpForm = () => {
     const sanitizedEmail = sanitizeEmail(email);
     const sanitizedPassword = sanitizePassword(password);
 
-    // Validation
     if (!sanitizedName) {
       toast.error("Name must contain valid characters (letters, spaces, hyphens).");
       return;
@@ -161,8 +163,26 @@ const SignUpForm = () => {
     }
   };
 
+  // Helper function to determine toggle item class
+  const getToggleItemClass = (value: number) => {
+    const baseClass = styles.toggleGroupItem;
+
+    if (roleIndex === value) {
+      // Active state classes based on role
+      switch (value) {
+        case 0: return `${baseClass} ${styles.toggleItemPassenger}`;
+        case 1: return `${baseClass} ${styles.toggleItemDriver}`;
+        case 2: return `${baseClass} ${styles.toggleItemOwner}`;
+        default: return baseClass;
+      }
+    } else {
+      // Inactive state
+      return `${baseClass} ${styles.toggleItemInactive}`;
+    }
+  };
+
   return isVerifying ? (
-    <div className="flex flex-col items-start w-full text-start gap-y-6 py-8 px-0.5">
+    <div className="flex flex-col items-start w-full text-start gap-y-6 py-8 px-0.5 min-h-screen overflow-y-auto">
       <h2 className="text-2xl font-semibold">Verify your account</h2>
       <p className="text-sm text-muted-foreground">
         To continue, please enter the 6-digit verification code we just sent to {email}.
@@ -217,9 +237,8 @@ const SignUpForm = () => {
       </form>
     </div>
   ) : (
-    <div className="flex flex-col items-start gap-y-6 py-8 w-full px-0.5">
+    <div className="flex flex-col items-start gap-y-6 py-8 w-full px-0.5 min-h-screen overflow-y-auto">
       <h2 className="text-2xl font-semibold">Create an account</h2>
-
       <form onSubmit={handleSignUp} className="w-full">
         <div className="space-y-2 w-full">
           <Label htmlFor="name">Name</Label>
@@ -228,7 +247,10 @@ const SignUpForm = () => {
             type="text"
             value={name}
             disabled={!isLoaded || isUpdating}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              console.log('Name updated:', e.target.value);
+              setName(e.target.value);
+            }}
             placeholder="Enter your name"
             className="w-full focus-visible:border-foreground"
           />
@@ -240,7 +262,10 @@ const SignUpForm = () => {
             type="email"
             value={email}
             disabled={!isLoaded || isUpdating}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              console.log('Email updated:', e.target.value);
+              setEmail(e.target.value);
+            }}
             placeholder="Enter your email"
             className="w-full focus-visible:border-foreground"
           />
@@ -253,7 +278,10 @@ const SignUpForm = () => {
               type={showPassword ? "text" : "password"}
               value={password}
               disabled={!isLoaded || isUpdating}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                console.log('Password updated:', e.target.value);
+                setPassword(e.target.value);
+              }}
               placeholder="Enter your password"
               className="w-full focus-visible:border-foreground"
             />
@@ -272,14 +300,41 @@ const SignUpForm = () => {
             </Button>
           </div>
         </div>
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <span className="text-sm text-gray-700">
-            {role === 'PASSENGER' ? 'Passenger' : role === 'DRIVER' ? 'Driver' : 'Owner'}
-          </span>
-          <TriStateSwitch
-            onCheckedChange={(state) => setRoleIndex(state === false ? 0 : state === true ? 1 : 2)}
-            disabled={!isLoaded || isUpdating}
-          />
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <Label>Role</Label>
+          <div className={styles.toggleGroupRoot} data-disabled={!isLoaded || isUpdating}>
+            <button
+              type="button"
+              className={getToggleItemClass(0)}
+              onClick={() => !isUpdating && setRoleIndex(0)}
+              disabled={!isLoaded || isUpdating}
+              data-disabled={!isLoaded || isUpdating}
+            >
+              Passenger
+            </button>
+            <button
+              type="button"
+              className={getToggleItemClass(1)}
+              onClick={() => !isUpdating && setRoleIndex(1)}
+              disabled={!isLoaded || isUpdating}
+              data-disabled={!isLoaded || isUpdating}
+            >
+              Driver
+            </button>
+            <button
+              type="button"
+              className={getToggleItemClass(2)}
+              onClick={() => !isUpdating && setRoleIndex(2)}
+              disabled={!isLoaded || isUpdating}
+              data-disabled={!isLoaded || isUpdating}
+            >
+              Owner
+            </button>
+          </div>
+        </div>
+        {/* Added CAPTCHA element */}
+        <div className="mt-4">
+          <div id="clerk-captcha"></div>
         </div>
         <div className="mt-4 w-full">
           <Button type="submit" disabled={!isLoaded || isUpdating} className="w-full">
