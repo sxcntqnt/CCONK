@@ -1,9 +1,12 @@
-import { Icons, SignInForm } from '@/components';
+// src/app/auth/sign-in/page.tsx
+import { Icons } from '@/components'; // Assuming Icons is still here
+import SignInForm from '@/components/auth/signin-form'; // Ensure path matches your structure
 import Link from 'next/link';
 
 const SignInPage = () => {
   return (
     <div className="mx-auto flex h-dvh max-w-sm flex-col items-start overflow-hidden pt-4 md:pt-20">
+      {/* Header with Logo */}
       <div className="flex w-full items-center border-b border-border/80 py-8">
         <Link href="/#home" className="flex items-center gap-x-2">
           <Icons.logo className="h-6 w-6" />
@@ -11,9 +14,11 @@ const SignInPage = () => {
         </Link>
       </div>
 
+      {/* SignInForm */}
       <SignInForm />
 
-      <div className="flex w-full flex-col items-start">
+      {/* Terms and Privacy Links */}
+      <div className="mt-6 flex w-full flex-col items-start">
         <p className="text-sm text-muted-foreground">
           By signing in, you agree to our{' '}
           <Link href="/terms" className="text-primary">
@@ -25,9 +30,11 @@ const SignInPage = () => {
           </Link>
         </p>
       </div>
+
+      {/* Sign-Up Link */}
       <div className="mt-auto flex w-full items-start border-t border-border/80 py-6">
         <p className="text-sm text-muted-foreground">
-          Don&apos;t have an account?{' '}
+          Don’t have an account?{' '}
           <Link href="/auth/sign-up" className="text-primary">
             Sign up
           </Link>

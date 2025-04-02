@@ -3,7 +3,7 @@
 import { getAuthStatus } from '@/actions';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs'; // Add Clerk’s client-side hook
+import { useAuth } from '@clerk/nextjs';
 
 const AuthCallbackPage = () => {
   const router = useRouter();
@@ -18,11 +18,11 @@ const AuthCallbackPage = () => {
   });
 
   if (data?.success) {
-    router.push('/dashboard');
+    router.push('/dashboard'); // Generic redirect; role handled downstream
   }
 
   if (error || data?.error) {
-    console.error("Auth callback error:", error || data?.error);
+    console.error('Auth callback error:', error || data?.error);
   }
 
   if (!isLoaded) {

@@ -7,11 +7,11 @@ import { Eye, EyeOff, LoaderIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { Label } from '../ui/label';
+import { Label } from '@/components/ui/label';
+
 
 const SignInForm = () => {
   const router = useRouter();
-
   const { signIn, isLoaded, setActive } = useSignIn();
 
   const [email, setEmail] = useState<string>('');
@@ -19,14 +19,41 @@ const SignInForm = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const sanitizeEmail = (input: string): string => {
+    // Trim, lowercase, max 255 chars
+    return input.trim().toLowerCase().substring(0, 255);
+  };
+
+  const sanitizePassword = (input: string): string => {
+    // Trim, max 128 chars
+    return input.trim().substring(0, 128);
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isLoaded) return;
+    if (!isLoaded) {
+      toast.error('Sign-in service not ready. Please try again.');
+      return;
+    }
 
-    if (!email || !password) {
-      setIsLoading(false);
-      toast.error('Email and password are required!');
+    const sanitizedEmail = sanitizeEmail(email);
+    const sanitizedPassword = sanitizePassword(password);
+
+    // Validation
+    if (!sanitizedEmail) {
+      toast.error('Email is required!');
+      return;
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(sanitizedEmail)) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+
+    if (!sanitizedPassword) {
+      toast.error('Password is required!');
       return;
     }
 
@@ -34,8 +61,8 @@ const SignInForm = () => {
 
     try {
       const signInAttempt = await signIn.create({
-        identifier: email,
-        password,
+        identifier: sanitizedEmail,
+        password: sanitizedPassword,
         redirectUrl: '/auth/auth-callback',
       });
 
@@ -50,19 +77,32 @@ const SignInForm = () => {
         setIsLoading(false);
       }
     } catch (error: any) {
-      switch (error.errors[0]?.code) {
-        case 'form_identifier_not_found':
-          toast.error('This email is not registered. Please sign up first.');
-          break;
-        case 'form_password_incorrect':
-          toast.error('Incorrect password. Please try again.');
-          break;
-        case 'too_many_attempts':
-          toast.error('Too many attempts. Please try again later.');
-          break;
-        default:
-          toast.error('An error occurred. Please try again');
-          break;
+      if (error.errors && Array.isArray(error.errors) && error.errors.length > 0) {
+        const firstError = error.errors[0];
+        switch (firstError?.code) {
+          case 'form_identifier_not_found':
+            toast.error('This email is not registered. Please sign up first.');
+            break;
+          case 'form_password_incorrect':
+            toast.error('Incorrect password. Please try again.');
+            break;
+          case 'too_many_attempts':
+            toast.error('Too many attempts. Please wait before trying again.');
+            break;
+          case 'form_param_format_invalid':
+            toast.error('Invalid email format detected.');
+            break;
+          case 'form_param_nil':
+            toast.error('Email and password are required.');
+            break;
+          default:
+            console.error('Unexpected error:', JSON.stringify(firstError, null, 2));
+            toast.error('An unexpected error occurred. Please try again or contact support.');
+            break;
+        }
+      } else {
+        console.error('Sign-in error:', error);
+        toast.error('A system error occurred. Please try again later.');
       }
     } finally {
       setIsLoading(false);
@@ -81,7 +121,7 @@ const SignInForm = () => {
             type="email"
             value={email}
             disabled={!isLoaded || isLoading}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
             className="w-full focus-visible:border-foreground"
           />
@@ -94,7 +134,7 @@ const SignInForm = () => {
               type={showPassword ? 'text' : 'password'}
               value={password}
               disabled={!isLoaded || isLoading}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               className="w-full focus-visible:border-foreground"
             />
@@ -114,17 +154,14 @@ const SignInForm = () => {
             </Button>
           </div>
         </div>
+
         <div className="mt-4 w-full">
           <Button
             type="submit"
             disabled={!isLoaded || isLoading}
             className="w-full"
           >
-            {isLoading ? (
-              <LoaderIcon className="h-5 w-5 animate-spin" />
-            ) : (
-              'Sign in with email'
-            )}
+            {isLoading ? <LoaderIcon className="h-5 w-5 animate-spin" /> : 'Sign in'}
           </Button>
         </div>
       </form>

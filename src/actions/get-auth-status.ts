@@ -2,7 +2,7 @@
 
 import { db } from '@/lib';
 import { currentUser } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
+import { Role } from '@/constants/roles'; // Import Role type
 
 const getAuthStatus = async () => {
     const user = await currentUser();
@@ -15,34 +15,38 @@ const getAuthStatus = async () => {
     const email = user.primaryEmailAddress.emailAddress;
     const name = user.fullName || user.firstName || null;
     const image = user.imageUrl || 'img.clerk.com/default';
+    const role = (user.unsafeMetadata?.role as Role) || 'PASSENGER'; // Sync role from Clerk, default to PASSENGER
 
     console.log('clerkId:', clerkId, 'type:', typeof clerkId);
     console.log('email:', email, 'type:', typeof email);
     console.log('name:', name, 'type:', typeof name);
     console.log('image:', image, 'type:', typeof image);
-    console.log('Data for create:', { clerkId, email, name, image });
+    console.log('role:', role, 'type:', typeof role);
+    console.log('Data for upsert:', { clerkId, email, name, image, role });
 
     try {
         await db.$connect();
         console.log('Database connected successfully');
 
-        const existingUser = await db.user.findFirst({
+        // Upsert to handle both new and existing users
+        const updatedUser = await db.user.upsert({
             where: { clerkId },
+            update: {
+                email,
+                name,
+                image,
+                role, // Update role in case it changed
+            },
+            create: {
+                clerkId,
+                email,
+                name,
+                image,
+                role, // Set role for new users
+            },
         });
 
-        console.log('existingUser', existingUser);
-
-        if (!existingUser) {
-            const newUser = await db.user.create({
-                data: {
-                    clerkId,
-                    email,
-                    name,
-                    image,
-                },
-            });
-            console.log('New user created with id:', newUser.id); // Verify generated ID
-        }
+        console.log('User upserted:', updatedUser);
 
         return { success: true };
     } catch (error) {

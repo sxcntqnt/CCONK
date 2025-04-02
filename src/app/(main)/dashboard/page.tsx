@@ -1,27 +1,22 @@
-'use client';
+// src/app/dashboard/page.tsx
+import { currentUser } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { Role } from '@/constants/roles'; // Import Role type
 
-import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
-import React from 'react';
-import { useClerk } from '@clerk/nextjs';
+export default async function DashboardPage() {
+  const user = await currentUser();
+  if (!user) redirect('/auth/sign-in');
 
-const DashboardPage = () => {
-  const router = useRouter();
+  // Get role from unsafeMetadata (consistent with SignUpForm and getAuthStatus)
+  const role = (user.unsafeMetadata?.role as Role) || 'PASSENGER'; // Default to PASSENGER if missing
 
-  const { user, signOut } = useClerk();
-
-  return (
-    <div className="flex h-screen flex-col items-center justify-center">
-      <h1 className="text-xl font-medium">Welcome {user?.firstName}!</h1>
-      <p className="mt-2 text-gray-500">You are signed in.</p>
-      <div className="mt-4 flex items-center justify-center gap-4">
-        <Button onClick={() => router.push('/')} variant="outline">
-          Back to home
-        </Button>
-        <Button onClick={() => signOut()}>Sign Out</Button>
-      </div>
-    </div>
-  );
-};
-
-export default DashboardPage;
+  // Redirect based on role
+  switch (role) {
+    case 'PASSENGER':
+      redirect('/dashboard/passenger');
+    case 'DRIVER':
+      redirect('/dashboard/driver');
+    case 'OWNER':
+      redirect('/dashboard/owner');
+  }
+}

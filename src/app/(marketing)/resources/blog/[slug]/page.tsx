@@ -1,4 +1,4 @@
-import { PageProps } from 'next'; 
+import { PageProps }  from 'next'; 
 import React from 'react';
 import blogs from '@/utils/constants/blogs.json';
 
