@@ -1,12 +1,12 @@
-// src/app/dashboard/passenger/client.tsx
+// src/app/(main)/dashboard/passenger/client.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Suspense } from 'react';
-import RealTimeNotifications from '@/lib/websockets/index';
+import RealTimeTripUpdates from '@/lib/websocket/RTU';
+import { useClerk } from '@clerk/nextjs';
 import { User } from '@clerk/nextjs/server';
 import { Prisma } from '@prisma/client';
 
@@ -28,12 +28,11 @@ interface Props {
 }
 
 export default function PassengerDashboardClient({ user, passenger, buses, error }: Props) {
-    const [hasReservations, setHasReservations] = useState(false);
+    const [hasReservations, setHasReservations] = useState<boolean | null>(null);
+    const { signOut } = useSignOut(); // Use the hook
 
     useEffect(() => {
-        if (passenger) {
-            setHasReservations(passenger.reservations.length > 0);
-        }
+        setHasReservations(passenger ? passenger.reservations.length > 0 : false);
     }, [passenger]);
 
     if (!user) {
@@ -56,6 +55,14 @@ export default function PassengerDashboardClient({ user, passenger, buses, error
         return (
             <div className="container mx-auto py-8">
                 <p>Failed to load passenger data</p>
+            </div>
+        );
+    }
+
+    if (hasReservations === null) {
+        return (
+            <div className="container mx-auto py-8">
+                <p>Loading...</p>
             </div>
         );
     }
@@ -98,13 +105,7 @@ export default function PassengerDashboardClient({ user, passenger, buses, error
                     <Link href="/">
                         <Button variant="outline">Back to Home</Button>
                     </Link>
-                    <Button
-                        onClick={() =>
-                            fetch('/api/auth/signout', { method: 'POST' }).then(() => (window.location.href = '/'))
-                        }
-                    >
-                        Sign Out
-                    </Button>
+                    <Button onClick={() => signOut({ redirectUrl: '/' })}>Sign Out</Button>
                 </div>
             </div>
         );
@@ -170,28 +171,16 @@ export default function PassengerDashboardClient({ user, passenger, buses, error
                     </CardContent>
                 </Card>
 
-                <Suspense
-                    fallback={
-                        <Card>
-                            <CardContent>Loading notifications...</CardContent>
-                        </Card>
-                    }
-                >
-                    <RealTimeNotifications userId={passenger.id} />
-                </Suspense>
+                {passenger.reservations.map((reservation) => (
+                    <RealTimeTripUpdates key={reservation.tripId} tripId={reservation.tripId} />
+                ))}
             </div>
 
             <div className="mt-6 flex gap-4">
                 <Link href="/">
                     <Button variant="outline">Back to Home</Button>
                 </Link>
-                <Button
-                    onClick={() =>
-                        fetch('/api/auth/signout', { method: 'POST' }).then(() => (window.location.href = '/'))
-                    }
-                >
-                    Sign Out
-                </Button>
+                <Button onClick={() => signOut({ redirectUrl: '/' })}>Sign Out</Button>
             </div>
         </div>
     );

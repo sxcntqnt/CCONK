@@ -3,43 +3,36 @@
 import { getAuthStatus } from '@/actions';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser } from '@clerk/nextjs';
 import { useEffect } from 'react';
 
 const AuthCallbackPage = () => {
     const router = useRouter();
-    const { isLoaded: authLoaded, userId } = useAuth();
-    const { isLoaded: userLoaded, user } = useUser();
 
-    const { data, error, isLoading } = useQuery({
+    const { data, isLoading, error } = useQuery({
         queryKey: ['auth-status'],
         queryFn: async () => {
             console.log('AuthCallbackPage - Running getAuthStatus');
             return await getAuthStatus();
         },
-        enabled: authLoaded && !!userId,
-        retry: 3,
-        retryDelay: 1000,
+        retry: 3, // Limited retries to avoid infinite loops
+        retryDelay: 500,
     });
 
     useEffect(() => {
-        if (data?.success && user) {
-            const role = (user.publicMetadata?.role as string) || 'PASSENGER';
-            console.log('AuthCallbackPage - Redirecting to dashboard with role:', role);
-            router.push(`/dashboard?role=${encodeURIComponent(role)}`);
-        } else if (error || data?.error) {
-            console.error('AuthCallbackPage - Error:', error || data?.error);
-            router.push('/auth/sign-in?error=auth-failed');
+        if (data?.success) {
+            console.log('AuthCallbackPage - Auth successful, redirecting to dashboard');
+            router.push('/dashboard');
+        } else if (error || (data && !data.success)) {
+            console.log('AuthCallbackPage - Auth failed, redirecting to sign-in');
+            router.push('/auth/sign-in?error=auth-callback-failed');
         }
-    }, [data, error, user, router]);
+    }, [data, error, router]);
 
-    if (!authLoaded || isLoading) {
+    if (isLoading) {
         return (
-            <div className="relative flex h-screen flex-col items-center justify-center">
-                <div className="h-8 w-8 animate-loading rounded-full border-[3px] border-neutral-800 border-b-neutral-200"></div>
-                <p className="mt-3 text-center text-lg font-medium">
-                    {isLoading ? 'Verifying your account...' : 'Loading authentication...'}
-                </p>
+            <div className="flex items-center justify-center flex-col h-screen relative">
+                <div className="border-[3px] border-neutral-800 rounded-full border-b-neutral-200 animate-loading w-8 h-8"></div>
+                <p className="text-lg font-medium text-center mt-3">Verifying your account...</p>
             </div>
         );
     }

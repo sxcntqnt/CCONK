@@ -1,6 +1,6 @@
+// message.ts
 import { WebSocketConnection } from './connection';
 
-// Message types
 interface Message {
     type: string;
     payload: any;
@@ -14,12 +14,11 @@ export class MessageHandler {
 
     constructor(connection: WebSocketConnection) {
         this.connection = connection;
-        this.setupMessageListener();
     }
 
-    private setupMessageListener(): void {
+    private ensureMessageListener(): void {
         const ws = this.connection.getWebSocket();
-        if (ws) {
+        if (ws && !ws.onmessage) {
             ws.onmessage = (event) => {
                 try {
                     const message: Message = JSON.parse(event.data);
@@ -31,14 +30,13 @@ export class MessageHandler {
         }
     }
 
-    // Subscribe to specific message types
     public subscribe(messageType: string, callback: MessageCallback): () => void {
+        this.ensureMessageListener();
         if (!this.subscribers.has(messageType)) {
             this.subscribers.set(messageType, new Set());
         }
         this.subscribers.get(messageType)?.add(callback);
 
-        // Return unsubscribe function
         return () => {
             this.subscribers.get(messageType)?.delete(callback);
             if (this.subscribers.get(messageType)?.size === 0) {
@@ -47,8 +45,8 @@ export class MessageHandler {
         };
     }
 
-    // Send message to WebSocket server
     public send(message: Message): void {
+        this.ensureMessageListener();
         if (this.connection.isConnected()) {
             const ws = this.connection.getWebSocket();
             ws?.send(JSON.stringify(message));
@@ -57,11 +55,14 @@ export class MessageHandler {
         }
     }
 
-    // Dispatch received messages to subscribers
     private dispatchMessage(message: Message): void {
         const subscribers = this.subscribers.get(message.type);
         if (subscribers) {
             subscribers.forEach((callback) => callback(message));
         }
+    }
+
+    public getConnection(): WebSocketConnection {
+        return this.connection;
     }
 }

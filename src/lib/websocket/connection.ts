@@ -1,3 +1,4 @@
+// connection.ts
 export class WebSocketConnection {
     private ws: WebSocket | null = null;
     private url: string;
@@ -13,6 +14,10 @@ export class WebSocketConnection {
     }
 
     public connect(): void {
+        if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
+            return; // Prevent multiple connections
+        }
+
         try {
             this.ws = new WebSocket(this.url);
 
@@ -27,12 +32,16 @@ export class WebSocketConnection {
 
             this.ws.onclose = () => {
                 console.log('WebSocket connection closed');
+                this.ws = null;
                 this.handleReconnect();
             };
 
             this.ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
+                this.ws?.close(); // Ensure cleanup on error
             };
+
+            // onmessage will be set by MessageHandler
         } catch (error) {
             console.error('Failed to establish WebSocket connection:', error);
             this.handleReconnect();
@@ -46,6 +55,7 @@ export class WebSocketConnection {
         }
         if (this.reconnectTimeout) {
             clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = null;
         }
     }
 
@@ -61,10 +71,7 @@ export class WebSocketConnection {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-
-            this.reconnectTimeout = setTimeout(() => {
-                this.connect();
-            }, this.reconnectInterval);
+            this.reconnectTimeout = setTimeout(() => this.connect(), this.reconnectInterval);
         } else {
             console.error('Maximum reconnection attempts reached');
         }

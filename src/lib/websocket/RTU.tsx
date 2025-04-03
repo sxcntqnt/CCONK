@@ -4,9 +4,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { WebSocketManager } from '@lib/websocket/index';
+import { WebSocketManager } from './index';
 
-// Define the trip update message type
 interface TripUpdate {
     tripId: number;
     status: string;
@@ -18,36 +17,51 @@ function RealTimeTripUpdates({ tripId }: { tripId: number }) {
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
-        // Initialize WebSocket connection
+        // Use environment variable for WebSocket URL
+        const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:1738'; // Fallback to localhost if not set
+        if (!wsUrl) {
+            console.error('NEXT_PUBLIC_WEBSOCKET_URL is not defined in .env');
+        }
+
         const wsManager = WebSocketManager.getInstance({
-            url: 'ws://localhost:8080', // Replace with your WebSocket server URL
+            url: wsUrl,
             reconnectInterval: 3000,
             maxReconnectAttempts: 5,
         });
 
         wsManager.initialize();
         const messageHandler = wsManager.getMessageHandler();
+        const connection = messageHandler.getConnection();
 
-        // Monitor connection status
-        const ws = messageHandler.getConnection().getWebSocket();
+        // Connection status listener
+        const ws = connection.getWebSocket();
+        const updateConnectionStatus = () => setIsConnected(connection.isConnected());
+
         if (ws) {
             ws.onopen = () => {
-                setIsConnected(true);
-                // Request initial trip status when connected
+                updateConnectionStatus();
                 messageHandler.send({
                     type: 'subscribe_trip',
                     payload: { tripId },
                 });
             };
-            ws.onclose = () => setIsConnected(false);
+            ws.onclose = updateConnectionStatus;
+            ws.onerror = updateConnectionStatus;
         }
 
-        // Subscribe to trip updates
+        // Initial subscription request if already connected
+        if (connection.isConnected()) {
+            messageHandler.send({
+                type: 'subscribe_trip',
+                payload: { tripId },
+            });
+        }
+
+        // Subscribe to updates
         const unsubscribe = messageHandler.subscribe('trip_update', (message) => {
             const update: TripUpdate = message.payload;
             if (update.tripId === tripId) {
                 setTripStatus(update.status);
-
                 if (update.status === 'completed') {
                     toast.success('Trip completed!');
                 } else if (update.status === 'cancelled') {
@@ -58,13 +72,16 @@ function RealTimeTripUpdates({ tripId }: { tripId: number }) {
             }
         });
 
-        // Cleanup
+        // Poll connection status
+        const interval = setInterval(updateConnectionStatus, 1000);
+
         return () => {
             unsubscribe();
             messageHandler.send({
                 type: 'unsubscribe_trip',
                 payload: { tripId },
             });
+            clearInterval(interval);
             wsManager.disconnect();
         };
     }, [tripId]);

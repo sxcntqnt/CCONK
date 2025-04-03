@@ -1,16 +1,15 @@
+// index.ts
 import { WebSocketConnection } from './connection';
 import { MessageHandler } from './message';
 
-// Configuration interface
 interface WebSocketConfig {
     url: string;
     reconnectInterval?: number;
     maxReconnectAttempts?: number;
 }
 
-// Singleton class to manage WebSocket instance
 class WebSocketManager {
-    private static instance: WebSocketManager;
+    private static instance: WebSocketManager | null = null;
     private connection: WebSocketConnection;
     private messageHandler: MessageHandler;
 
@@ -26,22 +25,18 @@ class WebSocketManager {
         return WebSocketManager.instance;
     }
 
-    // Initialize WebSocket connection
     public initialize(): void {
         this.connection.connect();
     }
 
-    // Get message handler instance
     public getMessageHandler(): MessageHandler {
         return this.messageHandler;
     }
 
-    // Cleanup
     public disconnect(): void {
         this.connection.disconnect();
     }
 }
 
-// Export the manager and types
 export { WebSocketManager, WebSocketConfig };
 export default WebSocketManager;

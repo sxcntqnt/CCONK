@@ -54,14 +54,15 @@ const SignInForm = () => {
             const signInAttempt = await signIn.create({
                 identifier: sanitizedEmail,
                 password: sanitizedPassword,
-                redirectUrl: '/auth/auth-callback',
+                redirectUrl: '/auth/auth-callback', // Restore for reliability
             });
 
             if (signInAttempt.status === 'complete') {
                 await setActive({
                     session: signInAttempt.createdSessionId,
                 });
-                console.log('SignInForm - Session set, relying on Clerk redirect');
+                console.log('SignInForm - Session set, navigating to auth-callback');
+                window.location.href = '/auth/auth-callback'; // Full navigation
             } else {
                 console.log(JSON.stringify(signInAttempt, null, 2));
                 toast.error('Invalid email or password');
@@ -71,9 +72,8 @@ const SignInForm = () => {
                 const firstError = error.errors[0];
                 switch (firstError?.code) {
                     case 'session_exists':
-                        console.log('SignInForm - Session exists, redirecting to dashboard');
-                        toast.info('You are already signed in!');
-                        router.push('/dashboard'); // No role param here, let dashboard handle it
+                        console.log('SignInForm - Session exists, navigating to auth-callback');
+                        window.location.href = '/auth/auth-callback';
                         break;
                     case 'form_identifier_not_found':
                         toast.error('This email is not registered. Please sign up first.');

@@ -1,18 +1,26 @@
-// /src/app/dashboard/page.tsx
 import { currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { Role } from '@/constants/roles';
 
-export default async function DashboardPage({ searchParams }: { searchParams: { role?: string } }) {
-    const user = await currentUser();
-    console.log('DashboardPage - user:', user?.id, 'searchParams:', searchParams);
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
+    let user;
+    try {
+        user = await currentUser();
+        console.log('DashboardPage - User fetched:', user?.id);
+    } catch (error) {
+        console.error('DashboardPage - Error fetching currentUser:', error);
+        redirect('/auth/sign-in');
+    }
 
-    if (!user && !searchParams.role) {
+    const resolvedSearchParams = await searchParams;
+    console.log('DashboardPage - searchParams:', resolvedSearchParams);
+
+    if (!user && !resolvedSearchParams.role) {
         console.log('DashboardPage - No user or role, redirecting to /auth/sign-in');
         redirect('/auth/sign-in');
     }
 
-    const role = (user?.public_metadata?.role as Role) || searchParams.role || 'PASSENGER';
+    const role = (user?.public_metadata?.role as Role) || resolvedSearchParams.role || 'PASSENGER';
     console.log('DashboardPage - Resolved role:', role);
 
     switch (role.toUpperCase()) {
@@ -30,5 +38,3 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             redirect('/dashboard/passenger');
     }
 }
-
-export DashboardPage ;
