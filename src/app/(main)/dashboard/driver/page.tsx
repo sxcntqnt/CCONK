@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { notifyDriverArrival } from '@/actions/notify-driver-arrival';
 import { Suspense } from 'react';
-import RealTimeTripUpdates from ''@lib/websocket/RTU;
+import RealTimeTripUpdates from ''@/lib/websocket/RTU;
 
 // Fetch driver and trip data server-side
 async function getDriverData(clerkId: string) {
