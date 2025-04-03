@@ -8,18 +8,18 @@ datasource db {
 }
 
 model User {
-  id            Int           @id @default(autoincrement())
+  id            Int            @id @default(autoincrement())
+  clerkId       String         @unique
   name          String
-  email         String        @unique
-  password      String
-  phoneNumber   String        @unique
-  role          String        @default("passenger")
+  email         String         @unique
   image         String?
-  driver        Driver?       @relation // Only for drivers
-  owner         Owner?        @relation // Only for owners
+  phoneNumber   String?
+  role          String         @default("passenger")
+  driver        Driver?
   notifications Notification[]
-  reservations  Reservation[]
+  owner         Owner?
   payments      Payment[]
+  reservations  Reservation[]
 }
 
 model Driver {
@@ -32,7 +32,7 @@ model Driver {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   bus           Bus?           @relation(fields: [busId], references: [id])
-  user          User           @relation(fields: [userId], references: [id]) // Keep relation here
+  user          User           @relation(fields: [userId], references: [id])
   notifications Notification[]
   trips         Trip[]
 
@@ -46,24 +46,24 @@ model Owner {
   userId    Int      @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id]) // Keep relation here
   buses     Bus[]
+  user      User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
 
 model Bus {
   id           Int      @id @default(autoincrement())
-  ownerId      Int?
   licensePlate String   @unique
   capacity     Int
-  category     String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  category     String
+  ownerId      Int?
+  owner        Owner?   @relation(fields: [ownerId], references: [id])
   drivers      Driver[]
   seats        Seat[]
   trips        Trip[]
-  owner        Owner?   @relation(fields: [ownerId], references: [id])
 
   @@index([licensePlate])
   @@index([ownerId])
@@ -164,4 +164,3 @@ model Notification {
   @@index([tripId])
   @@index([type])
 }
-

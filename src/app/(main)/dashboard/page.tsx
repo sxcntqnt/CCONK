@@ -1,22 +1,34 @@
-// src/app/dashboard/page.tsx
+// /src/app/dashboard/page.tsx
 import { currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { Role } from '@/constants/roles'; // Import Role type
+import { Role } from '@/constants/roles';
 
-export default async function DashboardPage() {
-  const user = await currentUser();
-  if (!user) redirect('/auth/sign-in');
+export default async function DashboardPage({ searchParams }: { searchParams: { role?: string } }) {
+    const user = await currentUser();
+    console.log('DashboardPage - user:', user?.id, 'searchParams:', searchParams);
 
-  // Get role from unsafeMetadata (consistent with SignUpForm and getAuthStatus)
-  const role = (user.unsafeMetadata?.role as Role) || 'PASSENGER'; // Default to PASSENGER if missing
+    if (!user && !searchParams.role) {
+        console.log('DashboardPage - No user or role, redirecting to /auth/sign-in');
+        redirect('/auth/sign-in');
+    }
 
-  // Redirect based on role
-  switch (role) {
-    case 'PASSENGER':
-      redirect('/dashboard/passenger');
-    case 'DRIVER':
-      redirect('/dashboard/driver');
-    case 'OWNER':
-      redirect('/dashboard/owner');
-  }
+    const role = (user?.public_metadata?.role as Role) || searchParams.role || 'PASSENGER';
+    console.log('DashboardPage - Resolved role:', role);
+
+    switch (role.toUpperCase()) {
+        case 'PASSENGER':
+            console.log('DashboardPage - Redirecting to /dashboard/passenger');
+            redirect('/dashboard/passenger');
+        case 'DRIVER':
+            console.log('DashboardPage - Redirecting to /dashboard/driver');
+            redirect('/dashboard/driver');
+        case 'OWNER':
+            console.log('DashboardPage - Redirecting to /dashboard/owner');
+            redirect('/dashboard/owner');
+        default:
+            console.log('DashboardPage - Unknown role, defaulting to /dashboard/passenger');
+            redirect('/dashboard/passenger');
+    }
 }
+
+export DashboardPage ;

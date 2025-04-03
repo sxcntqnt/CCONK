@@ -105,7 +105,7 @@ body {
 *::before,
 *::after {
     box-sizing: border-box;
-    overflow: visible !important; /* force overflow visibility */
+    overflow: visible; /* force overflow visibility */
 }
 
 /* Optional: Reset any potentially restrictive properties */

@@ -5,38 +5,34 @@ import { aeonik, cn, generateMetadata, inter } from '@/utils';
 
 export const metadata = generateMetadata();
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className="scrollbar overflow-x-visible overflow-y-visible"  // Ensure overflow is also set on the html element
-    >
-      <body
-        className={cn(
-          'min-h-screen overflow-x-visible overflow-y-visible bg-background !font-default text-foreground antialiased',  // Body overflow
-          aeonik.variable,
-          inter.variable
-        )}
-      >
-        <Providers>
-          <Toaster richColors theme="dark" position="top-right" />
-          {children}
-        </Providers>
-      </body>
-    </html>
-  );
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <html
+            lang="en"
+            suppressHydrationWarning
+            className="scrollbar overflow-x-visible overflow-y-visible" // Ensure overflow is also set on the html element
+        >
+            <body
+                className={cn(
+                    'min-h-screen overflow-x-visible overflow-y-visible bg-background !font-default text-foreground antialiased', // Body overflow
+                    aeonik.variable,
+                    inter.variable,
+                )}
+            >
+                <Providers>
+                    <Toaster richColors theme="dark" position="top-right" />
+                    {children}
+                </Providers>
+            </body>
+        </html>
+    );
 }
 
 {
-  /* <div className="absolute top-0 z-[-2] h-screen w-screen bg-background bg-[radial-gradient(100%_50%_at_50%_0%,rgba(168,85,247,0.13)_0,rgba(168,85,247,0)_50%,rgba(168,85,247,0)_100%)]"></div> */
+    /* <div className="absolute top-0 z-[-2] h-screen w-screen bg-background bg-[radial-gradient(100%_50%_at_50%_0%,rgba(168,85,247,0.13)_0,rgba(168,85,247,0)_50%,rgba(168,85,247,0)_100%)]"></div> */
 }
 {
-  /* <AnimatedBackground
+    /* <AnimatedBackground
                     numSquares={6}
                     maxOpacity={0.2}
                     duration={10}

@@ -2,7 +2,7 @@ export * from './prisma';
 export * from './names';
 
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocket.Server({ port: 1738 });
 
 const tripSubscriptions = new Map(); // Map<tripId, Set<ws>>
 

@@ -2,12 +2,14 @@
 
 import { db } from '@/lib';
 import { currentUser } from '@clerk/nextjs/server';
-import { Role } from '@/constants/roles'; // Import Role type
+import { Role } from '@/constants/roles';
 
 const getAuthStatus = async () => {
+    console.log('getAuthStatus - Starting server action');
     const user = await currentUser();
 
     if (!user?.id || !user?.primaryEmailAddress?.emailAddress) {
+        console.log('getAuthStatus - User not authenticated, currentUser:', user);
         return { error: 'User not authenticated, please sign in' };
     }
 
@@ -15,42 +17,23 @@ const getAuthStatus = async () => {
     const email = user.primaryEmailAddress.emailAddress;
     const name = user.fullName || user.firstName || null;
     const image = user.imageUrl || 'img.clerk.com/default';
-    const role = (user.unsafeMetadata?.role as Role) || 'PASSENGER'; // Sync role from Clerk, default to PASSENGER
+    const role = (user.publicMetadata?.role as Role) || 'PASSENGER'; // Use publicMetadata
 
-    console.log('clerkId:', clerkId, 'type:', typeof clerkId);
-    console.log('email:', email, 'type:', typeof email);
-    console.log('name:', name, 'type:', typeof name);
-    console.log('image:', image, 'type:', typeof image);
-    console.log('role:', role, 'type:', typeof role);
-    console.log('Data for upsert:', { clerkId, email, name, image, role });
+    console.log('getAuthStatus - User data:', { clerkId, email, name, image, role });
 
     try {
-        await db.$connect();
-        console.log('Database connected successfully');
-
-        // Upsert to handle both new and existing users
+        console.log('getAuthStatus - Starting upsert operation');
         const updatedUser = await db.user.upsert({
             where: { clerkId },
-            update: {
-                email,
-                name,
-                image,
-                role, // Update role in case it changed
-            },
-            create: {
-                clerkId,
-                email,
-                name,
-                image,
-                role, // Set role for new users
-            },
+            update: { email, name, image, role },
+            create: { clerkId, email, name, image, role },
         });
 
-        console.log('User upserted:', updatedUser);
-
+        console.log('getAuthStatus - User upserted:', updatedUser);
         return { success: true };
     } catch (error) {
-        console.error('Database error:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('getAuthStatus - Database error during upsert:', errorMessage);
         return { error: 'Database connection failed' };
     }
 };

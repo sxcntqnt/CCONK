@@ -8,7 +8,7 @@
     "start": "next start -p 5001",
     "lint": "npx lint-staged",
     "format": "npm run prettier:check",
-    "prettier": "prettier --config .prettierrc --check \"src/**/*.{ts,css,tsx}\"",
+    "prettier": "prettier --config .prettierrc --check \"src/**/*.{ts,css,tsx}\" --write",
     "postinstall": "prisma generate",
     "prepare": "husky install",
     "type-check": "tsc --noEmit",
