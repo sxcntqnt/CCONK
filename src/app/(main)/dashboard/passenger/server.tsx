@@ -1,4 +1,4 @@
-// src/app/dashboard/passenger/server.tsx
+// src/app/(main)/dashboard/passenger/server.tsx
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
@@ -42,14 +42,24 @@ async function PassengerDashboardServer(): Promise<{ props: DashboardProps; erro
     } catch (error) {
         console.error('Server - Error fetching currentUser:', error);
         return {
-            props: { user: null, passenger: null, buses: [] },
+            props: {
+                user: null,
+                passenger: null,
+                buses: [],
+                error: 'Authentication failed. Please sign in again.', // Added error to props
+            },
             error: 'Authentication failed. Please sign in again.',
         };
     }
 
     if (!user) {
         return {
-            props: { user: null, passenger: null, buses: [] },
+            props: {
+                user: null,
+                passenger: null,
+                buses: [],
+                error: 'Please sign in to access the passenger dashboard.', // Added error to props
+            },
             error: 'Please sign in to access the passenger dashboard.',
         };
     }
@@ -57,14 +67,25 @@ async function PassengerDashboardServer(): Promise<{ props: DashboardProps; erro
     try {
         const { passenger, buses } = await getPassengerData(user.id);
         return {
-            props: { user, passenger, buses },
+            props: {
+                user,
+                passenger,
+                buses,
+                error: null, // Added error to props
+            },
             error: null,
         };
     } catch (error) {
         console.error('Server - Error fetching passenger data:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load passenger data';
         return {
-            props: { user, passenger: null, buses: [] },
-            error: error instanceof Error ? error.message : 'Failed to load passenger data',
+            props: {
+                user,
+                passenger: null,
+                buses: [],
+                error: errorMessage, // Added error to props
+            },
+            error: errorMessage,
         };
     }
 }
@@ -74,5 +95,5 @@ export async function Page() {
     if (error === 'User is not a passenger') {
         redirect('/dashboard'); // Redirect to role selector if not a passenger
     }
-    return <PassengerDashboardClient {...props} error={error} />;
+    return <PassengerDashboardClient {...props} />;
 }

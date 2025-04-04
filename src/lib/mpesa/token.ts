@@ -11,6 +11,19 @@ interface ErrorResponse {
     error: string;
 }
 
+// Type for M-Pesa token response
+interface MpesaTokenResponse {
+    access_token: string;
+}
+
+// Type for M-Pesa error response (based on your ErrorResponse)
+interface MpesaErrorResponse {
+    error: string;
+    // Add other potential error fields from M-Pesa API if needed
+    errorCode?: string;
+    errorMessage?: string;
+}
+
 // Environment variable validation
 const getAuthCredentials = (): { apiKey: string; apiSecret: string } => {
     const apiKey = process.env.MPESA_API_KEY;
@@ -29,7 +42,7 @@ export async function getMpesaToken(): Promise<string> {
         const { apiKey, apiSecret } = getAuthCredentials();
         const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
 
-        const response = await axios.get<{ access_token: string }>(
+        const response = await axios.get<MpesaTokenResponse>(
             'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
             {
                 headers: {
@@ -40,7 +53,7 @@ export async function getMpesaToken(): Promise<string> {
 
         return response.data.access_token;
     } catch (error) {
-        const axiosError = error as AxiosError;
+        const axiosError = error as AxiosError<MpesaErrorResponse>;
         console.error('Error fetching M-Pesa token:', axiosError.message);
         throw new Error(axiosError.response?.data?.error || 'Failed to generate token');
     }
@@ -56,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         const token = await getMpesaToken();
         res.status(200).json({ token });
     } catch (error) {
-        const axiosError = error as AxiosError;
+        const axiosError = error as AxiosError<MpesaErrorResponse>;
         res.status(axiosError.response?.status || 500).json({
             error: axiosError.response?.data?.error || 'Failed to generate token',
         });

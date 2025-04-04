@@ -1,3 +1,4 @@
+// src/components/ui/seat-layout.tsx
 'use client';
 import React, { forwardRef } from 'react';
 import { cn } from '@/utils';
@@ -15,16 +16,26 @@ interface Seat {
 
 interface SeatLayoutProps {
     title: string;
-    seats: Record<number, Seat>;
-    layout: number[][][]; // Updated to handle nested groups with aisles
-    onSeatClick: (id: number) => void;
-    isLoading: boolean;
+    seats?: Record<number, Seat>; // Made optional with default in destructuring
+    layout?: number[][][]; // Made optional with default in destructuring
+    onSeatClick?: (id: number) => void; // Made optional with default in destructuring
+    isLoading?: boolean; // Made optional with default in destructuring
     className?: string;
 }
 
 export const DynamicSeatLayout = React.memo(
     forwardRef<HTMLDivElement, SeatLayoutProps>(
-        ({ title, seats = {}, layout = [], onSeatClick = () => {}, className, isLoading = false }, ref) => {
+        (
+            {
+                title,
+                seats = {}, // Default value here
+                layout = [], // Default value here
+                onSeatClick = () => {}, // Default value here
+                className,
+                isLoading = false, // Default value here
+            },
+            ref,
+        ) => {
             console.log('DynamicSeatLayout Props:', { seats, layout, isLoading });
 
             const handleSeatClick = (id: number) => {
@@ -109,4 +120,3 @@ export const DynamicSeatLayout = React.memo(
 );
 
 DynamicSeatLayout.displayName = 'DynamicSeatLayout';
-DynamicSeatLayout.defaultProps = { seats: {}, layout: [], onSeatClick: () => {}, isLoading: false };

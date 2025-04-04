@@ -1,6 +1,6 @@
 import { currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { Role } from '@/constants/roles';
+import { Role } from '@/utils/constants/roles';
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
     let user;
@@ -20,7 +20,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         redirect('/auth/sign-in');
     }
 
-    const role = (user?.public_metadata?.role as Role) || resolvedSearchParams.role || 'PASSENGER';
+    const role = (user?.publicMetadata?.role as Role) || resolvedSearchParams.role || 'PASSENGER';
     console.log('DashboardPage - Resolved role:', role);
 
     switch (role.toUpperCase()) {

@@ -1,3 +1,4 @@
+// src/app/(reservation)/reserve/page.tsx
 'use client';
 
 import React from 'react';
@@ -14,9 +15,30 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
+// Define Bus type with specific capacities from matatuConfigs
+type MatatuCapacity = keyof typeof matatuConfigs; // 14 | 26 | 33 | 46 | 52 | 67
+interface Bus {
+    id: number;
+    licensePlate: string;
+    capacity: MatatuCapacity; // Specific capacity values
+}
+
+// Define MagicBadge props
+interface MagicBadgeProps {
+    title: string;
+    className?: string;
+}
+
+// Assume this is the Bus type from useBusReservation (adjust based on actual hook return type)
+interface ReservationBus {
+    id: number;
+    licensePlate: string;
+    capacity: number; // General number type from the hook
+}
+
 export default function ReservePage() {
     const {
-        buses,
+        buses: reservationBuses, // Rename to avoid conflict
         selectedBusId,
         seats,
         selectedSeats,
@@ -39,8 +61,19 @@ export default function ReservePage() {
         handlePrevPage,
     } = useBusReservation();
 
-    const selectedBus = buses.find((bus) => bus.id === selectedBusId) || {};
-    const busCapacity = selectedBus.capacity || 14;
+    // Convert reservationBuses to local Bus type
+    const buses: Bus[] = reservationBuses.map((bus) => ({
+        id: bus.id,
+        licensePlate: bus.licensePlate,
+        capacity: bus.capacity as MatatuCapacity, // Type assertion (see note below)
+    }));
+
+    const selectedBus = (buses.find((bus) => bus.id === selectedBusId) || {
+        id: 0,
+        licensePlate: 'N/A',
+        capacity: 14 as MatatuCapacity, // Default to a valid capacity
+    }) as Bus;
+    const busCapacity = selectedBus.capacity;
     const layout = matatuConfigs[busCapacity]?.layout || [];
 
     const seatsForLayout = Object.fromEntries(
@@ -63,7 +96,7 @@ export default function ReservePage() {
             <LampContainer>
                 <AnimationContainer>
                     <h1 className="text-4xl font-bold text-white text-center mb-4">Reserve Your Seat</h1>
-                    <MagicBadge className="mb-4">Book your ride in style!</MagicBadge>
+                    <MagicBadge title="Book your ride in style!" />
                 </AnimationContainer>
             </LampContainer>
 
@@ -72,7 +105,7 @@ export default function ReservePage() {
             {selectedBusId && Object.keys(seatsForLayout).length > 0 && layout.length > 0 ? (
                 <div className="mb-6">
                     <DynamicSeatLayout
-                        title={selectedBus?.licensePlate || 'Matatu'}
+                        title={selectedBus.licensePlate}
                         seats={seatsForLayout}
                         layout={layout}
                         onSeatClick={(id) => handleSeatClick(String(id))}
@@ -107,6 +140,7 @@ export default function ReservePage() {
                     setPhoneNumber={setPhoneNumber}
                     handleCheckout={handleCheckout}
                     handleReset={handleReset}
+                    handleSeatClick={handleSeatClick}
                     isLoading={isLoading}
                 />
             </div>
@@ -127,7 +161,7 @@ export default function ReservePage() {
                     <div className="py-4">
                         <p>Please review your Reservation details:</p>
                         <ul className="mt-2 space-y-2">
-                            <li>Bus: {selectedBus?.licensePlate || 'N/A'}</li>
+                            <li>Bus: {selectedBus.licensePlate}</li>
                             <li>Seats: {selectedSeats.map((id) => seats[id]?.label).join(', ') || 'None'}</li>
                             <li>Total: {total}/=</li>
                             <li>Phone: {phoneNumber}</li>
@@ -177,10 +211,10 @@ const BusSelectionCard = ({
     handleNextPage,
     handlePrevPage,
 }: {
-    buses: any[];
+    buses: Bus[];
     selectedBusId: number | null;
     handleBusChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-    selectedBus: any;
+    selectedBus: Bus;
     isLoading: boolean;
     currentPage: number;
     totalPages: number;
@@ -242,6 +276,7 @@ const BookingSummaryCard = ({
     setPhoneNumber,
     handleCheckout,
     handleReset,
+    handleSeatClick,
     isLoading,
 }: {
     selectedSeats: string[];
@@ -251,6 +286,7 @@ const BookingSummaryCard = ({
     setPhoneNumber: (value: string) => void;
     handleCheckout: () => void;
     handleReset: () => void;
+    handleSeatClick: (id: string) => void;
     isLoading: boolean;
 }) => (
     <Card className="bg-gray-900 text-white border-none shadow-lg">
@@ -260,7 +296,7 @@ const BookingSummaryCard = ({
         <CardContent>
             <div className="flex justify-between items-center mb-4">
                 <span className="text-lg">Selected Seats:</span>
-                <MagicBadge>{selectedSeats.length}</MagicBadge>
+                <MagicBadge title={selectedSeats.length.toString()} />
             </div>
             <ScrollArea className="h-40 mb-4">
                 {selectedSeats.length > 0 ? (

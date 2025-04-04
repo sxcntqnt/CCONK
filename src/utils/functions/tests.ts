@@ -1,9 +1,11 @@
-import { cn } from '../utils/cn';
-import { generateMetadata } from '../utils/metadata';
-import { isValidUrl, getUrlFromText, getSearchParams } from '../utils/urls';
+// src/utils/functions/tests.ts
+import { cn } from './cn';
+import { generateMetadata } from './metadata';
+import { isValidUrl, getUrlFromText, getSearchParams } from './urls';
 
 // Import necessary modules for testing
 import { describe, test, expect } from '@jest/globals';
+import { Metadata } from 'next'; // Import Next.js Metadata type
 
 // Tests for cn function
 describe('cn', () => {
@@ -35,10 +37,12 @@ describe('generateMetadata', () => {
             description: 'Custom Description',
             image: 'https://example.com/image.png',
             noIndex: true,
-        });
+        }) as Metadata & { openGraph?: { images?: Array<{ url: string }> } }; // Extend type for test
+
         expect(metadata.title).toBe('Custom Title');
         expect(metadata.description).toBe('Custom Description');
-        expect(metadata.openGraph?.images?.[0].url).toBe('https://example.com/image.png');
+        // Safely access images array with type assertion
+        expect(metadata.openGraph?.images?.[0]?.url).toBe('https://example.com/image.png');
         expect(metadata.robots).toEqual({ index: false, follow: false });
     });
 });

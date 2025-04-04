@@ -29,7 +29,7 @@ interface Props {
 
 export default function PassengerDashboardClient({ user, passenger, buses, error }: Props) {
     const [hasReservations, setHasReservations] = useState<boolean | null>(null);
-    const { signOut } = useSignOut(); // Use the hook
+    const { signOut } = useClerk(); // Use the hook
 
     useEffect(() => {
         setHasReservations(passenger ? passenger.reservations.length > 0 : false);

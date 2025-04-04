@@ -1,4 +1,4 @@
-// index.ts
+// src/lib/websocket/index.ts
 import { WebSocketConnection } from './connection';
 import { MessageHandler } from './message';
 
@@ -38,5 +38,7 @@ class WebSocketManager {
     }
 }
 
-export { WebSocketManager, WebSocketConfig };
+// Export the class as a value and the interface as a type
+export { WebSocketManager };
+export type { WebSocketConfig }; // Use 'export type' for the interface
 export default WebSocketManager;

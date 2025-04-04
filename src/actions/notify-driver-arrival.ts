@@ -4,8 +4,8 @@
 import { revalidatePath } from 'next/cache';
 import { currentUser } from '@clerk/nextjs/server';
 import { Knock } from '@knocklabs/node';
-import { prisma } from '@/lib/prisma';
-import { Role } from '@prisma/client'; // Import Role enum from Prisma
+import { db } from '@/lib';
+import { ROLES, Role } from '@/utils/constants/roles'; // Updated import
 
 // Types
 interface Recipient {
@@ -30,16 +30,27 @@ async function getAuthenticatedDriver() {
     const user = await currentUser();
     if (!user) throw new Error('User not authenticated');
 
-    const driver = await prisma.user.findUnique({
+    const driver = await db.user.findUnique({
         where: { clerkId: user.id },
         include: { driver: true },
     });
 
-    if (!driver || driver.role !== Role.DRIVER || !driver.driver) {
+    // Use ROLES.DRIVER instead of Role.DRIVER
+    if (!driver || driver.role !== ROLES.DRIVER || !driver.driver) {
         throw new Error('Authenticated user is not a driver');
     }
 
     return { clerkUser: user, prismaDriver: driver };
+}
+
+// Helper: Validate form data
+function validateFormData(formData: FormData): { destination: string } {
+    const destinationRaw = formData.get('destination');
+    if (!destinationRaw || typeof destinationRaw !== 'string') {
+        throw new Error('Destination is required');
+    }
+    const destination = validateDestination(destinationRaw);
+    return { destination };
 }
 
 // Helper: Validate and sanitize destination
@@ -55,7 +66,7 @@ function validateDestination(destination: string): string {
 
 // Helper: Fetch the driver's active trip
 async function fetchDriverTrip(driverId: number) {
-    const trip = await prisma.trip.findFirst({
+    const trip = await db.trip.findFirst({
         where: {
             driverId,
             status: { in: ['scheduled', 'in_progress'] },
@@ -71,7 +82,7 @@ async function fetchDriverTrip(driverId: number) {
 
 // Helper: Fetch passengers from reservations
 async function fetchPassengers(tripId: number): Promise<Recipient[]> {
-    const reservations = await prisma.reservation.findMany({
+    const reservations = await db.reservation.findMany({
         where: { tripId, status: 'confirmed' },
         include: { user: { select: { clerkId: true, name: true, email: true } } },
     });
@@ -122,7 +133,7 @@ async function sendArrivalNotification(
     });
 
     // Persist notification in Prisma
-    await prisma.notification.createMany({
+    await db.notification.createMany({
         data: recipients.map((recipient) => ({
             userId: parseInt(recipient.id) || 0, // Fallback if not numeric
             tripId: trip.id,
@@ -135,7 +146,7 @@ async function sendArrivalNotification(
     });
 
     // Update trip status
-    await prisma.trip.update({
+    await db.trip.update({
         where: { id: trip.id },
         data: { status: 'completed', arrivalTime: new Date() },
     });
@@ -147,7 +158,7 @@ async function sendArrivalNotification(
 export async function notifyDriverArrival(formData: FormData): Promise<void> {
     try {
         const driver = await getAuthenticatedDriver();
-        const { destination } = validateFormData(formData); // Use existing function from your code
+        const { destination } = validateFormData(formData);
         const trip = await fetchDriverTrip(driver.prismaDriver.driver!.id);
         const recipients = await fetchPassengers(trip.id);
 

@@ -1,8 +1,9 @@
 // src/lib/prisma/dbClient.tsx
 'use server';
 
-import { db } from '@/lib'; // Import the singleton PrismaClient instance from index.ts
+import { db } from '@/lib';
 import { matatuConfigs } from '@/utils/constants/matatuSeats';
+import { Prisma } from '@prisma/client';
 
 const DEFAULT_SEAT_PRICE = process.env.DEFAULT_SEAT_PRICE ? Number(process.env.DEFAULT_SEAT_PRICE) : 19;
 
@@ -13,13 +14,15 @@ interface SeatData {
     price: number;
     row?: number;
     column?: number;
-    category?: string; // Added to match schema
+    category?: string;
 }
+
+type MatatuCapacity = keyof typeof matatuConfigs;
 
 // Server-side function to ensure buses exist
 async function ensureBusExists(): Promise<void> {
     try {
-        const validCapacities = Object.keys(matatuConfigs).map(Number);
+        const validCapacities = Object.keys(matatuConfigs).map(Number) as MatatuCapacity[];
         const existingBuses = await db.bus.findMany({
             select: { id: true, capacity: true, licensePlate: true },
         });
@@ -28,17 +31,17 @@ async function ensureBusExists(): Promise<void> {
         const busCreations = validCapacities
             .filter((capacity) => !existingCapacities.has(capacity))
             .map(async (capacity) => {
-                // Generate a Kenyan number plate starting with "K"
                 const randomLetters =
-                    String.fromCharCode(65 + Math.floor(Math.random() * 26)) + // A-Z
-                    String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
+                    String.fromCharCode(65 + Math.floor(Math.random() * 26)) +
+                    String.fromCharCode(65 + Math.floor(Math.random() * 26));
                 const numberPart = capacity.toString().padStart(3, '0');
-                const licensePlate = `K${randomLetters} ${numberPart}X`; // e.g., "KAB 014X", "KXY 052X"
+                const licensePlate = `K${randomLetters} ${numberPart}X`;
 
                 await db.bus.create({
                     data: {
                         licensePlate,
                         capacity,
+                        category: `${capacity}-seater`, // Added required category
                         createdAt: new Date(),
                         updatedAt: new Date(),
                     },
@@ -69,40 +72,26 @@ export async function getBuses(
         }
 
         const [buses, total] = await Promise.all([
-            db.bus
-                .findMany({
-                    skip,
-                    take: pageSize,
-                    select: { id: true, licensePlate: true, capacity: true },
-                    orderBy: { id: 'asc' },
-                })
-                .catch((err) => {
-                    throw new Error(`findMany failed: ${err.message}`);
-                }),
-            db.bus.count().catch((err) => {
-                throw new Error(`count failed: ${err.message}`);
+            db.bus.findMany({
+                skip,
+                take: pageSize,
+                select: { id: true, licensePlate: true, capacity: true },
+                orderBy: { id: 'asc' },
             }),
+            db.bus.count(),
         ]);
 
         if (buses.length === 0 && total === 0) {
             console.log('No buses found, calling ensureBusExists');
-            await ensureBusExists().catch((err) => {
-                throw new Error(`ensureBusExists failed: ${err.message}`);
-            });
+            await ensureBusExists();
             const [newBuses, newTotal] = await Promise.all([
-                db.bus
-                    .findMany({
-                        skip,
-                        take: pageSize,
-                        select: { id: true, licensePlate: true, capacity: true },
-                        orderBy: { id: 'asc' },
-                    })
-                    .catch((err) => {
-                        throw new Error(`post-ensure findMany failed: ${err.message}`);
-                    }),
-                db.bus.count().catch((err) => {
-                    throw new Error(`post-ensure count failed: ${err.message}`);
+                db.bus.findMany({
+                    skip,
+                    take: pageSize,
+                    select: { id: true, licensePlate: true, capacity: true },
+                    orderBy: { id: 'asc' },
                 }),
+                db.bus.count(),
             ]);
             return { buses: newBuses, total: newTotal };
         }
@@ -133,7 +122,7 @@ export async function getSeats(busId: number): Promise<Record<string, SeatData>>
                         row: true,
                         column: true,
                         category: true,
-                        reservations: { select: { id: true } },
+                        reservations: { select: { id: true } }, // Corrected syntax
                     },
                 },
             },
@@ -143,16 +132,15 @@ export async function getSeats(busId: number): Promise<Record<string, SeatData>>
             throw new Error(`Bus with ID ${busId} not found or has invalid capacity.`);
         }
 
-        const dbCapacity = busWithSeats.capacity;
-
-        if (!matatuConfigs[dbCapacity]) {
-            matatuConfigs[dbCapacity] = {
+        const dbCapacity = busWithSeats.capacity as MatatuCapacity;
+        if (!(dbCapacity in matatuConfigs)) {
+            (matatuConfigs as any)[dbCapacity] = {
                 totalSeats: dbCapacity,
                 title: `${dbCapacity}-Seater Matatu`,
                 layout: Array.from({ length: Math.ceil(dbCapacity / 2) }, (_, i) => [
                     i * 2 + 1,
                     i * 2 + 2 <= dbCapacity ? i * 2 + 2 : null,
-                ]).filter((row) => row[0] <= dbCapacity),
+                ]).filter((row) => row[0] !== null && row[0] <= dbCapacity),
             };
         }
 
@@ -171,7 +159,7 @@ export async function getSeats(busId: number): Promise<Record<string, SeatData>>
                             row: true,
                             column: true,
                             category: true,
-                            reservations: { id: true },
+                            reservations: { select: { id: true } },
                         },
                     },
                 },
@@ -214,22 +202,22 @@ function buildSeatMap(
     return seatMap;
 }
 
-async function initializeSeats(busId: number, capacity: number): Promise<void> {
+async function initializeSeats(busId: number, capacity: MatatuCapacity): Promise<void> {
     const config = matatuConfigs[capacity];
     if (!config || !Array.isArray(config.layout)) {
         throw new Error(`Invalid configuration or layout for capacity ${capacity}`);
     }
 
-    const seatsToCreate = config.layout.flatMap((row, rowIndex) =>
+    const seatsToCreate = config.layout.flatMap((row: number[][], rowIndex: number) =>
         row
             .flat()
             .filter(Boolean)
-            .map((seatNumber, seatIndex) => ({
+            .map((seatNumber: number, seatIndex: number) => ({
                 busId,
-                seatNumber, // Now a single Int (e.g., 1, 2, 3, 4)
+                seatNumber,
                 price: DEFAULT_SEAT_PRICE,
                 row: rowIndex + 1,
-                column: seatIndex + 1, // 1-based column within flattened row
+                column: seatIndex + 1,
                 category: determineSeatCategory(rowIndex, seatIndex, row.flat().length),
             })),
     );
@@ -271,6 +259,8 @@ export async function reserveSeats(seatIds: string[]): Promise<{ success: boolea
         const reservations = await tx.reservation.createMany({
             data: seatIds.map((seatId) => ({
                 seatId: Number(seatId),
+                userId: 1, // Placeholder; replace with actual user ID
+                tripId: 1, // Placeholder; replace with actual trip ID
                 reservedAt: new Date(),
             })),
         });
@@ -303,7 +293,7 @@ export async function validateSeats(busId: number = 1): Promise<boolean> {
             where: { id: busId },
             select: { capacity: true },
         });
-        const capacity = bus?.capacity || 14;
+        const capacity = (bus?.capacity || 14) as MatatuCapacity;
         const layout = matatuConfigs[capacity].layout;
 
         const seats = await db.seat.findMany({
@@ -312,7 +302,7 @@ export async function validateSeats(busId: number = 1): Promise<boolean> {
         });
 
         const dbSeatNumbers = new Set(seats.map((s) => s.seatNumber));
-        const layoutSeatNumbers = new Set(layout.flat());
+        const layoutSeatNumbers = new Set<number>(layout.flat(2).filter((num): num is number => num !== null));
 
         return (
             dbSeatNumbers.size === layoutSeatNumbers.size &&

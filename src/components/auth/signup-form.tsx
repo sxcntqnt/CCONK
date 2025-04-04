@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSignUp } from '@clerk/nextjs';
-import { ROLE_ORDER, ROLE } from '@/utils/constants/roles';
+import { ROLE_ORDER, Role } from '@/utils/constants/roles';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

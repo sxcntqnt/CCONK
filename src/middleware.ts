@@ -1,10 +1,14 @@
+// src/middleware.ts
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import type { ClerkMiddlewareAuthObject } from '@clerk/nextjs/server'; // Import type for better typing
 
 export default clerkMiddleware(
-    (auth, req) => {
+    async (auth, req) => {
+        // Make the callback async
         const url = req.nextUrl.pathname;
-        const { userId } = auth();
+        const authResult: ClerkMiddlewareAuthObject = await auth(); // Await the auth promise
+        const { userId } = authResult; // Destructure from the resolved object
 
         console.log('Middleware - Path:', url, 'userId:', userId);
 

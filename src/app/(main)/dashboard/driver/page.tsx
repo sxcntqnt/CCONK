@@ -1,19 +1,16 @@
-// pages/driver-dashboard.tsx
-// No 'use client' - this is a server component
-
 import { currentUser } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { notifyDriverArrival } from '@/actions/notify-driver-arrival';
 import { Suspense } from 'react';
-import RealTimeTripUpdates from ''@/lib/websocket/RTU;
+import RealTimeTripUpdates from '@/lib/websocket/RTU';
 
 // Fetch driver and trip data server-side
 async function getDriverData(clerkId: string) {
-    const driver = await prisma.user.findUnique({
+    const driver = await db.user.findUnique({
         where: { clerkId },
         include: {
             driver: {

@@ -2,7 +2,7 @@
 
 import { db } from '@/lib';
 import { currentUser } from '@clerk/nextjs/server';
-import { Role } from '@/constants/roles';
+import { Role } from '@/utils/constants/roles';
 
 const getAuthStatus = async () => {
     console.log('getAuthStatus - Starting server action');
@@ -15,7 +15,7 @@ const getAuthStatus = async () => {
 
     const clerkId = user.id;
     const email = user.primaryEmailAddress.emailAddress;
-    const name = user.fullName || user.firstName || null;
+    const name = user.fullName || user.firstName || 'Unknown'; // Ensure name is always a string
     const image = user.imageUrl || 'img.clerk.com/default';
     const role = (user.publicMetadata?.role as Role) || 'PASSENGER'; // Use publicMetadata
 
