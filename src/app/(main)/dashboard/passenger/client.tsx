@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import AppSidebar from '@/components/ui/appSidebar'; // Update the Sidebar import
+import { AppSidebar } from '@/components/ui/appSidebar'; // Update the Sidebar import
 import Link from 'next/link';
 import RealTimeTripUpdates from '@/lib/websocket/RTU';
 import { useClerk } from '@clerk/nextjs';

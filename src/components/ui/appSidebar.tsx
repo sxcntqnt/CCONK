@@ -16,7 +16,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils';
-import { getNavItemsByRole, NavItem } from '@/components/config/nav-items';
+import { getNavItemsByRole, NavItem } from '@/components/config';
 
 type AppSidebarProps = {
     role: 'OWNER' | 'PASSENGER' | 'DRIVER';
