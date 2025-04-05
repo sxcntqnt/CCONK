@@ -1,13 +1,13 @@
-import { currentUser  } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { Button } from '@/components/ui/button';
-import { AppSidebar } from '@/components/ui/appSidebar';  // Sidebar already imported
-import { getNavItemsByRole } from '@/config/nav-items';  // Get nav items based on role
+import { AppSidebar } from '@/components/ui/appSidebar'; // Sidebar already imported
+import { getNavItemsByRole } from '@/config/nav-items'; // Get nav items based on role
 import { Suspense } from 'react';
 import { useRouter } from 'next/router';
 import { getOwnerData } from './ownerUtils'; // Import the utility function
 
 export default async function OwnerDashboard() {
-    const user = await currentUser ();
+    const user = await currentUser();
     const router = useRouter();
 
     if (!user) {
@@ -51,8 +51,12 @@ export default async function OwnerDashboard() {
                                         trips.map((trip) => (
                                             <div key={trip.id} className="border-b pb-2 mb-2">
                                                 <strong>Trip #{trip.id}</strong>
-                                                <p>{trip.departureCity} → {trip.arrivalCity}</p>
-                                                <p className="text-gray-500">{new Date(trip.departureTime).toLocaleString()}</p>
+                                                <p>
+                                                    {trip.departureCity} → {trip.arrivalCity}
+                                                </p>
+                                                <p className="text-gray-500">
+                                                    {new Date(trip.departureTime).toLocaleString()}
+                                                </p>
                                             </div>
                                         ))
                                     ) : (
@@ -119,7 +123,9 @@ export default async function OwnerDashboard() {
                                             <div key={reservation.id} className="border-b pb-2 mb-2">
                                                 <strong>Reservation #{reservation.id}</strong>
                                                 <p>{reservation.customerName}</p>
-                                                <p className="text-gray-500">{new Date(reservation.date).toLocaleString()}</p>
+                                                <p className="text-gray-500">
+                                                    {new Date(reservation.date).toLocaleString()}
+                                                </p>
                                             </div>
                                         ))
                                     ) : (
@@ -135,7 +141,9 @@ export default async function OwnerDashboard() {
                         <div className="rounded-lg overflow-hidden shadow-lg bg-white">
                             <div className="p-4">
                                 <h2 className="text-xl font-semibold mb-2">Income & Expenses</h2>
-                                <div className="text-sm text-gray-600 mb-4">Track income and expenses for your business.</div>
+                                <div className="text-sm text-gray-600 mb-4">
+                                    Track income and expenses for your business.
+                                </div>
                                 <div className="space-y-2">
                                     {incomeExpenses.length > 0 ? (
                                         incomeExpenses.map((entry) => (
@@ -157,7 +165,9 @@ export default async function OwnerDashboard() {
                         <div className="rounded-lg overflow-hidden shadow-lg bg-white">
                             <div className="p-4">
                                 <h2 className="text-xl font-semibold mb-2">Geofences</h2>
-                                <div className="text-sm text-gray-600 mb-4">Set and manage geofences for the buses.</div>
+                                <div className="text-sm text-gray-600 mb-4">
+                                    Set and manage geofences for the buses.
+                                </div>
                                 <div className="space-y-2">
                                     {geofences.length > 0 ? (
                                         geofences.map((geofence) => (
@@ -178,8 +188,10 @@ export default async function OwnerDashboard() {
                     <div className="max-w-sm">
                         <div className="rounded-lg overflow-hidden shadow-lg bg-white">
                             <div className="p-4">
- <h2 className="text-xl font-semibold mb-2">Reports</h2>
-                                <div className="text-sm text-gray-600 mb-4">Generate and view reports on various metrics.</div>
+                                <h2 className="text-xl font-semibold mb-2">Reports</h2>
+                                <div className="text-sm text-gray-600 mb-4">
+                                    Generate and view reports on various metrics.
+                                </div>
                                 <div className="space-y-2">
                                     {reports.length > 0 ? (
                                         reports.map((report) => (
