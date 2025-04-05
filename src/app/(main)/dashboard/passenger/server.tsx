@@ -46,7 +46,7 @@ async function PassengerDashboardServer(): Promise<{ props: DashboardProps; erro
                 user: null,
                 passenger: null,
                 buses: [],
-                error: 'Authentication failed. Please sign in again.', // Added error to props
+                error: 'Authentication failed. Please sign in again.',
             },
             error: 'Authentication failed. Please sign in again.',
         };
@@ -58,7 +58,7 @@ async function PassengerDashboardServer(): Promise<{ props: DashboardProps; erro
                 user: null,
                 passenger: null,
                 buses: [],
-                error: 'Please sign in to access the passenger dashboard.', // Added error to props
+                error: 'Please sign in to access the passenger dashboard.',
             },
             error: 'Please sign in to access the passenger dashboard.',
         };
@@ -71,7 +71,7 @@ async function PassengerDashboardServer(): Promise<{ props: DashboardProps; erro
                 user,
                 passenger,
                 buses,
-                error: null, // Added error to props
+                error: null,
             },
             error: null,
         };
@@ -83,7 +83,7 @@ async function PassengerDashboardServer(): Promise<{ props: DashboardProps; erro
                 user,
                 passenger: null,
                 buses: [],
-                error: errorMessage, // Added error to props
+                error: errorMessage,
             },
             error: errorMessage,
         };

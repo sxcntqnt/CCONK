@@ -1,8 +1,10 @@
+// components/providers.tsx
 'use client';
 
 import React from 'react';
 import { ClerkProvider } from '@clerk/nextjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 interface Props {
     children: React.ReactNode;
@@ -13,9 +15,11 @@ const Providers = ({ children }: Props) => {
 
     return (
         <QueryClientProvider client={client}>
-            <ClerkProvider>{children}</ClerkProvider>
+            <ClerkProvider>
+                <SidebarProvider>{children}</SidebarProvider>
+            </ClerkProvider>
         </QueryClientProvider>
     );
 };
 
-export default Providers;
+export default Providers; // ✅ changed from named export to default

@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import AppSidebar from '@/components/ui/appSidebar'; // Update the Sidebar import
 import Link from 'next/link';
 import RealTimeTripUpdates from '@/lib/websocket/RTU';
 import { useClerk } from '@clerk/nextjs';
@@ -29,159 +30,99 @@ interface Props {
 
 export default function PassengerDashboardClient({ user, passenger, buses, error }: Props) {
     const [hasReservations, setHasReservations] = useState<boolean | null>(null);
-    const { signOut } = useClerk(); // Use the hook
+    const { signOut } = useClerk();
 
     useEffect(() => {
         setHasReservations(passenger ? passenger.reservations.length > 0 : false);
     }, [passenger]);
 
-    if (!user) {
+    if (!user || error || !passenger || hasReservations === null) {
         return (
             <div className="container mx-auto py-8">
-                <p>Please sign in to access the passenger dashboard.</p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="container mx-auto py-8">
-                <p>{error}</p>
-            </div>
-        );
-    }
-
-    if (!passenger) {
-        return (
-            <div className="container mx-auto py-8">
-                <p>Failed to load passenger data</p>
-            </div>
-        );
-    }
-
-    if (hasReservations === null) {
-        return (
-            <div className="container mx-auto py-8">
-                <p>Loading...</p>
-            </div>
-        );
-    }
-
-    if (!hasReservations) {
-        return (
-            <div className="container mx-auto py-8">
-                <h1 className="text-3xl font-bold mb-6">Welcome, {passenger.name || user.firstName}!</h1>
-                <Card className="w-full max-w-md mx-auto">
-                    <CardHeader>
-                        <CardTitle>Get Started</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <p>
-                            You don’t have any active reservations yet. Reserve a seat to start tracking your trip and
-                            receiving notifications!
-                        </p>
-                        {buses.length > 0 ? (
-                            <div className="space-y-2">
-                                <p className="text-sm text-muted-foreground">Available Buses:</p>
-                                {buses.map((bus) => (
-                                    <div key={bus.id} className="flex justify-between items-center">
-                                        <span>
-                                            {bus.licensePlate} (Capacity: {bus.capacity})
-                                        </span>
-                                        <Link href={`/reserve?busId=${bus.id}`}>
-                                            <Button variant="outline" size="sm">
-                                                Reserve
-                                            </Button>
-                                        </Link>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p>No buses available for reservation at the moment.</p>
-                        )}
-                    </CardContent>
-                </Card>
-                <div className="mt-6 flex gap-4 justify-center">
-                    <Link href="/">
-                        <Button variant="outline">Back to Home</Button>
-                    </Link>
-                    <Button onClick={() => signOut({ redirectUrl: '/' })}>Sign Out</Button>
-                </div>
+                <p>{error || 'Loading...'}</p>
             </div>
         );
     }
 
     return (
-        <div className="container mx-auto py-8">
-            <h1 className="text-3xl font-bold mb-6">Welcome, {passenger.name || user.firstName}!</h1>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="w-full">
-                    <CardHeader>
-                        <CardTitle>Your Reservations</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {passenger.reservations.map((reservation) => (
-                            <div key={reservation.id} className="border-b pb-2">
-                                <p>
-                                    <strong>Bus:</strong> {reservation.trip.bus.licensePlate}
-                                </p>
-                                <p>
-                                    <strong>Route:</strong> {reservation.trip.departureCity} →{' '}
-                                    {reservation.trip.arrivalCity}
-                                </p>
-                                <p>
-                                    <strong>Departure:</strong>{' '}
-                                    {new Date(reservation.trip.departureTime).toLocaleString()}
-                                </p>
-                                <p>
-                                    <strong>Seat:</strong> {reservation.seatId}
-                                </p>
-                                <p>
-                                    <strong>Status:</strong> {reservation.trip.status}
-                                </p>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
+        <div className="flex min-h-screen">
+            {/* Sidebar with role-based filtering */}
+            <AppSidebar role="PASSENGER" /> {/* Updated to pass 'PASSENGER' */}
+            {/* Main Content Area */}
+            <main className="flex-1 p-6 bg-gray-50">
+                <h1 className="text-3xl font-bold mb-6">Welcome, {passenger.name || user.firstName}!</h1>
 
-                <Card className="w-full">
-                    <CardHeader>
-                        <CardTitle>Available Buses</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {buses.length > 0 ? (
-                            buses.map((bus) => (
-                                <div key={bus.id} className="flex justify-between items-center border-b pb-2">
-                                    <div>
-                                        <p>
-                                            <strong>{bus.licensePlate}</strong>
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">Capacity: {bus.capacity} seats</p>
-                                    </div>
-                                    <Link href={`/reserve?busId=${bus.id}`}>
-                                        <Button variant="outline" size="sm">
-                                            Reserve Seats
-                                        </Button>
-                                    </Link>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <Card className="w-full">
+                        <CardHeader>
+                            <CardTitle>Your Reservations</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {passenger.reservations.map((reservation) => (
+                                <div key={reservation.id} className="border-b pb-2">
+                                    <p>
+                                        <strong>Bus:</strong> {reservation.trip.bus.licensePlate}
+                                    </p>
+                                    <p>
+                                        <strong>Route:</strong> {reservation.trip.departureCity} →{' '}
+                                        {reservation.trip.arrivalCity}
+                                    </p>
+                                    <p>
+                                        <strong>Departure:</strong>{' '}
+                                        {new Date(reservation.trip.departureTime).toLocaleString()}
+                                    </p>
+                                    <p>
+                                        <strong>Seat:</strong> {reservation.seatId}
+                                    </p>
+                                    <p>
+                                        <strong>Status:</strong> {reservation.trip.status}
+                                    </p>
                                 </div>
-                            ))
-                        ) : (
-                            <p>No buses available for reservation.</p>
-                        )}
-                    </CardContent>
-                </Card>
+                            ))}
+                        </CardContent>
+                    </Card>
 
-                {passenger.reservations.map((reservation) => (
-                    <RealTimeTripUpdates key={reservation.tripId} tripId={reservation.tripId} />
-                ))}
-            </div>
+                    <Card className="w-full">
+                        <CardHeader>
+                            <CardTitle>Available Buses</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {buses.length > 0 ? (
+                                buses.map((bus) => (
+                                    <div key={bus.id} className="flex justify-between items-center border-b pb-2">
+                                        <div>
+                                            <p>
+                                                <strong>{bus.licensePlate}</strong>
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                Capacity: {bus.capacity} seats
+                                            </p>
+                                        </div>
+                                        <Link href={`/reserve?busId=${bus.id}`}>
+                                            <Button variant="outline" size="sm">
+                                                Reserve Seats
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                ))
+                            ) : (
+                                <p>No buses available for reservation.</p>
+                            )}
+                        </CardContent>
+                    </Card>
 
-            <div className="mt-6 flex gap-4">
-                <Link href="/">
-                    <Button variant="outline">Back to Home</Button>
-                </Link>
-                <Button onClick={() => signOut({ redirectUrl: '/' })}>Sign Out</Button>
-            </div>
+                    {passenger.reservations.map((reservation) => (
+                        <RealTimeTripUpdates key={reservation.tripId} tripId={reservation.tripId} />
+                    ))}
+                </div>
+
+                <div className="mt-6 flex gap-4">
+                    <Link href="/">
+                        <Button variant="outline">Back to Home</Button>
+                    </Link>
+                    <Button onClick={() => signOut({ redirectUrl: '/' })}>Sign Out</Button>
+                </div>
+            </main>
         </div>
     );
 }

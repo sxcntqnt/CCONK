@@ -1,49 +1,15 @@
 import { currentUser } from '@clerk/nextjs/server';
-import { db } from '@/lib';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { notifyDriverArrival } from '@/actions/notify-driver-arrival';
+import { getDriverData, handleArrival } from './driverUtils'; // Import the utility functions
 import { Suspense } from 'react';
 import RealTimeTripUpdates from '@/lib/websocket/RTU';
 
-// Fetch driver and trip data server-side
-async function getDriverData(clerkId: string) {
-    const driver = await db.user.findUnique({
-        where: { clerkId },
-        include: {
-            driver: {
-                include: {
-                    trips: {
-                        where: { status: { in: ['scheduled', 'in_progress'] }, arrivalTime: null },
-                        include: { bus: true },
-                        orderBy: { departureTime: 'desc' },
-                        take: 1, // Most recent active trip
-                    },
-                },
-            },
-        },
-    });
-
-    if (!driver || driver.role !== 'DRIVER' || !driver.driver) {
-        throw new Error('User is not a driver or has no driver profile');
-    }
-
-    return {
-        driver,
-        trip: driver.driver.trips[0] || null, // Active trip or null
-    };
-}
-
-// Server action wrapper for notifyDriverArrival
-async function handleArrival(formData: FormData) {
-    'use server';
-    await notifyDriverArrival(formData);
-}
-
 export default async function DriverDashboard() {
     const user = await currentUser();
+
     if (!user) {
         return (
             <div className="container mx-auto py-8">
@@ -53,6 +19,7 @@ export default async function DriverDashboard() {
     }
 
     let driverData;
+
     try {
         driverData = await getDriverData(user.id);
     } catch (error) {
@@ -69,10 +36,12 @@ export default async function DriverDashboard() {
         return (
             <div className="container mx-auto py-8">
                 <h1 className="text-3xl font-bold mb-6">Driver Dashboard</h1>
+
                 <Card>
                     <CardHeader>
                         <CardTitle>No Active Trip</CardTitle>
                     </CardHeader>
+
                     <CardContent>
                         <p>You have no active trips assigned at the moment.</p>
                     </CardContent>
@@ -82,63 +51,59 @@ export default async function DriverDashboard() {
     }
 
     return (
-        <div className="container mx-auto py-8">
-            <h1 className="text-3xl font-bold mb-6">Driver Dashboard</h1>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {/* Trip Card */}
-                <Card className="w-full">
-                    <CardHeader>
-                        <CardTitle>Active Trip #{trip.id}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <Label className="text-sm text-muted-foreground">Bus</Label>
-                            <p className="text-lg">
-                                {trip.bus.licensePlate} (Capacity: {trip.bus.capacity})
-                            </p>
-                        </div>
-                        <div>
-                            <Label className="text-sm text-muted-foreground">Route</Label>
-                            <p className="text-lg">
-                                {trip.departureCity} → {trip.arrivalCity}
-                            </p>
-                        </div>
-                        <div>
-                            <Label className="text-sm text-muted-foreground">Departure</Label>
-                            <p className="text-lg">{new Date(trip.departureTime).toLocaleString()}</p>
-                        </div>
+        <div className="flex">
+            {/* Sidebar Component - Reusing your pre-existing AppSidebar */}
 
-                        {/* Notify Arrival Form */}
-                        <form action={handleArrival} className="space-y-4">
-                            <input type="hidden" name="tripId" value={trip.id} />
+            <AppSidebar />
+
+            <div className="container mx-auto py-8 flex-1">
+                <h1 className="text-3xl font-bold mb-6">Driver Dashboard</h1>
+
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {/* Trip Card */}
+
+                    <Card className="w-full">
+                        <CardHeader>
+                            <CardTitle>Active Trip #{trip.id}</CardTitle>
+                        </CardHeader>
+
+                        <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="destination">Arrival Destination</Label>
-                                <Input
-                                    id="destination"
-                                    name="destination"
-                                    placeholder="Enter arrival destination"
-                                    defaultValue={trip.arrivalCity}
-                                    disabled={trip.status === 'completed'}
-                                    required
-                                />
-                            </div>
-                            <Button type="submit" className="w-full" disabled={trip.status === 'completed'}>
-                                Notify Arrival
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
+                                <p className="text-sm text-muted-foreground">Bus</p>
 
-                {/* Real-Time Updates Card */}
-                <Suspense
-                    fallback={
-                        <Card>
-                            <CardContent>Loading updates...</CardContent>
-                        </Card>
-                    }
-                >
-                    <RealTimeTripUpdates tripId={trip.id} />
-                </Suspense>
+                                <p className="text-lg">
+                                    {trip.bus.licensePlate} (Capacity: {trip.bus.capacity})
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-sm text-muted-foreground">Route</p>
+
+                                <p className="text-lg">
+                                    {trip.departureCity} → {trip.arrivalCity}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-sm text-muted-foreground">Departure</p>
+
+                                <p className="text-lg">{new Date(trip.departureTime).toLocaleString()}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Real-Time Reservation Updates Card */}
+
+                    <Suspense
+                        fallback={
+                            <Card>
+                                <CardContent>Loading reservation updates...</CardContent>
+                            </Card>
+                        }
+                    >
+                        <RealTimeReservationUpdates tripId={trip.id} />
+                    </Suspense>
+                </div>
             </div>
         </div>
     );
