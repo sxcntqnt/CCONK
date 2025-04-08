@@ -49,7 +49,11 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
     }, [passenger]);
 
     // Handle authentication failure with redirect
-    if (!userData || error === 'Please sign in to access the passenger dashboard.' || error === 'Authentication failed. Please sign in again.') {
+    if (
+        !userData ||
+        error === 'Please sign in to access the passenger dashboard.' ||
+        error === 'Authentication failed. Please sign in again.'
+    ) {
         signOut({ redirectUrl: '/sign-in' });
         return (
             <div className="flex items-center justify-center flex-col h-screen bg-gray-950 relative">
@@ -64,9 +68,7 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
         return (
             <div className="flex items-center justify-center flex-col h-screen bg-gray-950 relative">
                 <div className="border-[3px] border-gray-800 rounded-full border-t-green-500 animate-spin w-10 h-10"></div>
-                <p className="text-lg font-medium text-white mt-4">
-                    {error || 'Loading your dashboard...'}
-                </p>
+                <p className="text-lg font-medium text-white mt-4">{error || 'Loading your dashboard...'}</p>
                 {error && (
                     <Button
                         variant="outline"
@@ -84,15 +86,14 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
 
     return (
         <div className="flex min-h-screen bg-gray-950">
-            {/* Sidebar */}
-            <AppSidebar role={role} />
-
             {/* Main Content Area */}
             <main className="flex-1">
                 <MaxWidthWrapper className="py-8">
                     <h1 className="text-4xl font-bold text-white text-center mb-8">
                         Welcome, {passenger.name || userData.firstName}!
                     </h1>
+                   {/* Sidebar */}
+                    <AppSidebar role={role} />
 
                     <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                         {/* Reservations Card - Wider and Shorter */}
@@ -154,10 +155,7 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
                                     <ScrollArea className="h-40">
                                         {buses.length > 0 ? (
                                             buses.map((bus) => (
-                                                <div
-                                                    key={bus.id}
-                                                    className="flex justify-between items-center py-3"
-                                                >
+                                                <div key={bus.id} className="flex justify-between items-center py-3">
                                                     <div>
                                                         <p className="font-semibold text-base">{bus.licensePlate}</p>
                                                         <p className="text-sm text-gray-300">

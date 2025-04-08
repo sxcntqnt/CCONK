@@ -90,11 +90,7 @@ export function AppSidebar({ role }: AppSidebarProps) {
                             onClick={() => setIsCollapsed(!isCollapsed)}
                             className="w-full justify-center text-white bg-gray-800 hover:bg-gray-700 transition-colors"
                         >
-                            {isCollapsed ? (
-                                <ChevronRight className="h-5 w-5" />
-                            ) : (
-                                <ChevronLeft className="h-5 w-5" />
-                            )}
+                            {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
                         </SidebarMenuButton>
                     </div>
                 </SidebarContent>
