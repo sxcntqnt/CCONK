@@ -16,7 +16,7 @@ const Footer = () => {
                         <p className="mt-4 text-start text-sm text-muted-foreground">Manage your links with ease.</p>
                         <span className="mt-4 flex items-center text-sm text-neutral-200">
                             Made by{' '}
-                            <Link href="https://shreyas-sihasane.vercel.app/" className="ml-1 font-semibold">
+                            <Link href="https://sxcntcnqunts.com/" className="ml-1 font-semibold">
                                 Shreyas
                             </Link>
                         </span>
@@ -139,7 +139,7 @@ const Footer = () => {
             <div className="mt-8 w-full border-t border-border/40 pt-4 md:flex md:items-center md:justify-between md:pt-8">
                 <AnimationContainer delay={0.6}>
                     <p className="mt-8 text-sm text-muted-foreground md:mt-0">
-                        &copy; {new Date().getFullYear()} Linkify INC. All rights reserved.
+                        &copy; {new Date().getFullYear()} Sxcntqnt INC. All rights reserved.
                     </p>
                 </AnimationContainer>
             </div>
