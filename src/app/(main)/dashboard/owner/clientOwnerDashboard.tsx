@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { AppSidebar } from '@/components/ui/appSidebar';
 import { getNavItemsByRole } from '@/components/config';
+import { Role } from '@/utils/constants/roles'; 
 
 export default function ClientOwnerDashboard({
     user,
@@ -16,6 +17,7 @@ export default function ClientOwnerDashboard({
     geofences,
     reports,
     users,
+    role,
 }: {
     user: any; // Replace with proper Clerk User type if available
     trips: any[];
@@ -26,13 +28,14 @@ export default function ClientOwnerDashboard({
     geofences: any[];
     reports: any[];
     users: any[];
+    role: Role;
 }) {
     const router = useRouter();
-
+    
     return (
         <div className="flex">
             {/* Sidebar */}
-            <AppSidebar navItems={getNavItemsByRole(user.role)} />
+            <AppSidebar role={role} />
 
             {/* Main Dashboard */}
             <div className="flex-1 container mx-auto py-8">

@@ -8,10 +8,22 @@ import ClientOwnerDashboard from './clientOwnerDashboard'; // New client-side co
 
 export default async function OwnerDashboard() {
     const user = await currentUser();
-
+    
     if (!user) {
         redirect('/sign-in'); // Use redirect instead of returning JSX
     }
+
+    // Extract role from publicMetadata
+    const role = user.publicMetadata.role as 'OWNER' | 'PASSENGER' | 'DRIVER' | undefined;
+
+    // Handle case where role might not be set
+    if (!role) {
+        return (
+            <div className="container mx-auto py-8">
+                <p>Error: User role not defined in public metadata.</p>
+            </div>
+        );
+    }    
 
     let ownerData;
     try {
@@ -38,6 +50,7 @@ export default async function OwnerDashboard() {
             geofences={geofences}
             reports={reports}
             users={users}
+            role={role}
         />
     );
 }

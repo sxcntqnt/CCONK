@@ -197,7 +197,7 @@ const useBusReservation = () => {
                 phoneNumber: normalizedPhone,
                 totalAmount: total,
                 name: 'Customer',
-            });
+            },[initiatePayment]);
 
             if (stkError) {
                 throw new Error(stkError);

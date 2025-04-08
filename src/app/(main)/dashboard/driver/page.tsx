@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getDriverData, handleArrival } from './driverUtils'; // Import the utility functions
 import { AppSidebar } from '@/components/ui/appSidebar';
-import { getNavItemsByRole } from '@/components/config';
+import { getNavItemsByRole, NavItem } from '@/components/config';
 import { Suspense } from 'react';
 import RealTimeTripUpdates from '@/lib/websocket/RTU';
 
 export default async function DriverDashboard() {
     const user = await currentUser();
-
+ 
     if (!user) {
         return (
             <div className="container mx-auto py-8">
@@ -19,6 +19,19 @@ export default async function DriverDashboard() {
             </div>
         );
     }
+    
+    //safely access publicMetadata
+    const role = user.publicMetadata.role as 'OWNER' | 'PASSENGER' | 'DRIVER' | undefined;
+
+    // Handle case where role might not be set
+    if (!role) {
+        return (
+            <div className="container mx-auto py-8">
+                <p>Error: User role not defined in public metadata.</p>
+            </div>
+        );
+    }
+
 
     let driverData;
 
@@ -55,7 +68,7 @@ export default async function DriverDashboard() {
     return (
         <div className="flex">
             {/* Sidebar */}
-            <AppSidebar navItems={getNavItemsByRole(user.role)} />
+            <AppSidebar role={role} />
 
             <div className="container mx-auto py-8 flex-1">
                 <h1 className="text-3xl font-bold mb-6">Driver Dashboard</h1>
@@ -102,7 +115,7 @@ export default async function DriverDashboard() {
                             </Card>
                         }
                     >
-                        <RealTimeReservationUpdates tripId={trip.id} />
+                        <RealTimeTripUpdates tripId={trip.id} />
                     </Suspense>
                 </div>
             </div>

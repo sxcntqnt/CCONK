@@ -7,6 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Owner {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  buses     Bus[]
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
 model User {
   id            Int            @id @default(autoincrement())
   clerkId       String         @unique
@@ -39,17 +50,6 @@ model Driver {
   @@index([userId])
   @@index([busId])
   @@index([licenseNumber])
-}
-
-model Owner {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  buses     Bus[]
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@index([userId])
 }
 
 model Bus {

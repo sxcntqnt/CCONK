@@ -1,40 +1,45 @@
+// src/app/(main)/dashboard/owner/ownerUtils.ts
 import { db } from '@/lib';
 
-// Function to fetch owner data from the database
 export async function getOwnerData(clerkId: string) {
     const owner = await db.user.findUnique({
         where: { clerkId },
         include: {
             owner: {
                 include: {
-                    trips: {
-                        where: { status: { in: ['scheduled', 'in_progress'] } },
-                        orderBy: { departureTime: 'desc' },
+                    buses: {
+                        include: {
+                            trips: {
+                                where: { status: { in: ['scheduled', 'in_progress'] } },
+                                orderBy: { departureTime: 'desc' },
+                            },
+                            drivers: true,
+                        },
                     },
-                    buses: true,
-                    drivers: true,
-                    reservations: true,
-                    incomeExpenses: true,
+                    incomeExpenses: true, // Corrected from IncomeExpense to incomeExpenses
                     geofences: true,
                     reports: true,
-                    users: true,
                 },
             },
+            reservations: true,
         },
     });
 
     if (!owner || owner.role !== 'OWNER' || !owner.owner) {
-        throw new Error('User  is not an owner or has no owner profile');
+        throw new Error('User is not an owner or has no owner profile');
     }
 
+    const trips = owner.owner.buses.flatMap((bus) => bus.trips);
+    const drivers = owner.owner.buses.flatMap((bus) => bus.drivers);
+
     return {
-        trips: owner.owner.trips,
+        trips,
         buses: owner.owner.buses,
-        drivers: owner.owner.drivers,
-        reservations: owner.owner.reservations,
-        incomeExpenses: owner.owner.incomeExpenses,
+        drivers,
+        reservations: owner.reservations,
+        incomeExpenses: owner.owner.incomeExpenses, // Matches schema
         geofences: owner.owner.geofences,
         reports: owner.owner.reports,
-        users: owner.owner.users,
+        users: [],
     };
 }
