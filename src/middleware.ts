@@ -1,14 +1,48 @@
 // src/middleware.ts
+// src/middleware.ts
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import type { ClerkMiddlewareAuthObject } from '@clerk/nextjs/server'; // Import type for better typing
+import type { ClerkMiddlewareAuthObject } from '@clerk/nextjs/server';
+import { whitelist, WhitelistIP } from '@/utils/constants/whitelist';
 
 export default clerkMiddleware(
     async (auth, req) => {
-        // Make the callback async
         const url = req.nextUrl.pathname;
-        const authResult: ClerkMiddlewareAuthObject = await auth(); // Await the auth promise
-        const { userId } = authResult; // Destructure from the resolved object
+        const paymentCallbackRoute = '/reserve/paymentCallback';
+
+        // IP validation only for payment callback route
+        if (url === paymentCallbackRoute) {
+            // Get IP using your suggested approach
+            const clientIp = (req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.ip) as
+                | string
+                | undefined;
+
+            if (!clientIp) {
+                console.log('Middleware - No IP detected in payment callback request');
+                return new NextResponse(JSON.stringify({ error: 'Unable to determine source IP' }), {
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
+
+            // Check if the IP is in the whitelist
+            const isWhitelisted = whitelist.some((entry: WhitelistIP) => entry.ip === clientIp);
+            if (!isWhitelisted) {
+                console.log(`Middleware - IP ${clientIp} not whitelisted for payment callback`);
+                return new NextResponse(JSON.stringify({ error: 'IP not authorized' }), {
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
+
+            // If IP is valid, proceed without further auth checks for this route
+            console.log(`Middleware - IP ${clientIp} whitelisted for payment callback`);
+            return NextResponse.next();
+        }
+
+        // Existing auth logic (applies to all routes except payment callback)
+        const authResult: ClerkMiddlewareAuthObject = await auth();
+        const { userId } = authResult;
 
         console.log('Middleware - Path:', url, 'userId:', userId);
 
@@ -23,10 +57,19 @@ export default clerkMiddleware(
         }
 
         console.log('Middleware - Proceeding without redirect');
+        return NextResponse.next();
     },
     { debug: true },
 );
 
 export const config = {
-    matcher: ['/((?!.*\\..*|_next).*)', '/(api|trpc)(.*)', '/dashboard(.*)', '/', '/auth/sign-in', '/auth/sign-up'],
+    matcher: [
+        '/((?!.*\\..*|_next).*)',
+        '/(api|trpc)(.*)',
+        '/dashboard(.*)',
+        '/',
+        '/auth/sign-in',
+        '/auth/sign-up',
+        '/reserve/paymentCallback', // Explicitly include the payment callback route
+    ],
 };

@@ -1,13 +1,14 @@
+// paymentCallback.tsx
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const PaymentCallbackPage = () => {
     const router = useRouter();
 
     useEffect(() => {
         const handleCallback = async () => {
-            // Assuming the token is passed as a query parameter
             const token = new URLSearchParams(window.location.search).get('token');
 
             if (!token) {
@@ -19,16 +20,14 @@ const PaymentCallbackPage = () => {
                 const response = await axios.post('/api/stk-callback', { token });
 
                 if (response.data.ResponseCode === '0') {
-                    // Payment was successful
-                    router.push('/dashboard'); // Redirect to the dashboard or success page
+                    router.push('/dashboard');
                 } else {
-                    // Handle payment failure
                     console.error('Payment failed:', response.data.ResponseDescription);
-                    alert(`Payment failed: ${response.data.ResponseDescription}`);
+                    toast.error(`Payment failed: ${response.data.ResponseDescription}`);
                 }
             } catch (error) {
                 console.error('Error processing callback:', error);
-                alert('An error occurred while processing the payment callback.');
+                toast.error('An error occurred while processing the payment callback.');
             }
         };
 

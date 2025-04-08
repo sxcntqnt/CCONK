@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AppSidebar } from '@/components/ui/appSidebar'; // Update the Sidebar import
+import { getNavItemsByRole } from '@/components/config';
 import Link from 'next/link';
 import RealTimeTripUpdates from '@/lib/websocket/RTU';
 import { useClerk } from '@clerk/nextjs';
@@ -46,8 +47,8 @@ export default function PassengerDashboardClient({ user, passenger, buses, error
 
     return (
         <div className="flex min-h-screen">
-            {/* Sidebar with role-based filtering */}
-            <AppSidebar role="PASSENGER" /> {/* Updated to pass 'PASSENGER' */}
+            {/* Sidebar */}
+            <AppSidebar navItems={getNavItemsByRole(user.role)} />
             {/* Main Content Area */}
             <main className="flex-1 p-6 bg-gray-50">
                 <h1 className="text-3xl font-bold mb-6">Welcome, {passenger.name || user.firstName}!</h1>

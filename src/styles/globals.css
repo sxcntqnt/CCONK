@@ -1,3 +1,4 @@
+/* globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,29 +36,25 @@
     }
 
     .dark {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --tertiary: 0 0% 90%;
-        --tertiary-foreground: 0 0% 9%;
-        --subtle: 240 6% 90%;
-        --subtle-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
-        --destructive: 0 84.2% 60.2%;
+        --background: 0 0% 3.9%; /* Dark background */
+        --foreground: 0 0% 98%; /* Light text */
+        --card: 0 0% 10%; /* Slightly lighter than background */
+        --card-foreground: 0 0% 98%;
+        --popover: 0 0% 10%;
+        --popover-foreground: 0 0% 98%;
+        --primary: 0 0% 98%;
+        --primary-foreground: 0 0% 9%;
+        --secondary: 0 0% 14.9%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 0 0% 14.9%;
+        --muted-foreground: 0 0% 63.9%;
+        --accent: 0 0% 14.9%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 0 62.8% 50%;
         --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
+        --border: 0 0% 20%;
+        --input: 0 0% 20%;
+        --ring: 0 0% 83.1%;
         --sidebar-background: 240 5.9% 10%;
         --sidebar-foreground: 240 4.8% 95.9%;
         --sidebar-primary: 224.3 76.3% 48%;
@@ -69,6 +66,7 @@
     }
 }
 
+/* Rest of your CSS remains unchanged */
 ::selection {
     background-color: rgba(168, 85, 247, 0.2);
     color: hsl(var(--foreground));
@@ -77,13 +75,7 @@
 html,
 body {
     font-family: 'Inter', sans-serif !important;
-    overflow: visible; /* Ensure overflow is visible */
-}
-
-.dumy {
-    color: hsl(0 0% 98%);
-    color: rgb(38, 38, 38);
-    /* @apply to-purple-500 */
+    overflow: visible;
 }
 
 ::-webkit-scrollbar {
@@ -116,15 +108,13 @@ body {
     box-shadow: rgba(150, 18, 226, 0.3) 5px 5px;
 }
 
-/* Ensure all child elements have overflow visible */
 *,
 *::before,
 *::after {
     box-sizing: border-box;
-    overflow: visible; /* force overflow visibility */
+    overflow: visible;
 }
 
-/* Optional: Reset any potentially restrictive properties */
 html,
 body {
     padding: 0;

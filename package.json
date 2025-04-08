@@ -6,7 +6,7 @@
     "src"
   ],
   "scripts": {
-    "dev": "concurrently \"next dev -p 5001\" \"npx ts-node --esm ./src/lib/server/wsserver.mjs\"",
+    "dev": "concurrently  -k -r --success=first \"next dev -p 5001\" \"npx ts-node --esm ./src/lib/server/wsserver.mjs\"",
     "build": "next build",
     "start": "next start -p 5001",
     "lint": "npx lint-staged",
