@@ -11,7 +11,7 @@ import RealTimeTripUpdates from '@/lib/websocket/RTU';
 
 export default async function DriverDashboard() {
     const user = await currentUser();
- 
+
     if (!user) {
         return (
             <div className="container mx-auto py-8">
@@ -19,7 +19,7 @@ export default async function DriverDashboard() {
             </div>
         );
     }
-    
+
     //safely access publicMetadata
     const role = user.publicMetadata.role as 'OWNER' | 'PASSENGER' | 'DRIVER' | undefined;
 
@@ -31,7 +31,6 @@ export default async function DriverDashboard() {
             </div>
         );
     }
-
 
     let driverData;
 

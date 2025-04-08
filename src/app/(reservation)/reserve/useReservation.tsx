@@ -193,11 +193,14 @@ const useBusReservation = () => {
                 throw new Error('Payment already in progress');
             }
 
-            const { data: stkData, error: stkError } = await initiatePayment({
-                phoneNumber: normalizedPhone,
-                totalAmount: total,
-                name: 'Customer',
-            },[initiatePayment]);
+            const { data: stkData, error: stkError } = await initiatePayment(
+                {
+                    phoneNumber: normalizedPhone,
+                    totalAmount: total,
+                    name: 'Customer',
+                },
+                [initiatePayment],
+            );
 
             if (stkError) {
                 throw new Error(stkError);

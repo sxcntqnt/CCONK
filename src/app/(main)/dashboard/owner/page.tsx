@@ -8,7 +8,7 @@ import ClientOwnerDashboard from './clientOwnerDashboard'; // New client-side co
 
 export default async function OwnerDashboard() {
     const user = await currentUser();
-    
+
     if (!user) {
         redirect('/sign-in'); // Use redirect instead of returning JSX
     }
@@ -23,7 +23,7 @@ export default async function OwnerDashboard() {
                 <p>Error: User role not defined in public metadata.</p>
             </div>
         );
-    }    
+    }
 
     let ownerData;
     try {

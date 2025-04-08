@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { AppSidebar } from '@/components/ui/appSidebar';
 import { getNavItemsByRole } from '@/components/config';
-import { Role } from '@/utils/constants/roles'; 
+import { Role } from '@/utils/constants/roles';
 
 export default function ClientOwnerDashboard({
     user,
@@ -31,7 +31,7 @@ export default function ClientOwnerDashboard({
     role: Role;
 }) {
     const router = useRouter();
-    
+
     return (
         <div className="flex">
             {/* Sidebar */}
