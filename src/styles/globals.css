@@ -36,9 +36,9 @@
     }
 
     .dark {
-        --background: 0 0% 3.9%; /* Dark background */
-        --foreground: 0 0% 98%; /* Light text */
-        --card: 0 0% 10%; /* Slightly lighter than background */
+        --background: 0 0% 3.9%;
+        --foreground: 0 0% 98%;
+        --card: 0 0% 10%;
         --card-foreground: 0 0% 98%;
         --popover: 0 0% 10%;
         --popover-foreground: 0 0% 98%;
@@ -55,8 +55,8 @@
         --border: 0 0% 20%;
         --input: 0 0% 20%;
         --ring: 0 0% 83.1%;
-        --sidebar-background: 240 5.9% 10%;
-        --sidebar-foreground: 240 4.8% 95.9%;
+        --sidebar-background: 240 5.9% 10%; /* Dark gray */
+        --sidebar-foreground: 240 4.8% 95.9%; /* Light gray */
         --sidebar-primary: 224.3 76.3% 48%;
         --sidebar-primary-foreground: 0 0% 100%;
         --sidebar-accent: 240 3.7% 15.9%;
@@ -66,7 +66,6 @@
     }
 }
 
-/* Rest of your CSS remains unchanged */
 ::selection {
     background-color: rgba(168, 85, 247, 0.2);
     color: hsl(var(--foreground));

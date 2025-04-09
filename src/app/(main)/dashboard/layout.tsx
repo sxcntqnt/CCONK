@@ -1,22 +1,34 @@
+// src/app/(main)/dashboard/layout.tsx
 import React from 'react';
-import { Footer, Navbar } from '@/components';
+import { Navbar, Footer } from '@/components';
+import AppSidebar from '@/components/navigation/appSidebar';
+import { Role } from '@/utils/constants/roles';
 
 interface Props {
     children: React.ReactNode;
+    role?: Role;
 }
 
-const MarketingLayout = ({ children }: Props) => {
+const DashboardLayout = ({ children, role }: Props) => {
     return (
-        <>
-            <div
-                id="home"
-                className="absolute inset-0 h-full bg-[linear-gradient(to_right,#161616_1px,transparent_1px),linear-gradient(to_bottom,#161616_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] dark:bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)]"
-            />
+        <div className="flex flex-col min-h-screen">
             <Navbar />
-            <main className="relative z-0 mx-auto mt-20 w-full">{children}</main>
+            <div className="flex flex-1 relative">
+                <div
+                    id="home"
+                    className="absolute inset-0 h-full bg-[linear-gradient(to_right,#161616_0.5px,transparent_0.5px),linear-gradient(to_bottom,#161616_0.5px,transparent_0.5px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)] dark:bg-[linear-gradient(to_right,#e2e8f0_0.5px,transparent_0.5px),linear-gradient(to_bottom,#e2e8f0_0.5px,transparent_0.5px)] z-[-1] opacity-50"
+                />
+                {role && (
+                    <AppSidebar
+                        role={role}
+                        className="sticky top-20 h-[calc(100vh-5rem)] z-10"
+                    />
+                )}
+                <main className="flex-1 relative z-0">{children}</main>
+            </div>
             <Footer />
-        </>
+        </div>
     );
 };
 
-export default MarketingLayout;
+export default DashboardLayout;

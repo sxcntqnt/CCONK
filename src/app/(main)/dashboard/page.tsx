@@ -1,40 +1,39 @@
+// src/app/(main)/dashboard/page.tsx
 import { currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { Role } from '@/utils/constants/roles';
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
-    let user;
-    try {
-        user = await currentUser();
-        console.log('DashboardPage - User fetched:', user?.id);
-    } catch (error) {
-        console.error('DashboardPage - Error fetching currentUser:', error);
+    const user = await currentUser();
+
+    // Middleware should have already redirected unauthenticated users to /auth/sign-in
+    // If user is null here, log it as an unexpected case and redirect as a fallback
+    if (!user) {
+        console.error('Unexpected: User is null after middleware check');
         redirect('/auth/sign-in');
     }
 
+    // Resolve searchParams safely
     const resolvedSearchParams = await searchParams;
-    console.log('DashboardPage - searchParams:', resolvedSearchParams);
+    const roleFromMetadata = user.publicMetadata?.role as Role | undefined;
+    const roleFromQuery = resolvedSearchParams.role;
+    
+    // Determine role with a fallback chain: metadata > query > default
+    const role = roleFromMetadata || roleFromQuery || 'PASSENGER';
 
-    if (!user && !resolvedSearchParams.role) {
-        console.log('DashboardPage - No user or role, redirecting to /auth/sign-in');
-        redirect('/auth/sign-in');
-    }
+    // Normalize role to uppercase for consistency
+    const normalizedRole = role.toUpperCase();
 
-    const role = (user?.publicMetadata?.role as Role) || resolvedSearchParams.role || 'PASSENGER';
-    console.log('DashboardPage - Resolved role:', role);
-
-    switch (role.toUpperCase()) {
+    // Redirect based on role, with a default fallback
+    switch (normalizedRole) {
         case 'PASSENGER':
-            console.log('DashboardPage - Redirecting to /dashboard/passenger');
-            redirect('/dashboard/passenger');
+            return redirect('/dashboard/passenger');
         case 'DRIVER':
-            console.log('DashboardPage - Redirecting to /dashboard/driver');
-            redirect('/dashboard/driver');
+            return redirect('/dashboard/driver');
         case 'OWNER':
-            console.log('DashboardPage - Redirecting to /dashboard/owner');
-            redirect('/dashboard/owner');
+            return redirect('/dashboard/owner');
         default:
-            console.log('DashboardPage - Unknown role, defaulting to /dashboard/passenger');
-            redirect('/dashboard/passenger');
+            console.warn(`Unknown role '${role}', defaulting to PASSENGER`);
+            return redirect('/dashboard/passenger');
     }
 }

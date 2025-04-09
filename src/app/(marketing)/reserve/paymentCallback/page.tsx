@@ -1,66 +1,121 @@
-// app/api/stk-callback/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma'; // adjust if your path differs
+// paymentCallback.tsx (Frontend)
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
+import { toast } from 'sonner';
 
-export async function POST(req: NextRequest) {
-    try {
-        const data = await req.json();
-        const callback = data.Body?.stkCallback;
+const PaymentCallbackPage = () => {
+  const router = useRouter();
 
-        if (!callback) {
-            console.error('Missing stkCallback in payload');
-            return NextResponse.json({ error: 'Invalid callback format' }, { status: 400 });
+  useEffect(() => {
+    const handleCallback = async () => {
+      const token = new URLSearchParams(window.location.search).get('token');
+
+      if (!token) {
+        console.error('Token is missing in the callback URL');
+        toast.error('Invalid payment callback');
+        return;
+      }
+
+      try {
+        const response = await axios.post('/api/stk-callback', { token });
+
+        if (response.status === 200) {
+          toast.success('Payment verified successfully');
+          router.push('/dashboard');
+        } else {
+          console.error('Payment failed:', response.data);
+          toast.error('Payment verification failed');
         }
+      } catch (error) {
+        console.error('Error processing callback:', error);
+        toast.error('An error occurred while verifying your payment');
+      }
+    };
 
-        const checkoutRequestId = callback.CheckoutRequestID;
-        const resultCode = callback.ResultCode;
-        const resultDesc = callback.ResultDesc;
+    handleCallback();
+  }, [router]);
 
-        // Handle failed transaction (no metadata returned)
-        if (!callback.CallbackMetadata) {
-            await prisma.payment.updateMany({
-                where: { transactionId: checkoutRequestId },
-                data: {
-                    status: 'failed',
-                    updatedAt: new Date(),
-                },
-            });
+  return (
+    <div className="relative flex h-screen flex-col items-center justify-center">
+      <div className="h-8 w-8 animate-loading rounded-full border-[3px] border-neutral-800 border-b-neutral-200"></div>
+      <p className="mt-3 text-center text-lg font-medium">Verifying your payment...</p>
+    </div>
+  );
+};
 
-            console.warn('STK Callback failed:', resultDesc);
-            return NextResponse.json({ status: 'failed', description: resultDesc });
-        }
+export default PaymentCallbackPage;
 
-        // ✅ Parse metadata
-        const metadata = Object.fromEntries(callback.CallbackMetadata.Item.map((item: any) => [item.Name, item.Value]));
+// /api/stk-callback/route.ts (Backend)
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from '@prisma/client';
 
-        const amount = parseFloat(metadata.Amount);
-        const mpesaReceiptNumber = metadata.MpesaReceiptNumber;
-        const payerPhoneNumber = metadata.PhoneNumber?.toString();
-        const transactionDate = new Date(metadata.TransactionDate?.toString().replace(' ', 'T') || new Date());
+const prisma = new PrismaClient();
 
-        // ✅ Update payment record
-        const updated = await prisma.payment.updateMany({
-            where: {
-                transactionId: checkoutRequestId,
-            },
-            data: {
-                amount,
-                mpesaReceiptNumber,
-                payerPhoneNumber,
-                transactionDate,
-                status: resultCode === 0 ? 'success' : 'failed',
-                updatedAt: new Date(),
-            },
-        });
+export async function POST(request: NextRequest) {
+  const data = await request.json();
 
-        if (updated.count === 0) {
-            console.warn('No payment record found for CheckoutRequestID:', checkoutRequestId);
-            return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
-        }
+  // Handle failed transactions
+  if (!data.Body?.stkCallback?.CallbackMetadata) {
+    const resultDesc = data.Body.stkCallback.ResultDesc;
+    console.log('Failed transaction:', resultDesc);
+    
+    // Update payment status for failed transaction
+    await prisma.payment.update({
+      where: { transactionId: data.Body.stkCallback.CheckoutRequestID },
+      data: { status: 'failed' }
+    });
+    
+    return NextResponse.json("ok saf");
+  }
 
-        return NextResponse.json({ status: 'ok', message: 'Payment updated successfully' });
-    } catch (error: any) {
-        console.error('Error processing STK Callback:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
+  // Extract values from callback metadata
+  const body = data.Body.stkCallback.CallbackMetadata;
+  const amountObj = body.Item.find((obj: any) => obj.Name === "Amount");
+  const amount = amountObj.Value;
+  
+  const codeObj = body.Item.find((obj: any) => obj.Name === "MpesaReceiptNumber");
+  const mpesaCode = codeObj.Value;
+  
+  const phoneNumberObj = body.Item.find((obj: any) => obj.Name === "PhoneNumber");
+  const payerPhoneNumber = phoneNumberObj.Value.toString();
+  
+  const transactionDateObj = body.Item.find((obj: any) => obj.Name === "TransactionDate");
+  const transactionDate = transactionDateObj ? new Date(transactionDateObj.Value) : new Date();
+
+  try {
+    // Save or update payment in database
+    const payment = await prisma.payment.upsert({
+      where: {
+        transactionId: data.Body.stkCallback.CheckoutRequestID
+      },
+      update: {
+        amount,
+        mpesaReceiptNumber: mpesaCode,
+        payerPhoneNumber,
+        status: data.Body.stkCallback.ResultCode === 0 ? 'completed' : 'failed',
+        transactionDate,
+        updatedAt: new Date()
+      },
+      create: {
+        userId: 1, // You should get this from your auth system
+        amount,
+        transactionId: data.Body.stkCallback.CheckoutRequestID,
+        mpesaReceiptNumber: mpesaCode,
+        phoneNumber: payerPhoneNumber, // Initial phone number from request
+        payerPhoneNumber,
+        status: data.Body.stkCallback.ResultCode === 0 ? 'completed' : 'failed',
+        transactionDate
+      }
+    });
+
+    console.log('Payment processed:', { amount, mpesaCode, payerPhoneNumber });
+    return NextResponse.json("ok", { status: 200 });
+
+  } catch (error: any) {
+    console.error('Error saving payment:', error);
+    return NextResponse.json("ok", { status: 500 });
+  } finally {
+    await prisma.$disconnect();
+  }
 }

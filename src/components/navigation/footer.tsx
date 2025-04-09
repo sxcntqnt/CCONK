@@ -144,8 +144,8 @@ const Footer = () => {
                 </AnimationContainer>
             </div>
 
-            <div className="hidden h-[20rem] items-center justify-center md:flex lg:h-[20rem]">
-                <TextHoverEffect text="LINKIFY" />
+            <div className="hidden h-[11rem] items-center justify-center md:flex lg:h-[11rem]">
+                <TextHoverEffect text="SXCNTCNQUNT" />
             </div>
         </footer>
     );

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getDriverData, handleArrival } from './driverUtils'; // Import the utility functions
-import { AppSidebar } from '@/components/ui/appSidebar';
+import { AppSidebar } from '@/components';
 import { getNavItemsByRole, NavItem } from '@/components/config';
 import { Suspense } from 'react';
 import RealTimeTripUpdates from '@/lib/websocket/RTU';

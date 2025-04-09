@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { AppSidebar } from '@/components/ui/appSidebar';
+import { AppSidebar } from '@/components';
 import { getNavItemsByRole } from '@/components/config';
 import { Role } from '@/utils/constants/roles';
 
