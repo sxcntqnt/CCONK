@@ -4,7 +4,7 @@ import React, { forwardRef } from 'react';
 import { cn } from '@/utils';
 import styles from '@/styles/seatsLayout.module.css';
 
-interface Seat {
+export interface Seat {
     id: number;
     busId: number;
     seatNumber: number;
@@ -16,48 +16,26 @@ interface Seat {
 
 interface SeatLayoutProps {
     title: string;
-    seats?: Record<number, Seat>; // Made optional with default in destructuring
-    layout?: number[][][]; // Made optional with default in destructuring
-    onSeatClick?: (id: number) => void; // Made optional with default in destructuring
-    isLoading?: boolean; // Made optional with default in destructuring
+    seats?: Record<number, Seat>;
+    layout?: number[][][];
+    onSeatClick?: (id: number) => void;
+    isLoading?: boolean;
     className?: string;
 }
 
 export const DynamicSeatLayout = React.memo(
     forwardRef<HTMLDivElement, SeatLayoutProps>(
-        (
-            {
-                title,
-                seats = {}, // Default value here
-                layout = [], // Default value here
-                onSeatClick = () => {}, // Default value here
-                className,
-                isLoading = false, // Default value here
-            },
-            ref,
-        ) => {
-            console.log('DynamicSeatLayout Props:', { seats, layout, isLoading });
-
-            const handleSeatClick = (id: number) => {
-                console.log('Seat clicked:', id);
-                onSeatClick(id);
-            };
-            const handleKeyPress = (e: React.KeyboardEvent<HTMLDivElement>, id: number) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleSeatClick(id);
-                }
-            };
-
+        ({ title, seats = {}, layout = [], onSeatClick = () => {}, className, isLoading = false }, ref) => {
             if (isLoading) return <div className={styles.loading}>Loading seats...</div>;
             if (!layout.length) return <div className={styles.error}>No seat layout available</div>;
 
-            // Map seatNumber to database ID
             const seatNumberToId = new Map<number, number>();
-            Object.values(seats).forEach((seat) => {
-                seatNumberToId.set(seat.seatNumber, seat.id);
-            });
-            console.log('seatNumberToId:', Array.from(seatNumberToId.entries()));
+            Object.values(seats).forEach((seat) => seatNumberToId.set(seat.seatNumber, seat.id));
+
+            const handleSeatClick = (id: number) => {
+                if (process.env.NODE_ENV === 'development') console.log('Seat clicked:', id);
+                onSeatClick(id);
+            };
 
             return (
                 <div className={cn(styles.matatuContainer, className)} ref={ref}>
@@ -70,7 +48,6 @@ export const DynamicSeatLayout = React.memo(
                                         {group.map((seatNumber) => {
                                             const seatId = seatNumberToId.get(seatNumber);
                                             const seat = seatId !== undefined ? seats[seatId] : undefined;
-                                            console.log(`Rendering seat ${seatNumber}:`, { seatId, seat });
                                             return (
                                                 <div
                                                     key={seatNumber}
@@ -79,7 +56,11 @@ export const DynamicSeatLayout = React.memo(
                                                         seat?.status ? styles[seat.status] : styles.available,
                                                     )}
                                                     onClick={() => seatId && handleSeatClick(seatId)}
-                                                    onKeyDown={(e) => seatId && handleKeyPress(e, seatId)}
+                                                    onKeyDown={(e) =>
+                                                        seatId &&
+                                                        (e.key === 'Enter' || e.key === ' ') &&
+                                                        (e.preventDefault(), handleSeatClick(seatId))
+                                                    }
                                                     role="button"
                                                     tabIndex={0}
                                                     aria-label={`Seat ${seat?.seatNumber || seatNumber} - ${seat?.status || 'available'}`}
@@ -88,7 +69,6 @@ export const DynamicSeatLayout = React.memo(
                                                 </div>
                                             );
                                         })}
-                                        {/* Add aisle between groups if not the last group */}
                                         {groupIndex < row.length - 1 && <div className={styles.aisleSpace} />}
                                     </React.Fragment>
                                 ))}
@@ -96,26 +76,20 @@ export const DynamicSeatLayout = React.memo(
                         ))}
                     </div>
                     <div className={styles.legend}>
-                        <div className={styles.legendItem}>
-                            <div className={cn(styles.seat, styles.available)} aria-hidden="true" />
-                            <span>Available</span>
-                        </div>
-                        <div className={styles.legendItem}>
-                            <div className={cn(styles.seat, styles.selected)} aria-hidden="true" />
-                            <span>Selected</span>
-                        </div>
-                        <div className={styles.legendItem}>
-                            <div className={cn(styles.seat, styles.reserved)} aria-hidden="true" />
-                            <span>Reserved</span>
-                        </div>
+                        {['available', 'selected', 'reserved'].map((status) => (
+                            <div key={status} className={styles.legendItem}>
+                                <div className={cn(styles.seat, styles[status])} aria-hidden="true" />
+                                <span>{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             );
         },
     ),
     (prevProps, nextProps) =>
-        JSON.stringify(prevProps.seats) === JSON.stringify(nextProps.seats) &&
-        JSON.stringify(prevProps.layout) === JSON.stringify(nextProps.layout) &&
+        prevProps.seats === nextProps.seats &&
+        prevProps.layout === nextProps.layout &&
         prevProps.isLoading === nextProps.isLoading,
 );
 

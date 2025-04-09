@@ -118,10 +118,28 @@ async function PassengerDashboardServer(): Promise<{ props: DashboardProps; erro
     }
 }
 
+// server.tsx
 export async function Page() {
+    const user = await currentUser();
+
+    if (!user) {
+        redirect('/auth/sign-in');
+    }
+
     const { props, error } = await PassengerDashboardServer();
+
     if (error === 'User is not a passenger') {
         redirect('/dashboard');
     }
-    return <PassengerDashboardClient {...props} />;
+
+    // Ensure we're passing the most current user data
+    return (
+        <PassengerDashboardClient
+            {...props}
+            userData={{
+                id: user.id,
+                firstName: user.firstName,
+            }}
+        />
+    );
 }

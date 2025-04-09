@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { AppSidebar } from '@/components/ui/appSidebar';
 import Link from 'next/link';
 import RealTimeTripUpdates from '@/lib/websocket/RTU';
-import { useClerk } from '@clerk/nextjs';
+import { useClerk, useUser } from '@clerk/nextjs';
 import { Prisma } from '@prisma/client';
 import { Role } from '@/utils/constants/roles';
 import { MaxWidthWrapper } from '@/components';
@@ -42,31 +42,40 @@ interface Props {
 export default function PassengerDashboardClient({ userData, passenger, buses, error, role }: Props) {
     const [hasReservations, setHasReservations] = useState<boolean | null>(null);
     const { signOut } = useClerk();
+    const { isLoaded, isSignedIn, user } = useUser();
     const router = useRouter();
 
     useEffect(() => {
-        setHasReservations(passenger ? passenger.reservations.length > 0 : false);
+        if (passenger) {
+            setHasReservations(passenger.reservations.length > 0);
+        }
     }, [passenger]);
 
-    // Handle authentication failure with redirect
-    if (
-        !userData ||
-        error === 'Please sign in to access the passenger dashboard.' ||
-        error === 'Authentication failed. Please sign in again.'
-    ) {
-        signOut({ redirectUrl: '/sign-in' });
+    // Handle Clerk loading state
+    if (!isLoaded) {
         return (
-            <div className="flex items-center justify-center flex-col h-screen bg-gray-950 relative">
+            <div className="flex items-center justify-center flex-col h-screen bg-gray-950">
+                <div className="border-[3px] border-gray-800 rounded-full border-t-green-500 animate-spin w-10 h-10"></div>
+                <p className="text-lg font-medium text-white mt-4">Loading...</p>
+            </div>
+        );
+    }
+
+    // Handle authentication state using Clerk's useUser
+    if (!isSignedIn || !userData || error?.includes('Authentication failed') || error?.includes('Please sign in')) {
+        router.push('/auth/sign-in');
+        return (
+            <div className="flex items-center justify-center flex-col h-screen bg-gray-950">
                 <div className="border-[3px] border-gray-800 rounded-full border-t-green-500 animate-spin w-10 h-10"></div>
                 <p className="text-lg font-medium text-white mt-4">Redirecting to sign-in...</p>
             </div>
         );
     }
 
-    // Handle other errors or loading states
+    // Handle data loading or errors
     if (error || !passenger || hasReservations === null) {
         return (
-            <div className="flex items-center justify-center flex-col h-screen bg-gray-950 relative">
+            <div className="flex items-center justify-center flex-col h-screen bg-gray-950">
                 <div className="border-[3px] border-gray-800 rounded-full border-t-green-500 animate-spin w-10 h-10"></div>
                 <p className="text-lg font-medium text-white mt-4">{error || 'Loading your dashboard...'}</p>
                 {error && (
@@ -82,18 +91,19 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
         );
     }
 
-    console.log('Clerk User ID:', userData.id);
+    console.log('Clerk User ID:', user.id, 'Server User ID:', userData.id);
 
     return (
         <div className="flex min-h-screen bg-gray-950">
+            <AppSidebar role={role} />
+
             {/* Main Content Area */}
+
             <main className="flex-1">
                 <MaxWidthWrapper className="py-8">
                     <h1 className="text-4xl font-bold text-white text-center mb-8">
                         Welcome, {passenger.name || userData.firstName}!
                     </h1>
-                   {/* Sidebar */}
-                    <AppSidebar role={role} />
 
                     <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                         {/* Reservations Card - Wider and Shorter */}

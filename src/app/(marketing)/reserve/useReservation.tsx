@@ -7,6 +7,31 @@ import { validatePhonePrefix } from '@/utils/constants/phone-constants';
 import { useStkPush } from '@/hooks/use-mpesa';
 import { toast } from 'sonner';
 
+interface StkPushResponse {
+    CheckoutRequestID: string;
+}
+
+interface StkPushQueryData {
+    MerchantRequestID: string;
+    CheckoutRequestID: string;
+    ResponseCode: string;
+    ResponseDescription: string;
+    CustomerMessage: string;
+    ResultCode: string;
+    ResultDesc: string;
+    CallbackMetadata?: {
+        Item: Array<{
+            Name: string;
+            Value?: string | number;
+        }>;
+    };
+}
+
+interface StkPushResult {
+    data?: StkPushResponse;
+    error?: string;
+}
+
 interface Bus {
     id: number;
     licensePlate: string;
@@ -42,13 +67,22 @@ const useBusReservation = () => {
     const pageSize = 10;
 
     const {
-        initiatePayment = async () => ({ error: 'Payment hook unavailable' }),
-        isLoading: paymentLoading = false,
-        stkQueryLoading = false,
-        paymentSuccess = false,
-        paymentError = null,
-        reset: resetPayment = () => {},
-    } = useStkPush();
+        initiatePayment,
+        isLoading: paymentLoading,
+        stkQueryLoading,
+        paymentSuccess,
+        paymentError,
+        paymentData,
+        reset: resetPayment,
+    } = useStkPush() || {
+        initiatePayment: async () => ({ error: 'Payment hook unavailable' }) as StkPushResult,
+        isLoading: false,
+        stkQueryLoading: false,
+        paymentSuccess: false,
+        paymentError: null,
+        paymentData: null,
+        reset: () => {},
+    };
 
     const total = useMemo(() => {
         try {
@@ -61,10 +95,8 @@ const useBusReservation = () => {
 
     const fetchBuses = useCallback(
         async (page: number) => {
-            console.log('Fetching buses for page:', page); // Debug log
             try {
-                const { buses: busData, total } = await getBuses(page, pageSize); // Fixed typo
-                console.log('Bus data received:', { busData, total }); // Debug log
+                const { buses: busData, total } = await getBuses(page, pageSize);
                 if (!busData || !Array.isArray(busData)) {
                     throw new Error('Invalid bus data received');
                 }
@@ -89,21 +121,18 @@ const useBusReservation = () => {
     );
 
     useEffect(() => {
-        console.log('useEffect triggering fetchBuses for page:', currentPage);
         fetchBuses(currentPage);
     }, [currentPage, fetchBuses]);
 
     const loadSeats = useCallback(async () => {
         if (selectedBusId === null) {
             setError({ message: 'No bus selected', type: 'validation' });
+            toast.error('No bus selected');
             return;
         }
 
-        console.log('Loading seats for bus:', selectedBusId); // Debug log
-        setError(null);
         try {
             const seatData = await getSeats(selectedBusId);
-            console.log('Seat data received:', seatData); // Debug log
             if (!seatData || typeof seatData !== 'object') {
                 throw new Error('Invalid seat data received');
             }
@@ -128,6 +157,7 @@ const useBusReservation = () => {
         const newBusId = parseInt(e.target.value, 10);
         if (isNaN(newBusId)) {
             setError({ message: 'Invalid bus selection', type: 'validation' });
+            toast.error('Invalid bus selection');
             return;
         }
         setSelectedBusId(newBusId);
@@ -137,6 +167,7 @@ const useBusReservation = () => {
         const seat = seats[id];
         if (!seat) {
             setError({ message: `Seat ${id} not found`, type: 'validation' });
+            toast.error(`Seat ${id} not found`);
             return;
         }
         if (seat.status === 'reserved') {
@@ -155,19 +186,19 @@ const useBusReservation = () => {
     const handleCheckout = () => {
         if (selectedSeats.length === 0 || !selectedBusId) {
             setError({ message: 'Please select a bus and at least one seat', type: 'validation' });
-            toast.error('Please select a bus and at least one seat.');
+            toast.error('Please select a bus and at least one seat');
             return;
         }
 
         if (phoneNumber === '+254 ' || phoneNumber.length <= 5) {
             setError({ message: 'Invalid phone number', type: 'validation' });
-            toast.error('Please enter a valid phone number.');
+            toast.error('Please enter a valid phone number');
             return;
         }
 
         if (total <= 0) {
             setError({ message: 'Total amount must be greater than zero', type: 'validation' });
-            toast.error('Total amount must be greater than zero.');
+            toast.error('Total amount must be greater than zero');
             return;
         }
 
@@ -190,48 +221,72 @@ const useBusReservation = () => {
 
         try {
             if (paymentLoading || stkQueryLoading) {
+                toast.error('Payment already in progress');
                 throw new Error('Payment already in progress');
             }
 
-            const { data: stkData, error: stkError } = await initiatePayment(
-                {
-                    phoneNumber: normalizedPhone,
-                    totalAmount: total,
-                    name: 'Customer',
-                },
-                [initiatePayment],
-            );
+            console.log('Initiating payment with:', {
+                phoneNumber: normalizedPhone,
+                totalAmount: total,
+                name: 'Customer',
+            });
 
-            if (stkError) {
-                throw new Error(stkError);
+            const paymentResult = await initiatePayment({
+                phoneNumber: normalizedPhone,
+                totalAmount: total,
+                name: 'Customer',
+            });
+
+            if (!paymentResult) {
+                toast.error('Payment initiation failed: No response received');
+                throw new Error('Payment initiation returned no response');
             }
 
-            if (!stkData) {
-                throw new Error('Payment initiation returned no data');
+            if ('error' in paymentResult) {
+                toast.error(paymentResult.error);
+                throw new Error(paymentResult.error);
             }
+
+            const stkData = paymentResult.data;
+            if (!stkData || !stkData.CheckoutRequestID) {
+                toast.error('Payment initiation failed: No CheckoutRequestID received');
+                throw new Error('Payment initiation failed: No CheckoutRequestID received');
+            }
+
+            toast.info('Payment initiated. Please check your phone to complete the STK push.');
 
             const paymentTimeout = setTimeout(() => {
-                if (!paymentSuccess && !paymentError) {
+                if (!paymentData && !paymentError) {
                     setError({ message: 'Payment processing timed out', type: 'payment' });
                     toast.error('Payment processing timed out. Please try again.');
                     resetPayment();
                 }
             }, 30000);
 
-            if (paymentError) {
-                clearTimeout(paymentTimeout);
-                throw new Error(paymentError);
-            }
-
-            if (!paymentSuccess) {
-                clearTimeout(paymentTimeout);
-                throw new Error('Payment confirmation timed out');
+            while (!paymentData && !paymentError && (paymentLoading || stkQueryLoading)) {
+                await new Promise((resolve) => setTimeout(resolve, 500));
             }
 
             clearTimeout(paymentTimeout);
 
+            if (paymentError) {
+                toast.error(paymentError);
+                throw new Error(paymentError);
+            }
+
+            if (!paymentData) {
+                toast.error('Payment confirmation failed: No data received');
+                throw new Error('Payment confirmation failed: No data received');
+            }
+
+            if (paymentData.ResultCode !== '0') {
+                toast.error(paymentData.ResultDesc || 'Payment failed');
+                throw new Error(paymentData.ResultDesc || 'Payment failed');
+            }
+
             const reservationResult = await reserveSeats(selectedSeats);
             if (!reservationResult.success) {
+                toast.error(reservationResult.error || 'Reservation failed');
                 throw new Error(reservationResult.error || 'Reservation failed');
             }
 
@@ -244,7 +299,9 @@ const useBusReservation = () => {
             });
 
             setSelectedSeats([]);
-            toast.success(`Payment confirmed! Reserved ${reservationResult.reservedCount} seats.`);
+            toast.success(
+                `Payment confirmed! Reserved ${reservationResult.reservedCount} seats. ${paymentData.CustomerMessage}`,
+            );
             setIsCheckoutModalOpen(false);
             resetPayment();
         } catch (err) {
@@ -262,7 +319,6 @@ const useBusReservation = () => {
             }
 
             setError({ message: errorMessage, type: errorType, details });
-            toast.error(errorMessage);
             setIsCheckoutModalOpen(false);
             console.error('confirmCheckout error:', err);
         }
@@ -271,17 +327,16 @@ const useBusReservation = () => {
         total,
         selectedSeats,
         initiatePayment,
-        paymentSuccess,
+        paymentData,
         paymentError,
         paymentLoading,
         stkQueryLoading,
         resetPayment,
     ]);
-
     const handleReset = async () => {
         if (!selectedBusId) {
             setError({ message: 'No bus selected to reset', type: 'validation' });
-            toast.error('Please select a bus.');
+            toast.error('Please select a bus to reset');
             return;
         }
         if (!confirm('Are you sure you want to reset all reservations for this bus?')) return;
@@ -289,13 +344,14 @@ const useBusReservation = () => {
         try {
             const resetResult = await resetReservations(selectedBusId);
             if (!resetResult.success) {
+                toast.error(resetResult.error || 'Reset failed');
                 throw new Error(resetResult.error || 'Reset failed');
             }
             await loadSeats();
             setSelectedSeats([]);
             setPhoneNumber('+254 ');
             resetPayment();
-            toast.success(`Cleared ${resetResult.deletedCount} reservations successfully.`);
+            toast.success(`Cleared ${resetResult.deletedCount} reservations successfully`);
             setError(null);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Reset failed';

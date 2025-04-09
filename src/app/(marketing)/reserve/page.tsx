@@ -1,10 +1,10 @@
 // src/app/(reservation)/reserve/page.tsx
 'use client';
 
-import React, { useEffect, Component } from 'react';
+import React, { useEffect } from 'react';
 import useBusReservation from './useReservation';
 import { matatuConfigs } from '@/utils/constants/matatuSeats';
-import { DynamicSeatLayout } from '@/components/ui/seat-layout';
+import { DynamicSeatLayout, Seat } from '@/components/ui/seat-layout';
 import { AnimationContainer, MaxWidthWrapper } from '@/components';
 import { Button } from '@/components/ui/button';
 import { LampContainer } from '@/components/ui/lamp';
@@ -18,6 +18,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type MatatuCapacity = keyof typeof matatuConfigs;
+
 interface Bus {
     id: number;
     licensePlate: string;
@@ -34,13 +35,11 @@ interface SeatData {
     category?: string;
 }
 
-class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
     state = { hasError: false, error: '' };
-
     static getDerivedStateFromError(error: Error) {
         return { hasError: true, error: error.message };
     }
-
     render() {
         if (this.state.hasError) {
             return <div className="text-red-500 p-4">Error: {this.state.error}</div>;
@@ -90,20 +89,26 @@ export default function ReservePage() {
     const busCapacity = selectedBus.capacity;
     const layout = matatuConfigs[busCapacity]?.layout || [];
 
-    const seatsForLayout = Object.fromEntries(
-        Object.entries(seats || {}).map(([id, seat]) => [
-            id,
-            {
-                id: id,
-                busId: selectedBusId || 0,
-                seatNumber: parseInt(seat.label, 10) || 0,
-                price: seat.price || 0,
-                row: seat.row || 0,
-                column: seat.column || 0,
-                status: seat.status || 'available',
-            },
-        ]),
+    const seatsForLayout: Record<number, Seat> = Object.fromEntries(
+        Object.entries(seats || {}).map(([id, seat]) => {
+            const numericId = parseInt(id, 10);
+            return [
+                numericId,
+                {
+                    id: numericId,
+                    busId: selectedBusId || 0,
+                    seatNumber: parseInt(seat.label, 10) || 0,
+                    price: seat.price || 0,
+                    row: seat.row || 0,
+                    column: seat.column || 0,
+                    status: seat.status || 'available',
+                } as Seat,
+            ];
+        }),
     );
+
+    const seatCount = Object.keys(seatsForLayout).length;
+    const handleNumericSeatClick = (id: number) => handleSeatClick(id.toString());
 
     useEffect(() => {
         if (paymentSuccess) {
@@ -121,11 +126,7 @@ export default function ReservePage() {
                     },
                 },
             );
-        }
-    }, [paymentSuccess]);
-
-    useEffect(() => {
-        if (paymentError) {
+        } else if (paymentError) {
             toast.error(
                 <div className="flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-red-500" />
@@ -141,19 +142,21 @@ export default function ReservePage() {
                 },
             );
         }
-    }, [paymentError]);
+    }, [paymentSuccess, paymentError]);
 
-    console.log('ReservePage - Data:', {
-        busesLength: buses.length,
-        selectedBusId,
-        seatsKeys: Object.keys(seats),
-        seatsForLayoutKeys: Object.keys(seatsForLayout),
-        total,
-        phoneNumber,
-        combinedError,
-        paymentSuccess,
-        paymentError,
-    });
+    if (process.env.NODE_ENV === 'development') {
+        console.log('ReservePage - Data:', {
+            busesLength: buses.length,
+            selectedBusId,
+            seatsKeys: Object.keys(seats),
+            seatsForLayoutKeys: Object.keys(seatsForLayout),
+            total,
+            phoneNumber,
+            combinedError,
+            paymentSuccess,
+            paymentError,
+        });
+    }
 
     return (
         <ErrorBoundary>
@@ -169,17 +172,17 @@ export default function ReservePage() {
                     <ErrorMessage message={combinedError.message || 'An error occurred'} />
                 )}
 
-                {selectedBusId && Object.keys(seatsForLayout).length > 0 && layout.length > 0 ? (
+                {selectedBusId && seatCount > 0 && layout.length > 0 ? (
                     <div className="mb-6">
                         <DynamicSeatLayout
                             title={selectedBus.licensePlate}
                             seats={seatsForLayout}
                             layout={layout}
-                            onSeatClick={handleSeatClick}
+                            onSeatClick={handleNumericSeatClick}
                             isLoading={combinedLoading}
                             className="mt-2"
                         />
-                        <p className="text-gray-300 text-center mt-1">Seats: {Object.keys(seatsForLayout).length}</p>
+                        <p className="text-gray-300 text-center mt-1">Seats: {seatCount}</p>
                     </div>
                 ) : (
                     <p className="text-gray-400 text-center mb-6">
@@ -275,8 +278,6 @@ export default function ReservePage() {
     );
 }
 
-// ErrorMessage, BusSelectionCard, and BookingSummaryCard remain unchanged
-// Add SeatData type to BookingSummaryCard props
 const BookingSummaryCard = ({
     selectedSeats,
     seats,

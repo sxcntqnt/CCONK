@@ -1,17 +1,15 @@
 // lib/mpesa/stkPush.ts
-'use server'; // Mark as server-only
+'use server';
 
 import axios, { AxiosError } from 'axios';
-import { MPESA_BASE_URL } from '@/utils/constants/mpesa-urls'; // Use dynamic base URL
+import { MPESA_BASE_URL } from '@/utils/constants/mpesa-urls';
 
-// Define request body type
 interface StkPushRequest {
     mpesa_number: string;
     name: string;
     amount: number;
 }
 
-// Define response types (based on M-Pesa STK Push response)
 interface StkPushResponse {
     MerchantRequestID: string;
     CheckoutRequestID: string;
@@ -20,7 +18,6 @@ interface StkPushResponse {
     CustomerMessage: string;
 }
 
-// Define error response type
 interface ErrorResponse {
     error?: string;
     requestId?: string;
@@ -37,8 +34,17 @@ export async function initiateStkPush({
     const passkey = process.env.MPESA_PASSKEY || 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919';
     const callbackUrl = process.env.MPESA_CALLBACK_URL || 'https://yourdomain.com/api/callback';
 
+    if (!phoneNumber || phoneNumber.length < 9) {
+        return { error: 'Invalid phone number: Must be at least 9 digits' };
+    }
+    if (!amount || amount <= 0) {
+        return { error: 'Invalid amount: Must be greater than zero' };
+    }
+    if (!name) {
+        return { error: 'Name is required' };
+    }
+
     try {
-        // Generate authorization token
         const auth = Buffer.from(`${process.env.MPESA_CONSUMER_KEY}:${process.env.MPESA_CONSUMER_SECRET}`).toString(
             'base64',
         );
@@ -50,12 +56,13 @@ export async function initiateStkPush({
         });
 
         const token = tokenResponse.data.access_token;
+        if (!token) {
+            return { error: 'Failed to generate access token' };
+        }
 
-        // Format phone number (e.g., convert to 254XXXXXXXXX)
         const cleanedNumber = phoneNumber.replace(/\D/g, '');
         const formattedPhone = `254${cleanedNumber.slice(-9)}`;
 
-        // Generate timestamp
         const date = new Date();
         const timestamp =
             date.getFullYear() +
@@ -65,7 +72,6 @@ export async function initiateStkPush({
             ('0' + date.getMinutes()).slice(-2) +
             ('0' + date.getSeconds()).slice(-2);
 
-        // Generate password
         const password = Buffer.from(`${shortCode}${passkey}${timestamp}`).toString('base64');
 
         const paymentData = {
@@ -78,9 +84,11 @@ export async function initiateStkPush({
             PartyB: shortCode,
             PhoneNumber: formattedPhone,
             CallBackURL: callbackUrl,
-            AccountReference: `${name}_${Date.now()}`, // Using name instead of phone for reference
+            AccountReference: `${name}_${Date.now()}`,
             TransactionDesc: `Payment by ${name} for bus reservation`,
         };
+
+        console.log('Sending STK Push request with payload:', paymentData);
 
         const response = await axios.post<StkPushResponse>(
             `${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
@@ -92,11 +100,27 @@ export async function initiateStkPush({
             },
         );
 
-        return response.data;
+        const data = response.data;
+        console.log('STK Push response:', data);
+        if (data.ResponseCode !== '0') {
+            return { error: data.ResponseDescription || 'STK Push request rejected by M-Pesa' };
+        }
+
+        return data;
     } catch (error) {
         const axiosError = error as AxiosError<ErrorResponse>;
-        console.error('Error processing STK Push:', axiosError.message);
-        const errorMessage = axiosError.response?.data?.errorMessage || 'Failed to process payment request';
-        return { error: errorMessage };
+        console.error('Error processing STK Push:', {
+            message: axiosError.message,
+            status: axiosError.response?.status,
+            responseData: axiosError.response?.data,
+            requestData: {
+                phoneNumber,
+                amount,
+                name,
+            },
+        });
+        const errorMessage =
+            axiosError.response?.data?.errorMessage || axiosError.message || 'Failed to process payment request';
+        return { error: `Payment initiation failed: ${errorMessage}` };
     }
 }

@@ -5,11 +5,28 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { initiateStkPush } from '@/lib/mpesa/stkPush';
 import { stkPushQuery } from '@/lib/mpesa/stkPushQuery';
 
+interface StkPushQueryData {
+    MerchantRequestID: string;
+    CheckoutRequestID: string;
+    ResponseCode: string;
+    ResponseDescription: string;
+    CustomerMessage: string;
+    ResultCode: string;
+    ResultDesc: string;
+    CallbackMetadata?: {
+        Item: Array<{
+            Name: string;
+            Value?: string | number;
+        }>;
+    };
+}
+
 interface StkPushState {
     isLoading: boolean;
     stkQueryLoading: boolean;
-    paymentSuccess: boolean; // Renamed for consistency with useReservation
-    paymentError: string | null; // Renamed for consistency with useReservation
+    paymentSuccess: boolean;
+    paymentError: string | null;
+    paymentData: StkPushQueryData | null;
 }
 
 interface StkPushParams {
@@ -27,12 +44,12 @@ export const useStkPush = () => {
         stkQueryLoading: false,
         paymentSuccess: false,
         paymentError: null,
+        paymentData: null,
     });
 
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
-    const isMountedRef = useRef(true); // Track if component is mounted
+    const isMountedRef = useRef(true);
 
-    // Cleanup on unmount
     useEffect(() => {
         isMountedRef.current = true;
         return () => {
@@ -55,7 +72,7 @@ export const useStkPush = () => {
         async (checkoutRequestID: string) => {
             let attempts = 0;
 
-            stopPolling(); // Clear any existing interval
+            stopPolling();
 
             intervalRef.current = setInterval(async () => {
                 attempts += 1;
@@ -101,6 +118,7 @@ export const useStkPush = () => {
                             isLoading: false,
                             paymentSuccess: data.ResultCode === '0',
                             paymentError: data.ResultCode !== '0' ? data.ResultDesc || 'Payment failed' : null,
+                            paymentData: data,
                         }));
                     }
                 } catch (err) {
@@ -124,7 +142,13 @@ export const useStkPush = () => {
         async ({ phoneNumber, totalAmount, name = 'PASSENGER' }: StkPushParams) => {
             if (!isMountedRef.current) return;
 
-            setState((prev) => ({ ...prev, isLoading: true, paymentError: null, paymentSuccess: false }));
+            setState((prev) => ({
+                ...prev,
+                isLoading: true,
+                paymentError: null,
+                paymentSuccess: false,
+                paymentData: null,
+            }));
 
             try {
                 const result = await initiateStkPush({
@@ -168,6 +192,7 @@ export const useStkPush = () => {
                 stkQueryLoading: false,
                 paymentSuccess: false,
                 paymentError: null,
+                paymentData: null,
             });
         }
     }, [stopPolling]);
@@ -178,6 +203,7 @@ export const useStkPush = () => {
         stkQueryLoading: state.stkQueryLoading,
         paymentSuccess: state.paymentSuccess,
         paymentError: state.paymentError,
+        paymentData: state.paymentData,
         reset,
     };
 };
