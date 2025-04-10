@@ -23,7 +23,7 @@ enhance your link-sharing experience.
 ## 🔗 Live Preview
 
 Check out the live demo of Linkify here:
-[Live Preview](http://Linkify-demo.vercel.app)
+[Live Preview]( https://sxcntcnqunts.com/)
 
 ## 🎥 Watch Demo on YouTube
 
