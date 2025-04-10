@@ -1,35 +1,35 @@
-import { AnimationContainer, MaxWidthWrapper, PricingCards } from "@/components";
-import { BentoCard, BentoGrid, CARDS } from "@/components/ui/bento-grid";
-import { BorderBeam } from "@/components/ui/border-beam";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { LampContainer } from "@/components/ui/lamp";
-import MagicBadge from "@/components/ui/magic-badge";
-import MagicCard from "@/components/ui/magic-card";
-import { FLAM_FEATURES, TESTIMONIALS, MATATU_PARTNERS } from "@/utils";
-import { FLAM_USE_CASES } from "@/utils/constants/misc";
-import { currentUser } from "@clerk/nextjs/server";
-import { ArrowRightIcon, BusIcon, MapIcon, BellAlertIcon, LineChartIcon, StarIcon } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+import { AnimationContainer, MaxWidthWrapper, PricingCards } from '@/components';
+import { BentoCard, BentoGrid, CARDS } from '@/components/ui/bento-grid';
+import { BorderBeam } from '@/components/ui/border-beam';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { LampContainer } from '@/components/ui/lamp';
+import MagicBadge from '@/components/ui/magic-badge';
+import MagicCard from '@/components/ui/magic-card';
+import { FLAM_FEATURES, TESTIMONIALS, MATATU_PARTNERS } from '@/utils';
+import { FLAM_USE_CASES } from '@/utils/constants/misc';
+import { currentUser } from '@clerk/nextjs/server';
+import { ArrowRightIcon, BusIcon, MapIcon, BellAlertIcon, LineChartIcon, StarIcon } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
 
 // Define constants for reuse in other files
 export const FLAM_PROCESS = [
     {
         icon: MapIcon,
-        title: "Track Your Matatu",
-        description: "Enter your route and see real-time locations of all matatus on your selected path."
+        title: 'Track Your Matatu',
+        description: 'Enter your route and see real-time locations of all matatus on your selected path.',
     },
     {
         icon: LineChartIcon,
-        title: "Optimize Your Journey",
-        description: "Get recommendations for fastest routes and estimated arrival times."
+        title: 'Optimize Your Journey',
+        description: 'Get recommendations for fastest routes and estimated arrival times.',
     },
     {
         icon: BellAlertIcon,
-        title: "Stay Informed",
-        description: "Receive notifications about arrivals, delays, and changes to your usual routes."
-    }
+        title: 'Stay Informed',
+        description: 'Receive notifications about arrivals, delays, and changes to your usual routes.',
+    },
 ];
 const EnterprisePage = async () => {
     const user = await currentUser();
@@ -52,18 +52,21 @@ const EnterprisePage = async () => {
                             </span>
                         </button>
                         <h1 className="text-foreground text-center py-6 text-5xl font-medium tracking-normal text-balance sm:text-6xl md:text-7xl lg:text-8xl !leading-[1.15] w-full font-heading">
-                            Fleet Management with <span className="text-transparent bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text inline-bloc">
+                            Fleet Management with{' '}
+                            <span className="text-transparent bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text inline-bloc">
                                 Precision
                             </span>
                         </h1>
                         <p className="mb-12 text-lg tracking-tight text-muted-foreground md:text-xl text-balance">
                             Transform your matatu experience with FLAM, the ultimate fleet tracking solution.
                             <br className="hidden md:block" />
-                            <span className="hidden md:block">Real-time tracking, route optimization, and smart notifications all in one platform.</span>
+                            <span className="hidden md:block">
+                                Real-time tracking, route optimization, and smart notifications all in one platform.
+                            </span>
                         </p>
                         <div className="flex items-center justify-center whitespace-nowrap gap-4 z-50">
                             <Button asChild>
-                                <Link href={user ? "/dashboard" : "/auth/sign-in"} className="flex items-center">
+                                <Link href={user ? '/dashboard' : '/auth/sign-in'} className="flex items-center">
                                     Start tracking now
                                     <ArrowRightIcon className="w-4 h-4 ml-2" />
                                 </Link>
@@ -71,14 +74,13 @@ const EnterprisePage = async () => {
                         </div>
                     </AnimationContainer>
 
-                    <AnimationContainer delay={0.2} className="relative pt-20 pb-20 md:py-32 px-2 bg-transparent w-full">
+                    <AnimationContainer
+                        delay={0.2}
+                        className="relative pt-20 pb-20 md:py-32 px-2 bg-transparent w-full"
+                    >
                         <div className="absolute md:top-[10%] left-1/2 gradient w-3/4 -translate-x-1/2 h-1/4 md:h-1/3 inset-0 blur-[5rem] animate-image-glow"></div>
                         <div className="-m-2 rounded-xl p-2 ring-1 ring-inset ring-foreground/20 lg:-m-4 lg:rounded-2xl bg-opacity-50 backdrop-blur-3xl">
-                            <BorderBeam
-                                size={250}
-                                duration={12}
-                                delay={9}
-                            />
+                            <BorderBeam size={250} duration={12} delay={9} />
                             <Image
                                 src="/assets/flam-dashboard-dark.svg"
                                 alt="FLAM Dashboard showing live matatu tracking"
@@ -92,7 +94,7 @@ const EnterprisePage = async () => {
                         </div>
                     </AnimationContainer>
                 </div>
-            </MaxWidthWrapper >
+            </MaxWidthWrapper>
 
             {/* Partners Section */}
             <MaxWidthWrapper>
@@ -132,7 +134,8 @@ const EnterprisePage = async () => {
                             Smart Matatu Management For Everyone
                         </h2>
                         <p className="mt-4 text-center lg:text-center text-lg text-muted-foreground max-w-lg">
-                            FLAM is a powerful fleet management platform that helps commuters save time and operators improve service.
+                            FLAM is a powerful fleet management platform that helps commuters save time and operators
+                            improve service.
                         </p>
                     </div>
                 </AnimationContainer>
@@ -154,7 +157,8 @@ const EnterprisePage = async () => {
                             Transform your commute in 3 simple steps
                         </h2>
                         <p className="mt-4 text-center lg:text-center text-lg text-muted-foreground max-w-lg">
-                            Getting started with FLAM is quick and easy, putting real-time matatu information at your fingertips.
+                            Getting started with FLAM is quick and easy, putting real-time matatu information at your
+                            fingertips.
                         </p>
                     </div>
                 </AnimationContainer>
@@ -168,12 +172,8 @@ const EnterprisePage = async () => {
                                         <span className="absolute -top-6 right-0 border-2 border-border text-foreground font-medium text-2xl rounded-full w-12 h-12 flex items-center justify-center pt-0.5">
                                             {id + 1}
                                         </span>
-                                        <h3 className="text-base mt-6 font-medium text-foreground">
-                                            {process.title}
-                                        </h3>
-                                        <p className="mt-2 text-sm text-muted-foreground">
-                                            {process.description}
-                                        </p>
+                                        <h3 className="text-base mt-6 font-medium text-foreground">{process.title}</h3>
+                                        <p className="mt-2 text-sm text-muted-foreground">{process.description}</p>
                                     </div>
                                 </div>
                             </MagicCard>
@@ -202,9 +202,7 @@ const EnterprisePage = async () => {
                     <div className="flex flex-wrap items-start md:items-center justify-center lg:justify-evenly gap-6 mt-12 max-w-5xl mx-auto w-full">
                         <div className="flex items-center gap-2">
                             <BusIcon className="w-5 h-5 text-foreground" />
-                            <span className="text-muted-foreground">
-                                Special discounts for fleet operators
-                            </span>
+                            <span className="text-muted-foreground">Special discounts for fleet operators</span>
                         </div>
                     </div>
                 </AnimationContainer>
@@ -233,14 +231,10 @@ const EnterprisePage = async () => {
                                             <CardTitle className="text-lg font-medium text-muted-foreground">
                                                 {testimonial.name}
                                             </CardTitle>
-                                            <CardDescription>
-                                                {testimonial.userType}
-                                            </CardDescription>
+                                            <CardDescription>{testimonial.userType}</CardDescription>
                                         </CardHeader>
                                         <CardContent className="space-y-4 pb-4">
-                                            <p className="text-muted-foreground">
-                                                {testimonial.testimony}
-                                            </p>
+                                            <p className="text-muted-foreground">{testimonial.testimony}</p>
                                         </CardContent>
                                         <CardFooter className="w-full space-x-1 mt-auto">
                                             {Array.from({ length: testimonial.rating }, (_, i) => (
@@ -261,14 +255,10 @@ const EnterprisePage = async () => {
                                             <CardTitle className="text-lg font-medium text-muted-foreground">
                                                 {testimonial.name}
                                             </CardTitle>
-                                            <CardDescription>
-                                                {testimonial.userType}
-                                            </CardDescription>
+                                            <CardDescription>{testimonial.userType}</CardDescription>
                                         </CardHeader>
                                         <CardContent className="space-y-4 pb-4">
-                                            <p className="text-muted-foreground">
-                                                {testimonial.testimony}
-                                            </p>
+                                            <p className="text-muted-foreground">{testimonial.testimony}</p>
                                         </CardContent>
                                         <CardFooter className="w-full space-x-1 mt-auto">
                                             {Array.from({ length: testimonial.rating }, (_, i) => (
@@ -289,14 +279,10 @@ const EnterprisePage = async () => {
                                             <CardTitle className="text-lg font-medium text-muted-foreground">
                                                 {testimonial.name}
                                             </CardTitle>
-                                            <CardDescription>
-                                                {testimonial.userType}
-                                            </CardDescription>
+                                            <CardDescription>{testimonial.userType}</CardDescription>
                                         </CardHeader>
                                         <CardContent className="space-y-4 pb-4">
-                                            <p className="text-muted-foreground">
-                                                {testimonial.testimony}
-                                            </p>
+                                            <p className="text-muted-foreground">{testimonial.testimony}</p>
                                         </CardContent>
                                         <CardFooter className="w-full space-x-1 mt-auto">
                                             {Array.from({ length: testimonial.rating }, (_, i) => (
@@ -332,12 +318,8 @@ const EnterprisePage = async () => {
                                     <div className="mb-4">
                                         <useCase.icon className="w-12 h-12 text-primary" />
                                     </div>
-                                    <h3 className="text-xl font-medium text-foreground mb-2">
-                                        {useCase.title}
-                                    </h3>
-                                    <p className="text-muted-foreground flex-grow mb-4">
-                                        {useCase.description}
-                                    </p>
+                                    <h3 className="text-xl font-medium text-foreground mb-2">{useCase.title}</h3>
+                                    <p className="text-muted-foreground flex-grow mb-4">{useCase.description}</p>
                                     <div className="mt-auto">
                                         <Button variant="outline" size="sm" asChild>
                                             <Link href={useCase.link}>
@@ -362,7 +344,8 @@ const EnterprisePage = async () => {
                                 Transform your matatu experience today
                             </h2>
                             <p className="text-muted-foreground mt-6 max-w-md mx-auto">
-                                Join thousands of commuters and operators who are already saving time and improving their journeys with FLAM.
+                                Join thousands of commuters and operators who are already saving time and improving
+                                their journeys with FLAM.
                             </p>
                             <div className="mt-6">
                                 <Button>
@@ -374,17 +357,8 @@ const EnterprisePage = async () => {
                     </LampContainer>
                 </AnimationContainer>
             </MaxWidthWrapper>
-
         </div>
-    )
+    );
 };
 
 export default EnterprisePage;
-
-
-
-
-
-
-
-
