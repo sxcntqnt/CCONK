@@ -8,7 +8,7 @@
 ## 🌟 Introduction
 
 FLAM is an innovative fleet management software designed to help you shorten,
-track, and optimize your links effortlessly. Built with React, Node.js, and
+track, and optimize your fleet effortlessly. Built with React, Node.js, and
 MongoDB, FLAM provides powerful analytics and user-friendly features to
 enhance your link-sharing experience.
 
