@@ -1,6 +1,8 @@
+'use client'
+
 import React from 'react';
-import GeofenceMap from '@/components/ui/GeofenceMap';
 import dynamic from 'next/dynamic';
+
 
 export default function Geofence() {
     const MapWithNoSSR = dynamic(() => import('@/components/ui/GeofenceMap'), {
