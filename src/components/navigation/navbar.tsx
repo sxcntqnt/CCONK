@@ -10,11 +10,7 @@ import {
     NavigationMenuTrigger,
     navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover'; // Add Popover components
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'; // Add Popover components
 import { cn, NAV_LINKS } from '@/utils';
 import { useClerk } from '@clerk/nextjs';
 import { Bell, LucideIcon, ZapIcon } from 'lucide-react'; // Add Bell icon
@@ -119,10 +115,7 @@ const Navbar = () => {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className={cn(
-                                                buttonVariants({ size: 'sm', variant: 'ghost' }),
-                                                'relative',
-                                            )}
+                                            className={cn(buttonVariants({ size: 'sm', variant: 'ghost' }), 'relative')}
                                         >
                                             <Bell className="h-5 w-5" />
                                             {/* Optional: Notification badge */}

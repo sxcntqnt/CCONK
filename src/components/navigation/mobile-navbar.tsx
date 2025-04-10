@@ -3,11 +3,7 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover'; // Add Popover components
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'; // Add Popover components
 import { cn, NAV_LINKS } from '@/utils';
 import { useAuth } from '@clerk/nextjs';
 import { Bell, LucideIcon, Menu, X } from 'lucide-react'; // Add Bell icon

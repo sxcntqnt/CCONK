@@ -12,7 +12,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
     // Resolve searchParams safely
     const resolvedSearchParams = await searchParams;
-    const roleFromMetadata = (user.unsafeMetadata?.role as string | undefined)?.toUpperCase().trim() as Role | undefined;
+    const roleFromMetadata = (user.unsafeMetadata?.role as string | undefined)?.toUpperCase().trim() as
+        | Role
+        | undefined;
     const roleFromQuery = (resolvedSearchParams.role as string | undefined)?.toUpperCase().trim() as Role | undefined;
 
     // Determine role with a fallback chain: unsafeMetadata > query > undefined
