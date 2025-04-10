@@ -3,7 +3,6 @@
 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { AppSidebar } from '@/components';
 import { getNavItemsByRole } from '@/components/config';
 import { Role } from '@/utils/constants/roles';
 
@@ -34,9 +33,6 @@ export default function ClientOwnerDashboard({
 
     return (
         <div className="flex">
-            {/* Sidebar */}
-            <AppSidebar role={role} />
-
             {/* Main Dashboard */}
             <div className="flex-1 container mx-auto py-8">
                 <h1 className="text-3xl font-bold mb-6">Owner Dashboard</h1>

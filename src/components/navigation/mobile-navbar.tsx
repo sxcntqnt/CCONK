@@ -3,15 +3,19 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'; // Add Popover components
 import { cn, NAV_LINKS } from '@/utils';
 import { useAuth } from '@clerk/nextjs';
-import { LucideIcon, Menu, X } from 'lucide-react';
+import { Bell, LucideIcon, Menu, X } from 'lucide-react'; // Add Bell icon
 import Link from 'next/link';
 import React, { useState } from 'react';
 
 const MobileNavbar = () => {
-    const { isSignedIn, signOut } = useAuth();
-
+    const { isSignedIn } = useAuth();
     const [isOpen, setIsOpen] = useState<boolean>(false);
 
     const handleClose = () => {
@@ -38,15 +42,49 @@ const MobileNavbar = () => {
                     <div className="mt-10 flex w-full flex-col items-start py-2">
                         <div className="flex w-full items-center justify-evenly space-x-2">
                             {isSignedIn ? (
-                                <Link
-                                    href="/dashboard"
-                                    className={buttonVariants({
-                                        variant: 'outline',
-                                        className: 'w-full',
-                                    })}
-                                >
-                                    Dashboard
-                                </Link>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className={cn(
+                                                buttonVariants({ variant: 'outline', size: 'sm' }),
+                                                'relative w-full max-w-[120px]',
+                                            )}
+                                        >
+                                            <Bell className="h-5 w-5" />
+                                            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-80 p-4">
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-medium">Notifications</h4>
+                                            <div className="space-y-2">
+                                                <div className="rounded-md border p-2">
+                                                    <p className="text-sm">Trip #123 assigned to you.</p>
+                                                    <p className="text-xs text-muted-foreground">5 mins ago</p>
+                                                </div>
+                                                <div className="rounded-md border p-2">
+                                                    <p className="text-sm">Payment received: $50.</p>
+                                                    <p className="text-xs text-muted-foreground">1 hour ago</p>
+                                                </div>
+                                                <div className="rounded-md border p-2">
+                                                    <p className="text-sm">New passenger booked.</p>
+                                                    <p className="text-xs text-muted-foreground">2 hours ago</p>
+                                                </div>
+                                            </div>
+                                            <Link
+                                                href="/dashboard/notifications"
+                                                className={cn(
+                                                    buttonVariants({ variant: 'outline', size: 'sm' }),
+                                                    'w-full',
+                                                )}
+                                            >
+                                                View All Notifications
+                                            </Link>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             ) : (
                                 <>
                                     <Link

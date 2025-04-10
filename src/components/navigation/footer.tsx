@@ -144,7 +144,7 @@ const Footer = () => {
                 </AnimationContainer>
             </div>
 
-            <div className="hidden h-[11rem] items-center justify-center md:flex lg:h-[11rem]">
+            <div className="hidden h-[9rem] items-center justify-center md:flex lg:h-[9rem]">
                 <TextHoverEffect text="SXCNTCNQUNT" />
             </div>
         </footer>

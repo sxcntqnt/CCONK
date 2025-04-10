@@ -1,28 +1,34 @@
 // src/app/(main)/dashboard/owner/page.tsx
-// No 'use client' here - this is a Server Component
-
 import { currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { getOwnerData } from './ownerUtils';
-import ClientOwnerDashboard from './clientOwnerDashboard'; // New client-side component
+import ClientOwnerDashboard from './clientOwnerDashboard';
+import { ROLES, Role } from '@/utils/constants/roles';
 
 export default async function OwnerDashboard() {
     const user = await currentUser();
 
     if (!user) {
-        redirect('/sign-in'); // Use redirect instead of returning JSX
+        redirect('/auth/sign-in');
     }
 
-    // Extract role from publicMetadata
-    const role = user.publicMetadata.role as 'OWNER' | 'PASSENGER' | 'DRIVER' | undefined;
+    // Log raw metadata for debugging
+    const rawRole = user.unsafeMetadata.role as string | undefined; // Changed from publicMetadata
+    const role = rawRole?.toUpperCase().trim() as Role | undefined;
 
-    // Handle case where role might not be set
     if (!role) {
-        return (
-            <div className="container mx-auto py-8">
-                <p>Error: User role not defined in public metadata.</p>
-            </div>
-        );
+        redirect('/');
+    }
+
+    switch (role) {
+        case ROLES.PASSENGER:
+            redirect('/dashboard/passenger');
+        case ROLES.DRIVER:
+            redirect('/dashboard/driver');
+        case ROLES.OWNER:
+            break;
+        default:
+            redirect('/');
     }
 
     let ownerData;
@@ -38,7 +44,6 @@ export default async function OwnerDashboard() {
 
     const { trips, buses, drivers, reservations, incomeExpenses, geofences, reports, users } = ownerData;
 
-    // Pass data to the Client Component
     return (
         <ClientOwnerDashboard
             user={user}

@@ -2,7 +2,7 @@
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/prisma';
 import PassengerDashboardClient from './client';
-import { Role } from '@/utils/constants/roles';
+import { ROLES, Role } from '@/utils/constants/roles';
 import { Prisma } from '@prisma/client';
 import DashboardLayout from '../layout';
 
@@ -29,11 +29,7 @@ interface DashboardProps {
     role: Role;
 }
 
-async function withRetry<T>(
-    operation: () => Promise<T>,
-    maxAttempts: number = 3,
-    delayMs: number = 1000
-): Promise<T> {
+async function withRetry<T>(operation: () => Promise<T>, maxAttempts: number = 3, delayMs: number = 1000): Promise<T> {
     let lastError: unknown;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
@@ -41,7 +37,7 @@ async function withRetry<T>(
         } catch (error) {
             lastError = error;
             if (attempt < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, delayMs));
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
             }
         }
     }
@@ -83,11 +79,28 @@ export default async function Page() {
         redirect('/auth/sign-in'); // Redundant due to parent, but kept as safety net
     }
 
-    const role: Role = 'PASSENGER';
     const userData: UserData = {
         id: user.id,
         firstName: user.firstName || 'Passenger',
     };
+    // Extract role from publicMetadata
+    const rawRole = user.unsafeMetadata.role as string | undefined; // Changed from publicMetadata
+    const role = rawRole?.toUpperCase().trim() as Role | undefined;
+
+    if (!role) {
+        redirect('/');
+    }
+
+    switch (role) {
+        case ROLES.PASSENGER:
+            break;
+        case ROLES.DRIVER:
+            redirect('/dashboard/driver');
+        case ROLES.OWNER:
+            redirect('/dashboard/owner');
+        default:
+            redirect('/');
+    }
 
     try {
         const { passenger, buses } = await getPassengerData(user.id);

@@ -1,6 +1,6 @@
 'use client';
 
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
     NavigationMenu,
     NavigationMenuContent,
@@ -10,9 +10,14 @@ import {
     NavigationMenuTrigger,
     navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'; // Add Popover components
 import { cn, NAV_LINKS } from '@/utils';
 import { useClerk } from '@clerk/nextjs';
-import { LucideIcon, ZapIcon } from 'lucide-react';
+import { Bell, LucideIcon, ZapIcon } from 'lucide-react'; // Add Bell icon
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import MaxWidthWrapper from '../global/max-width-wrapper';
@@ -21,22 +26,15 @@ import AnimationContainer from '../global/animation-container';
 
 const Navbar = () => {
     const { user } = useClerk();
-
     const [scroll, setScroll] = useState(false);
 
     const handleScroll = () => {
-        if (window.scrollY > 8) {
-            setScroll(true);
-        } else {
-            setScroll(false);
-        }
+        setScroll(window.scrollY > 8);
     };
 
     useEffect(() => {
         window.addEventListener('scroll', handleScroll);
-        return () => {
-            window.removeEventListener('scroll', handleScroll);
-        };
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     return (
@@ -116,9 +114,51 @@ const Navbar = () => {
                     <div className="hidden items-center lg:flex">
                         {user ? (
                             <div className="flex items-center">
-                                <Link href="/dashboard" className={buttonVariants({ size: 'sm' })}>
-                                    Dashboard
-                                </Link>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className={cn(
+                                                buttonVariants({ size: 'sm', variant: 'ghost' }),
+                                                'relative',
+                                            )}
+                                        >
+                                            <Bell className="h-5 w-5" />
+                                            {/* Optional: Notification badge */}
+                                            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-80 p-4">
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-medium">Notifications</h4>
+                                            {/* Placeholder notifications */}
+                                            <div className="space-y-2">
+                                                <div className="rounded-md border p-2">
+                                                    <p className="text-sm">Trip #123 assigned to you.</p>
+                                                    <p className="text-xs text-muted-foreground">5 mins ago</p>
+                                                </div>
+                                                <div className="rounded-md border p-2">
+                                                    <p className="text-sm">Payment received: $50.</p>
+                                                    <p className="text-xs text-muted-foreground">1 hour ago</p>
+                                                </div>
+                                                <div className="rounded-md border p-2">
+                                                    <p className="text-sm">New passenger booked.</p>
+                                                    <p className="text-xs text-muted-foreground">2 hours ago</p>
+                                                </div>
+                                            </div>
+                                            <Link
+                                                href="/dashboard/notifications"
+                                                className={cn(
+                                                    buttonVariants({ variant: 'outline', size: 'sm' }),
+                                                    'w-full',
+                                                )}
+                                            >
+                                                View All Notifications
+                                            </Link>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         ) : (
                             <div className="flex items-center gap-x-4">

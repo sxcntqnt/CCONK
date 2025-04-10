@@ -89,7 +89,9 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
                     </SidebarGroup>
 
                     {/* Bottom Items (Logout) */}
-                    <SidebarGroup className="mt-auto pb-4"> {/* Pushes to bottom */}
+                    <SidebarGroup className="mt-auto pb-4">
+                        {' '}
+                        {/* Pushes to bottom */}
                         <SidebarMenu>
                             {bottomItems.map((item, index) => renderNavItem(item, 0.1 + index * 0.05))}
                         </SidebarMenu>
