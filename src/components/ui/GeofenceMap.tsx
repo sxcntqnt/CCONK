@@ -53,13 +53,12 @@ const GeofenceMap = () => {
                     },
                 ],
             },
-            center: [51.505, -0.09],
+            center: [-1.36876, 36.33421],
             zoom: 13,
         });
 
         map.current.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
-        // Initialize Mapbox Draw
         draw.current = new MapboxDraw({
             displayControlsDefault: false,
             controls: {
@@ -67,13 +66,13 @@ const GeofenceMap = () => {
                 trash: false,
             },
         });
+
         map.current.addControl(draw.current, 'top-right');
 
         map.current.on('load', () => {
             setIsLoading(false);
         });
 
-        // Drawing events
         map.current.on('draw.create', (e) => {
             const id = `geofence-${Date.now()}`;
             const color = getRandomColor();
@@ -110,15 +109,13 @@ const GeofenceMap = () => {
     useEffect(() => {
         if (!map.current || isLoading) return;
 
+        // Remove old geofences
         geofences.forEach((g) => {
-            if (map.current?.getLayer(g.id)) {
-                map.current?.removeLayer(g.id);
-            }
-            if (map.current?.getSource(g.id)) {
-                map.current?.removeSource(g.id);
-            }
+            if (map.current?.getLayer(g.id)) map.current.removeLayer(g.id);
+            if (map.current?.getSource(g.id)) map.current.removeSource(g.id);
         });
 
+        // Add updated geofences
         geofences.forEach((geofence) => {
             map.current?.addSource(geofence.id, {
                 type: 'geojson',
@@ -136,7 +133,7 @@ const GeofenceMap = () => {
                 },
             });
 
-            map.current?.on('click', geofzaamce.id, () => {
+            map.current?.on('click', geofence.id, () => {
                 setActiveGeofence(geofence.id);
             });
         });
@@ -154,15 +151,9 @@ const GeofenceMap = () => {
 
     const handleDeleteGeofence = (id: string) => {
         setGeofences((prev) => prev.filter((g) => g.id !== id));
-        if (activeGeofence === id) {
-            setActiveGeofence(null);
-        }
-        if (map.current?.getLayer(id)) {
-            map.current?.removeLayer(id);
-        }
-        if (map.current?.getSource(id)) {
-            map.current?.removeSource(id);
-        }
+        if (activeGeofence === id) setActiveGeofence(null);
+        if (map.current?.getLayer(id)) map.current.removeLayer(id);
+        if (map.current?.getSource(id)) map.current.removeSource(id);
     };
 
     const filteredGeofences = geofences.filter((geofence) =>

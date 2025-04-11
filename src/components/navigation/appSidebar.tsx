@@ -30,7 +30,7 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
 
     const itemsByRole = getNavItemsByRole(role);
     const mainItems = itemsByRole.filter((item) => item.position === 'main');
-    const bottomItems = itemsByRole.filter((item) => item.position === 'bottom'); // Logout assumed here
+    const bottomItems = itemsByRole.filter((item) => item.position === 'bottom');
 
     const renderNavItem = (item: NavItem, delay: number) => {
         const isActive = pathname === item.path;
@@ -60,7 +60,7 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
                         {isCollapsed && (
                             <TooltipContent
                                 side="right"
-                                className="bg-neutral-900/80 text-muted-foreground border-border/40 backdrop-blur-md"
+                                className="bg-neutral-900/80 text-muted-foreground border border-opacity-40 backdrop-blur-md"
                             >
                                 {item.name}
                             </TooltipContent>
@@ -75,23 +75,18 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
         <TooltipProvider>
             <Sidebar
                 className={cn(
-                    'bg-sidebar-background text-sidebar-foreground border-r border-sidebar-border shadow-lg backdrop-blur-md transition-all duration-300 relative shrink-0',
+                    'bg-sidebar text-sidebar-foreground border-r border-sidebar shadow-lg backdrop-blur-md transition-all duration-300 relative shrink-0',
                     isCollapsed ? 'w-16' : 'w-64',
                     className,
                 )}
             >
                 <SidebarContent className="flex flex-col h-full">
-                    {/* Main Items */}
                     <SidebarGroup className="flex-1 pt-4">
                         <SidebarMenu>
                             {mainItems.map((item, index) => renderNavItem(item, 0.1 + index * 0.05))}
                         </SidebarMenu>
                     </SidebarGroup>
-
-                    {/* Bottom Items (Logout) */}
                     <SidebarGroup className="mt-auto pb-4">
-                        {' '}
-                        {/* Pushes to bottom */}
                         <SidebarMenu>
                             {bottomItems.map((item, index) => renderNavItem(item, 0.1 + index * 0.05))}
                         </SidebarMenu>
@@ -108,7 +103,7 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
                     <button
                         onClick={() => setIsCollapsed((prev) => !prev)}
                         className={cn(
-                            'flex items-center justify-center rounded-full bg-sidebar-background/80 hover:bg-sidebar-accent text-sidebar-foreground hover:text-sidebar-accent-foreground border border-sidebar-border/40 backdrop-blur-md transition-all duration-300 shadow-md',
+                            'flex items-center justify-center rounded-full bg-sidebar/80 hover:bg-sidebar-accent text-sidebar-foreground hover:text-sidebar-accent-foreground border border-sidebar/40 backdrop-blur-md transition-all duration-300 shadow-md',
                             isCollapsed ? 'w-8 h-8' : 'w-6 h-6',
                         )}
                     >
