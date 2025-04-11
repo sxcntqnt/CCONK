@@ -125,7 +125,8 @@ const MobileNavbar = () => {
                                                 href={link.href}
                                                 onClick={handleClose}
                                                 className="flex w-full items-center py-4 font-medium text-muted-foreground hover:text-foreground"
-                                                legacyBehavior>
+                                                legacyBehavior
+                                            >
                                                 <span>{link.title}</span>
                                             </Link>
                                         )}
@@ -154,7 +155,8 @@ const ListItem = React.forwardRef<
                     className,
                 )}
                 {...props}
-                legacyBehavior>
+                legacyBehavior
+            >
                 <div className="flex items-center space-x-2 text-foreground">
                     <Icon className="h-4 w-4" />
                     <h6 className="text-sm !leading-none">{title}</h6>

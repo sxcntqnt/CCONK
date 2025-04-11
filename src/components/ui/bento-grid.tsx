@@ -132,7 +132,8 @@ const BentoCard = ({
                     variant: 'ghost',
                     className: 'cursor-pointer',
                 })}
-                legacyBehavior>
+                legacyBehavior
+            >
                 {cta}
                 <ArrowRightIcon className="ml-2 h-4 w-4" />
             </Link>

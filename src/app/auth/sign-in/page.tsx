@@ -6,7 +6,7 @@ const SignInPage = () => {
     return (
         <div className="mx-auto flex h-screen max-w-sm flex-col items-start overflow-hidden pt-4 md:pt-20">
             <div className="flex w-full items-center border-b border-border/80 py-8">
-                <Link href="/#home" className="flex items-center gap-x-2" legacyBehavior>
+                <Link href="/#home" className="flex items-center gap-x-2">
                     <Icons.logo className="h-6 w-6" />
                     <h1 className="text-lg font-medium">Sxcntqnt</h1>
                 </Link>

@@ -13,7 +13,8 @@ const Blogs = () => {
                         <Link
                             href={`/resources/blog/${blog.slug}`}
                             className="-z-1 absolute inset-0 h-full w-full"
-                            legacyBehavior></Link>
+                            legacyBehavior
+                        ></Link>
                         <Card className="group border-0">
                             <CardContent className="p-4 lg:p-6">
                                 <div className="flex h-40 items-center justify-center overflow-hidden lg:h-52">

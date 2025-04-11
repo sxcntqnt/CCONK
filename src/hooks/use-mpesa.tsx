@@ -4,6 +4,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { initiateStkPush } from '@/lib/mpesa/stkPush';
 import { stkPushQuery } from '@/lib/mpesa/stkPushQuery';
+import { PHONE_PREFIX_REGEX, validatePhonePrefix, PHONE_VALIDATION_CONFIG } from '@/utils/constants/phone-constants';
 
 interface StkPushQueryData {
     MerchantRequestID: string;
@@ -35,7 +36,7 @@ interface StkPushParams {
     name?: string;
 }
 
-const POLLING_INTERVAL = 2000; // 2 seconds
+const POLLING_INTERVAL = 2000;
 const MAX_ATTEMPTS = 15;
 
 export const useStkPush = () => {
@@ -58,6 +59,7 @@ export const useStkPush = () => {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
+            reset(); // Clear state on unmount
         };
     }, []);
 
@@ -95,7 +97,7 @@ export const useStkPush = () => {
 
                     if ('error' in result) {
                         if (result.error.includes('pending') || result.error.includes('not found')) {
-                            return; // Continue polling
+                            return;
                         }
                         stopPolling();
                         if (isMountedRef.current) {
@@ -142,6 +144,40 @@ export const useStkPush = () => {
         async ({ phoneNumber, totalAmount, name = 'PASSENGER' }: StkPushParams) => {
             if (!isMountedRef.current) return;
 
+            // Clean the phone number (remove spaces, dashes, etc.)
+            const cleanedPhoneNumber = phoneNumber.replace(/[\s,-]/g, '');
+
+            // Validate full phone number length (12 digits: +254 + 9 digits)
+            if (cleanedPhoneNumber.length !== 12) {
+                setState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                    paymentError: 'Phone number must be 12 digits (e.g., +254712345678)',
+                }));
+                return { error: 'Invalid phone number length' };
+            }
+
+            // Validate prefix using phone-constants.ts
+            const prefixValidation = validatePhonePrefix(cleanedPhoneNumber);
+            if (!prefixValidation.isValid) {
+                setState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                    paymentError: prefixValidation.errorMessage || 'Invalid phone number prefix',
+                }));
+                return { error: prefixValidation.errorMessage || 'Invalid phone number prefix' };
+            }
+
+            // Validate full number with PHONE_PREFIX_REGEX and remaining digits
+            if (!PHONE_PREFIX_REGEX.test(cleanedPhoneNumber)) {
+                setState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                    paymentError: 'Invalid Kenyan phone number format',
+                }));
+                return { error: 'Invalid phone number format' };
+            }
+
             setState((prev) => ({
                 ...prev,
                 isLoading: true,
@@ -152,7 +188,7 @@ export const useStkPush = () => {
 
             try {
                 const result = await initiateStkPush({
-                    mpesa_number: phoneNumber,
+                    mpesa_number: cleanedPhoneNumber,
                     name,
                     amount: totalAmount,
                 });

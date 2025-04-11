@@ -43,7 +43,7 @@ const Navbar = () => {
             <AnimationContainer reverse delay={0.1} className="size-full">
                 <MaxWidthWrapper className="flex items-center justify-between">
                     <div className="flex items-center space-x-12">
-                        <Link href="/#home" legacyBehavior>
+                        <Link href="/#home">
                             <span className="font-heading text-lg font-bold !leading-none">SXCNTQNT</span>
                         </Link>
 
@@ -70,7 +70,7 @@ const Navbar = () => {
                                                                     <Link
                                                                         href="/"
                                                                         className="flex h-full w-full select-none flex-col justify-end rounded-lg bg-gradient-to-b from-muted/50 to-muted p-4 no-underline outline-none focus:shadow-md"
-                                                                        legacyBehavior>
+                                                                    >
                                                                         <h6 className="mb-2 mt-4 text-lg font-medium">
                                                                             All Features
                                                                         </h6>
@@ -95,7 +95,7 @@ const Navbar = () => {
                                                 </NavigationMenuContent>
                                             </>
                                         ) : (
-                                            <Link href={link.href} legacyBehavior passHref>
+                                            <Link href={link.href} passHref>
                                                 <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                                                     {link.title}
                                                 </NavigationMenuLink>
@@ -158,10 +158,7 @@ const Navbar = () => {
                                 <Link href="/auth/sign-in" className={buttonVariants({ size: 'sm', variant: 'ghost' })}>
                                     Sign In
                                 </Link>
-                                <Link
-                                    href="/auth/sign-up"
-                                    className={buttonVariants({ size: 'sm' })}
-                                    legacyBehavior>
+                                <Link href="/auth/sign-up" className={buttonVariants({ size: 'sm' })}>
                                     Get Started
                                     <ZapIcon className="ml-1.5 size-3.5 fill-orange-500 text-orange-500" />
                                 </Link>
@@ -191,7 +188,7 @@ const ListItem = React.forwardRef<
                         className,
                     )}
                     {...props}
-                    legacyBehavior>
+                >
                     <div className="flex items-center space-x-2 text-neutral-300">
                         <Icon className="h-4 w-4" />
                         <h6 className="text-sm font-medium !leading-none">{title}</h6>

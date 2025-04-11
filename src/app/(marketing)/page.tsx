@@ -51,7 +51,8 @@ const HomePage = async () => {
                                 <Link
                                     href={user ? '/dashboard' : '/auth/sign-in'}
                                     className="flex items-center"
-                                    legacyBehavior>
+                                    legacyBehavior
+                                >
                                     Start creating for free
                                     <ArrowRightIcon className="ml-2 h-4 w-4" />
                                 </Link>

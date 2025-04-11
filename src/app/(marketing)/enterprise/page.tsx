@@ -69,7 +69,8 @@ const EnterprisePage = async () => {
                                 <Link
                                     href={user ? '/dashboard' : '/auth/sign-in'}
                                     className="flex items-center"
-                                    legacyBehavior>
+                                    legacyBehavior
+                                >
                                     Start tracking now
                                     <ArrowRightIcon className="w-4 h-4 ml-2" />
                                 </Link>

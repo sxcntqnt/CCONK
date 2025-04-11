@@ -75,9 +75,10 @@ const useBusReservation = () => {
         paymentData,
         reset: resetPayment,
     } = useStkPush() || {
-        initiatePayment: async () => (({
-            error: 'Payment hook unavailable'
-        }) as StkPushResult),
+        initiatePayment: async () =>
+            ({
+                error: 'Payment hook unavailable',
+            }) as StkPushResult,
         isLoading: false,
         stkQueryLoading: false,
         paymentSuccess: false,
