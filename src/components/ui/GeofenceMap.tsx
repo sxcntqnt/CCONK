@@ -35,20 +35,23 @@ const GeofenceMap = () => {
         map.current = new maplibregl.Map({
             container: mapContainer.current,
             style: {
-                'version': 8,
-                'sources': {
+                version: 8,
+                sources: {
                     'osm-tiles': {
-                        'type': 'raster',
-                        'tiles': ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                        'tileSize': 256,
-                        'attribution': '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    }
+                        type: 'raster',
+                        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution:
+                            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    },
                 },
-                'layers': [{
-                    'id': 'osm-tiles',
-                    'type': 'raster',
-                    'source': 'osm-tiles',
-                }]
+                layers: [
+                    {
+                        id: 'osm-tiles',
+                        type: 'raster',
+                        source: 'osm-tiles',
+                    },
+                ],
             },
             center: [51.505, -0.09],
             zoom: 13,
@@ -81,23 +84,21 @@ const GeofenceMap = () => {
                 color,
                 createdAt: new Date(),
             };
-            setGeofences(prev => [...prev, newGeofence]);
+            setGeofences((prev) => [...prev, newGeofence]);
             setActiveGeofence(id);
             draw.current?.changeMode('simple_select');
         });
 
         map.current.on('draw.update', (e) => {
             const updatedFeature = e.features[0];
-            setGeofences(prev =>
-                prev.map(g =>
-                    g.id === updatedFeature.id ? { ...g, geoJson: updatedFeature } : g
-                )
+            setGeofences((prev) =>
+                prev.map((g) => (g.id === updatedFeature.id ? { ...g, geoJson: updatedFeature } : g)),
             );
         });
 
         map.current.on('draw.delete', (e) => {
             const deletedIds = e.features.map((f: any) => f.id);
-            setGeofences(prev => prev.filter(g => !deletedIds.includes(g.id)));
+            setGeofences((prev) => prev.filter((g) => !deletedIds.includes(g.id)));
             if (deletedIds.includes(activeGeofence)) setActiveGeofence(null);
         });
 
@@ -109,7 +110,7 @@ const GeofenceMap = () => {
     useEffect(() => {
         if (!map.current || isLoading) return;
 
-        geofences.forEach(g => {
+        geofences.forEach((g) => {
             if (map.current?.getLayer(g.id)) {
                 map.current?.removeLayer(g.id);
             }
@@ -118,7 +119,7 @@ const GeofenceMap = () => {
             }
         });
 
-        geofences.forEach(geofence => {
+        geofences.forEach((geofence) => {
             map.current?.addSource(geofence.id, {
                 type: 'geojson',
                 data: geofence.geoJson,
@@ -148,15 +149,11 @@ const GeofenceMap = () => {
     };
 
     const handleNameChange = (id: string, name: string) => {
-        setGeofences(prev =>
-            prev.map(geofence =>
-                geofence.id === id ? { ...geofence, name } : geofence
-            )
-        );
+        setGeofences((prev) => prev.map((geofence) => (geofence.id === id ? { ...geofence, name } : geofence)));
     };
 
     const handleDeleteGeofence = (id: string) => {
-        setGeofences(prev => prev.filter(g => g.id !== id));
+        setGeofences((prev) => prev.filter((g) => g.id !== id));
         if (activeGeofence === id) {
             setActiveGeofence(null);
         }
@@ -168,8 +165,8 @@ const GeofenceMap = () => {
         }
     };
 
-    const filteredGeofences = geofences.filter(geofence =>
-        geofence.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredGeofences = geofences.filter((geofence) =>
+        geofence.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
     if (isLoading) {

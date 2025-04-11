@@ -158,7 +158,7 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
                                                         Capacity: {bus.capacity} seats
                                                     </p>
                                                 </div>
-                                                <Link href={`/reserve?busId=${bus.id}`}>
+                                                <Link href={`/reserve?busId=${bus.id}`} legacyBehavior>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -196,7 +196,7 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
                 </div>
 
                 <div className="mt-8 flex justify-center gap-4">
-                    <Link href="/">
+                    <Link href="/" legacyBehavior>
                         <Button
                             variant="outline"
                             className="text-white border-gray-700 hover:bg-gray-600 w-32 transition-colors"

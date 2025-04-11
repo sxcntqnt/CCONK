@@ -66,7 +66,10 @@ const EnterprisePage = async () => {
                         </p>
                         <div className="flex items-center justify-center whitespace-nowrap gap-4 z-50">
                             <Button asChild>
-                                <Link href={user ? '/dashboard' : '/auth/sign-in'} className="flex items-center">
+                                <Link
+                                    href={user ? '/dashboard' : '/auth/sign-in'}
+                                    className="flex items-center"
+                                    legacyBehavior>
                                     Start tracking now
                                     <ArrowRightIcon className="w-4 h-4 ml-2" />
                                 </Link>
@@ -95,7 +98,6 @@ const EnterprisePage = async () => {
                     </AnimationContainer>
                 </div>
             </MaxWidthWrapper>
-
             {/* Partners Section */}
             <MaxWidthWrapper>
                 <AnimationContainer delay={0.4}>
@@ -124,7 +126,6 @@ const EnterprisePage = async () => {
                     </div>
                 </AnimationContainer>
             </MaxWidthWrapper>
-
             {/* Features Section */}
             <MaxWidthWrapper className="pt-10">
                 <AnimationContainer delay={0.1}>
@@ -147,7 +148,6 @@ const EnterprisePage = async () => {
                     </BentoGrid>
                 </AnimationContainer>
             </MaxWidthWrapper>
-
             {/* Process Section */}
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
@@ -181,7 +181,6 @@ const EnterprisePage = async () => {
                     ))}
                 </div>
             </MaxWidthWrapper>
-
             {/* Pricing Section */}
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
@@ -207,7 +206,6 @@ const EnterprisePage = async () => {
                     </div>
                 </AnimationContainer>
             </MaxWidthWrapper>
-
             {/* Testimonials Section */}
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
@@ -296,7 +294,6 @@ const EnterprisePage = async () => {
                     </div>
                 </div>
             </MaxWidthWrapper>
-
             {/* Use Cases Section */}
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
@@ -322,7 +319,7 @@ const EnterprisePage = async () => {
                                     <p className="text-muted-foreground flex-grow mb-4">{useCase.description}</p>
                                     <div className="mt-auto">
                                         <Button variant="outline" size="sm" asChild>
-                                            <Link href={useCase.link}>
+                                            <Link href={useCase.link} legacyBehavior>
                                                 Learn more
                                                 <ArrowRightIcon className="w-4 h-4 ml-2" />
                                             </Link>
@@ -334,7 +331,6 @@ const EnterprisePage = async () => {
                     ))}
                 </div>
             </MaxWidthWrapper>
-
             {/* CTA Section */}
             <MaxWidthWrapper className="mt-20 max-w-[100vw] overflow-x-hidden scrollbar-hide">
                 <AnimationContainer delay={0.1}>

@@ -47,7 +47,6 @@ const PricingCards = () => {
                     <span className="z-20">Yearly</span>
                 </MotionTabTrigger>
             </TabsList>
-
             <TabsContent
                 value="monthly"
                 className="mx-auto grid w-full max-w-5xl grid-cols-1 flex-wrap gap-5 pt-6 md:gap-8 lg:grid-cols-3"
@@ -112,7 +111,7 @@ const PricingCards = () => {
                                 className={buttonVariants({
                                     className: plan.name === 'Pro' && 'bg-purple-500 text-white hover:bg-purple-500/80',
                                 })}
-                            >
+                                legacyBehavior>
                                 {plan.btn.text}
                             </Link>
                         </CardFooter>
@@ -194,7 +193,7 @@ const PricingCards = () => {
                                 className={buttonVariants({
                                     className: plan.name === 'Pro' && 'bg-purple-500 text-white hover:bg-purple-500/80',
                                 })}
-                            >
+                                legacyBehavior>
                                 {plan.btn.text}
                             </Link>
                         </CardFooter>

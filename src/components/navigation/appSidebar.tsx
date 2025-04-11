@@ -49,7 +49,7 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
                                     isCollapsed && 'justify-center',
                                 )}
                             >
-                                <Link href={item.path}>
+                                <Link href={item.path} legacyBehavior>
                                     <Icon className="h-5 w-5" />
                                     <span className={cn('text-sm font-medium', isCollapsed && 'hidden')}>
                                         {item.name}

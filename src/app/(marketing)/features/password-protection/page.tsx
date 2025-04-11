@@ -81,7 +81,7 @@ const LinkShorteningPage = () => {
                             </p>
                             <div className="mt-6">
                                 <Button asChild>
-                                    <Link href="/auth/sign-up" className="flex items-center">
+                                    <Link href="/auth/sign-up" className="flex items-center" legacyBehavior>
                                         Get started for free
                                         <ArrowRightIcon className="ml-2 h-4 w-4" />
                                     </Link>

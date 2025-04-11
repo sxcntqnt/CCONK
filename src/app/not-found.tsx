@@ -6,7 +6,6 @@ const NotFound = () => {
     return (
         <main className="relative flex flex-col items-center justify-center px-4">
             <Navbar />
-
             <div className="mx-auto flex h-screen flex-col items-center justify-center">
                 <div className="flex h-full flex-col items-center justify-center">
                     <span className="not-found rounded-md bg-gradient-to-br from-violet-400 to-purple-600 px-3.5 py-1 text-sm font-medium text-neutral-50">
@@ -21,12 +20,11 @@ const NotFound = () => {
                         </Link>
                         .
                     </p>
-                    <Link href="/">
+                    <Link href="/" legacyBehavior>
                         <Button className="mt-8">Back to homepage</Button>
                     </Link>
                 </div>
             </div>
-
             <Footer />
         </main>
     );
