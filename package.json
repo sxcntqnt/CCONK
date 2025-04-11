@@ -112,7 +112,6 @@
     "prettier-plugin-tailwindcss": "^0.6.11",
     "prisma": "^6.6.0",
     "react-leaflet": "^5.0.0",
-    "react-leaflet-draw": "^0.20.6",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "sonner": "^2.0.3",
