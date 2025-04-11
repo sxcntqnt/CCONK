@@ -1,23 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, FeatureGroup, ZoomControl } from 'react-leaflet';
-import { EditControl } from 'react-leaflet-draw';
-import { GeoJSON } from 'react-leaflet';
+import maplibregl from 'maplibre-gl';
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import GeofenceControls from './GeofenceControls';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-draw/dist/leaflet.draw.css';
-import L from 'leaflet';
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-const MAPBOX_ACCESS_TOKEN = 'YOUR_MAPBOX_ACCESS_TOKEN';
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+
 interface Geofence {
     id: string;
     name: string;
@@ -26,95 +15,163 @@ interface Geofence {
     color: string;
     createdAt: Date;
 }
+
 const GeofenceMap = () => {
     const [geofences, setGeofences] = useState<Geofence[]>([]);
     const [activeGeofence, setActiveGeofence] = useState<string | null>(null);
     const [editMode, setEditMode] = useState<boolean>(false);
-    const [mapCenter] = useState<[number, number]>([51.505, -0.09]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
-    const featureGroupRef = useRef<any>(null);
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-        }, 1000);
-        return () => clearTimeout(timer);
-    }, []);
+    const mapContainer = useRef<HTMLDivElement>(null);
+    const map = useRef<maplibregl.Map | null>(null);
+    const draw = useRef<MapboxDraw | null>(null);
+
     const colorPalette = ['#FF5F6D', '#47B881', '#4299E1', '#FFC107', '#9F7AEA', '#ED64A6'];
-    const getRandomColor = () => {
-        return colorPalette[Math.floor(Math.random() * colorPalette.length)];
-    };
-    const filteredGeofences = geofences.filter((geofence) =>
-        geofence.name.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-    const handleCreated = (e: any) => {
-        const { layerType, layer } = e;
-        if (layerType === 'polygon' || layerType === 'rectangle') {
+    const getRandomColor = () => colorPalette[Math.floor(Math.random() * colorPalette.length)];
+
+    useEffect(() => {
+        if (!mapContainer.current) return;
+
+        map.current = new maplibregl.Map({
+            container: mapContainer.current,
+            style: {
+                'version': 8,
+                'sources': {
+                    'osm-tiles': {
+                        'type': 'raster',
+                        'tiles': ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        'tileSize': 256,
+                        'attribution': '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }
+                },
+                'layers': [{
+                    'id': 'osm-tiles',
+                    'type': 'raster',
+                    'source': 'osm-tiles',
+                }]
+            },
+            center: [51.505, -0.09],
+            zoom: 13,
+        });
+
+        map.current.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+
+        // Initialize Mapbox Draw
+        draw.current = new MapboxDraw({
+            displayControlsDefault: false,
+            controls: {
+                polygon: false,
+                trash: false,
+            },
+        });
+        map.current.addControl(draw.current, 'top-right');
+
+        map.current.on('load', () => {
+            setIsLoading(false);
+        });
+
+        // Drawing events
+        map.current.on('draw.create', (e) => {
             const id = `geofence-${Date.now()}`;
             const color = getRandomColor();
-            layer.options.color = color;
-            layer.options.fillColor = color;
             const newGeofence: Geofence = {
                 id,
                 name: `Geofence ${geofences.length + 1}`,
-                geoJson: layer.toGeoJSON(),
+                geoJson: e.features[0],
                 color,
                 createdAt: new Date(),
             };
-            setGeofences((prev) => [...prev, newGeofence]);
+            setGeofences(prev => [...prev, newGeofence]);
             setActiveGeofence(id);
-        }
-    };
-    const handleEdited = (e: any) => {
-        const layers = e.layers.getLayers();
-        setGeofences((prev) => {
-            const updated = [...prev];
-            layers.forEach((layer: any) => {
-                const id = layer.options.id;
-                if (id) {
-                    const index = updated.findIndex((g) => g.id === id);
-                    if (index !== -1) {
-                        updated[index] = {
-                            ...updated[index],
-                            geoJson: layer.toGeoJSON(),
-                        };
-                    }
-                }
-            });
-            return updated;
+            draw.current?.changeMode('simple_select');
         });
-    };
-    const handleDeleted = (e: any) => {
-        const layers = e.layers.getLayers();
-        setGeofences((prev) => {
-            const remaining = prev.filter((geofence) => !layers.some((layer: any) => layer.options.id === geofence.id));
-            return remaining;
+
+        map.current.on('draw.update', (e) => {
+            const updatedFeature = e.features[0];
+            setGeofences(prev =>
+                prev.map(g =>
+                    g.id === updatedFeature.id ? { ...g, geoJson: updatedFeature } : g
+                )
+            );
         });
-        if (activeGeofence) {
-            const deletedLayer = layers.find((layer: any) => layer.options.id === activeGeofence);
-            if (deletedLayer) {
-                setActiveGeofence(null);
+
+        map.current.on('draw.delete', (e) => {
+            const deletedIds = e.features.map((f: any) => f.id);
+            setGeofences(prev => prev.filter(g => !deletedIds.includes(g.id)));
+            if (deletedIds.includes(activeGeofence)) setActiveGeofence(null);
+        });
+
+        return () => {
+            map.current?.remove();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!map.current || isLoading) return;
+
+        geofences.forEach(g => {
+            if (map.current?.getLayer(g.id)) {
+                map.current?.removeLayer(g.id);
             }
+            if (map.current?.getSource(g.id)) {
+                map.current?.removeSource(g.id);
+            }
+        });
+
+        geofences.forEach(geofence => {
+            map.current?.addSource(geofence.id, {
+                type: 'geojson',
+                data: geofence.geoJson,
+            });
+
+            map.current?.addLayer({
+                id: geofence.id,
+                type: 'fill',
+                source: geofence.id,
+                paint: {
+                    'fill-color': geofence.color,
+                    'fill-opacity': activeGeofence === geofence.id ? 0.5 : 0.3,
+                    'fill-outline-color': geofence.color,
+                },
+            });
+
+            map.current?.on('click', geofzaamce.id, () => {
+                setActiveGeofence(geofence.id);
+            });
+        });
+    }, [geofences, activeGeofence, isLoading]);
+
+    const startDrawing = (mode: 'draw_rectangle' | 'draw_polygon') => {
+        if (draw.current && editMode) {
+            draw.current.changeMode(mode);
         }
     };
+
     const handleNameChange = (id: string, name: string) => {
-        setGeofences((prev) =>
-            prev.map((geofence) =>
-                geofence.id === id
-                    ? {
-                          ...geofence,
-                          name,
-                      }
-                    : geofence,
-            ),
+        setGeofences(prev =>
+            prev.map(geofence =>
+                geofence.id === id ? { ...geofence, name } : geofence
+            )
         );
     };
+
     const handleDeleteGeofence = (id: string) => {
-        setGeofences((prev) => prev.filter((g) => g.id !== id));
+        setGeofences(prev => prev.filter(g => g.id !== id));
         if (activeGeofence === id) {
             setActiveGeofence(null);
         }
+        if (map.current?.getLayer(id)) {
+            map.current?.removeLayer(id);
+        }
+        if (map.current?.getSource(id)) {
+            map.current?.removeSource(id);
+        }
     };
+
+    const filteredGeofences = geofences.filter(geofence =>
+        geofence.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full bg-background">
@@ -125,80 +182,11 @@ const GeofenceMap = () => {
             </div>
         );
     }
+
     return (
         <div className="flex flex-col md:flex-row h-full bg-background">
             <div className="w-full md:w-3/4 h-3/4 md:h-full relative">
-                <MapContainer
-                    center={mapCenter}
-                    zoom={13}
-                    zoomControl={false}
-                    className="h-full w-full"
-                    style={{
-                        background: '#242424',
-                    }}
-                >
-                    <ZoomControl position="bottomright" />
-                    <TileLayer
-                        attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
-                        url={`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=${MAPBOX_ACCESS_TOKEN}`}
-                        tileSize={512}
-                        zoomOffset={-1}
-                        maxZoom={18}
-                    />
-                    {filteredGeofences.map((geofence) => (
-                        <GeoJSON
-                            key={geofence.id}
-                            data={geofence.geoJson}
-                            pathOptions={{
-                                color: geofence.color,
-                                fillColor: geofence.color,
-                                fillOpacity: 0.3,
-                                weight: activeGeofence === geofence.id ? 3 : 2,
-                                opacity: activeGeofence === geofence.id ? 1 : 0.8,
-                            }}
-                            eventHandlers={{
-                                click: () => setActiveGeofence(geofence.id),
-                            }}
-                        />
-                    ))}
-                    <FeatureGroup ref={featureGroupRef}>
-                        <EditControl
-                            position="topright"
-                            onCreated={handleCreated}
-                            onEdited={handleEdited}
-                            onDeleted={handleDeleted}
-                            draw={{
-                                rectangle: {
-                                    shapeOptions: {
-                                        color: getRandomColor(),
-                                        fillOpacity: 0.3,
-                                    },
-                                },
-                                polygon: {
-                                    shapeOptions: {
-                                        color: getRandomColor(),
-                                        fillOpacity: 0.3,
-                                    },
-                                    allowIntersection: false,
-                                    drawError: {
-                                        color: '#e1e4e8',
-                                        message: '<strong>Error:</strong> Shape edges cannot cross!',
-                                    },
-                                    showArea: true,
-                                },
-                                circle: false,
-                                circlemarker: false,
-                                marker: false,
-                                polyline: false,
-                            }}
-                            edit={{
-                                featureGroup: featureGroupRef.current,
-                                remove: true,
-                                edit: true,
-                            }}
-                        />
-                    </FeatureGroup>
-                </MapContainer>
+                <div ref={mapContainer} className="h-full w-full" />
             </div>
             <GeofenceControls
                 geofences={filteredGeofences}
@@ -210,8 +198,10 @@ const GeofenceMap = () => {
                 onDelete={handleDeleteGeofence}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                startDrawing={startDrawing}
             />
         </div>
     );
 };
+
 export default GeofenceMap;
