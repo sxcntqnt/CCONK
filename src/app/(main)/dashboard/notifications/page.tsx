@@ -67,7 +67,9 @@ export default async function NotificationsPage() {
                                     {notification.type === 'DRIVER_ARRIVAL' ? 'Driver Arrival' : notification.type}
                                 </CardTitle>
                                 <Badge variant="outline">
-                                    {formatDistanceToNow(new Date(notification.sentAt), { addSuffix: true })}
+                                    {notification.sentAt
+                                        ? formatDistanceToNow(new Date(notification.sentAt), { addSuffix: true })
+                                        : 'Unknown time'}
                                 </Badge>
                             </CardHeader>
                             <CardContent>

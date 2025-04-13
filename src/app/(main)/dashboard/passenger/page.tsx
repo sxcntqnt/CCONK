@@ -1,10 +1,10 @@
 // src/app/(main)/dashboard/passenger/page.tsx
 import { currentUser } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
 import { db } from '@/lib/prisma';
 import PassengerDashboardClient from './client';
 import { ROLES, Role } from '@/utils/constants/roles';
 import { Prisma } from '@prisma/client';
-import DashboardLayout from '../layout';
 
 type Passenger = Prisma.UserGetPayload<{
     include: {
@@ -19,14 +19,6 @@ type Bus = Prisma.BusGetPayload<{}>;
 interface UserData {
     id: string;
     firstName: string | null;
-}
-
-interface DashboardProps {
-    userData: UserData | null;
-    passenger: Passenger | null;
-    buses: Bus[];
-    error: string | null;
-    role: Role;
 }
 
 async function withRetry<T>(operation: () => Promise<T>, maxAttempts: number = 3, delayMs: number = 1000): Promise<T> {
@@ -73,24 +65,12 @@ async function getPassengerData(clerkId: string): Promise<{ passenger: Passenger
     return { passenger, buses };
 }
 
-export default async function Page() {
+export default async function PassengerPage() {
     const user = await currentUser();
-    if (!user) {
-        redirect('/auth/sign-in'); // Redundant due to parent, but kept as safety net
-    }
+    const rawRole = (user?.unsafeMetadata.role as string | undefined)?.toUpperCase().trim() as Role | undefined;
+    const role = rawRole || ROLES.PASSENGER;
 
-    const userData: UserData = {
-        id: user.id,
-        firstName: user.firstName || 'Passenger',
-    };
-    // Extract role from publicMetadata
-    const rawRole = user.unsafeMetadata.role as string | undefined; // Changed from publicMetadata
-    const role = rawRole?.toUpperCase().trim() as Role | undefined;
-
-    if (!role) {
-        redirect('/');
-    }
-
+    // Redirect non-PASSENGER roles
     switch (role) {
         case ROLES.PASSENGER:
             break;
@@ -102,31 +82,32 @@ export default async function Page() {
             redirect('/');
     }
 
+    const userData: UserData = {
+        id: user.id,
+        firstName: user.firstName || 'Passenger',
+    };
+
     try {
         const { passenger, buses } = await getPassengerData(user.id);
         return (
-            <DashboardLayout role={role}>
-                <PassengerDashboardClient
-                    userData={userData}
-                    passenger={passenger}
-                    buses={buses}
-                    error={null}
-                    role={role}
-                />
-            </DashboardLayout>
+            <PassengerDashboardClient
+                userData={userData}
+                passenger={passenger}
+                buses={buses}
+                error={null}
+                role={role}
+            />
         );
     } catch (error) {
         console.error('Error fetching passenger data:', error);
         return (
-            <DashboardLayout role={role}>
-                <PassengerDashboardClient
-                    userData={userData}
-                    passenger={null}
-                    buses={[]}
-                    error={error instanceof Error ? error.message : 'Failed to load dashboard data'}
-                    role={role}
-                />
-            </DashboardLayout>
+            <PassengerDashboardClient
+                userData={userData}
+                passenger={null}
+                buses={[]}
+                error={error instanceof Error ? error.message : 'Failed to load dashboard data'}
+                role={role}
+            />
         );
     }
 }

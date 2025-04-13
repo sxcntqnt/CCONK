@@ -58,6 +58,15 @@ export async function initializeAllBuses() {
     await ensureBusExists();
 }
 
+export async function getBus(busId: number) {
+    const bus = await db.bus.findUnique({
+        where: { id: busId },
+        select: { id: true, licensePlate: true, capacity: true },
+    });
+    if (!bus) throw new Error('Bus not found');
+    return bus;
+}
+
 export async function getBuses(
     page: number = 1,
     pageSize: number = 10,

@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "app/generated/prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Owner {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  buses     Bus[]
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  clerkId       String         @unique
+  name          String
+  email         String         @unique
+  image         String?
+  phoneNumber   String?
+  role          String         @default("passenger")
+  driver        Driver?
+  notifications Notification[]
+  owner         Owner?
+  payments      Payment[]
+  reservations  Reservation[]
+}
+
+model Driver {
+  id            Int            @id @default(autoincrement())
+  userId        Int            @unique
+  busId         Int?
+  licenseNumber String         @unique
+  status        String         @default("active")
+  hireDate      DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  bus           Bus?           @relation(fields: [busId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  notifications Notification[]
+  trips         Trip[]
+
+  @@index([userId])
+  @@index([busId])
+  @@index([licenseNumber])
+}
+
+model Bus {
+  id           Int      @id @default(autoincrement())
+  licensePlate String   @unique
+  capacity     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  category     String
+  ownerId      Int?
+  owner        Owner?   @relation(fields: [ownerId], references: [id])
+  drivers      Driver[]
+  seats        Seat[]
+  trips        Trip[]
+
+  @@index([licensePlate])
+  @@index([ownerId])
+}
+
+model Trip {
+  id            Int            @id @default(autoincrement())
+  busId         Int
+  driverId      Int?
+  departureCity String
+  arrivalCity   String
+  departureTime DateTime
+  arrivalTime   DateTime?
+  status        String         @default("scheduled")
+  isFullyBooked Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  notifications Notification[]
+  reservations  Reservation[]
+  bus           Bus            @relation(fields: [busId], references: [id])
+  driver        Driver?        @relation(fields: [driverId], references: [id])
+
+  @@index([busId])
+  @@index([driverId])
+  @@index([departureTime])
+}
+
+model Seat {
+  id           Int           @id @default(autoincrement())
+  busId        Int
+  seatNumber   Int
+  category     String
+  price        Float
+  row          Int
+  column       Int
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  reservations Reservation[]
+  bus          Bus           @relation(fields: [busId], references: [id])
+
+  @@unique([busId, seatNumber])
+  @@index([busId])
+  @@index([category])
+}
+
+model Reservation {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tripId    Int
+  seatId    Int
+  status    String   @default("pending")
+  bookedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  paymentId Int?     @unique
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+  seat      Seat     @relation(fields: [seatId], references: [id])
+  trip      Trip     @relation(fields: [tripId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([tripId, seatId])
+  @@index([userId])
+  @@index([tripId])
+  @@index([seatId])
+  @@index([paymentId])
+}
+
+model Payment {
+  id            Int          @id @default(autoincrement())
+  userId        Int
+  amount        Float
+  transactionId String       @unique
+  phoneNumber   String
+  status        String       @default("pending")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id])
+  reservation   Reservation?
+
+  @@index([userId])
+  @@index([transactionId])
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tripId    Int?
+  type      String
+  message   String
+  status    String    @default("pending")
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+  driverId  Int?
+  driver    Driver?   @relation(fields: [driverId], references: [id])
+  trip      Trip?     @relation(fields: [tripId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([tripId])
+  @@index([type])
+}

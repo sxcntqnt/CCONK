@@ -44,12 +44,12 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
                             <SidebarMenuButton
                                 asChild
                                 className={cn(
-                                    'w-full text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-300',
-                                    isActive && 'bg-gradient-to-r from-green-500 to-green-600 text-white',
+                                    'w-full font-inter text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-300 ease-in-out',
+                                    isActive && 'bg-sidebar-primary text-sidebar-primary-foreground',
                                     isCollapsed && 'justify-center',
                                 )}
                             >
-                                <Link href={item.path} legacyBehavior>
+                                <Link href={item.path}>
                                     <Icon className="h-5 w-5" />
                                     <span className={cn('text-sm font-medium', isCollapsed && 'hidden')}>
                                         {item.name}
@@ -60,7 +60,7 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
                         {isCollapsed && (
                             <TooltipContent
                                 side="right"
-                                className="bg-neutral-900/80 text-muted-foreground border border-opacity-40 backdrop-blur-md"
+                                className="bg-popover text-sidebar-foreground border-sidebar-border/40 backdrop-blur-md font-inter text-sm"
                             >
                                 {item.name}
                             </TooltipContent>
@@ -75,17 +75,20 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
         <TooltipProvider>
             <Sidebar
                 className={cn(
-                    'bg-sidebar text-sidebar-foreground border-r border-sidebar shadow-lg backdrop-blur-md transition-all duration-300 relative shrink-0',
+                    'bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-lg backdrop-blur-md transition-all duration-300 ease-in-out relative shrink-0 font-inter',
                     isCollapsed ? 'w-16' : 'w-64',
                     className,
                 )}
             >
                 <SidebarContent className="flex flex-col h-full">
+                    {/* Main Items */}
                     <SidebarGroup className="flex-1 pt-4">
                         <SidebarMenu>
                             {mainItems.map((item, index) => renderNavItem(item, 0.1 + index * 0.05))}
                         </SidebarMenu>
                     </SidebarGroup>
+
+                    {/* Bottom Items (Logout) */}
                     <SidebarGroup className="mt-auto pb-4">
                         <SidebarMenu>
                             {bottomItems.map((item, index) => renderNavItem(item, 0.1 + index * 0.05))}
@@ -96,14 +99,14 @@ const AppSidebar = ({ role, className }: AppSidebarProps) => {
                 <AnimationContainer
                     delay={0.6}
                     className={cn(
-                        'absolute top-1/2 transform -translate-y-1/2 z-20',
+                        'absolute top-1/2 transform -translate-y-1/2 z-20', // Removed animate-blink
                         isCollapsed ? 'right-[-1rem]' : 'right-[-1.5rem]',
                     )}
                 >
                     <button
                         onClick={() => setIsCollapsed((prev) => !prev)}
                         className={cn(
-                            'flex items-center justify-center rounded-full bg-sidebar/80 hover:bg-sidebar-accent text-sidebar-foreground hover:text-sidebar-accent-foreground border border-sidebar/40 backdrop-blur-md transition-all duration-300 shadow-md',
+                            'flex items-center justify-center rounded-full bg-sidebar/80 hover:bg-sidebar-accent text-sidebar-foreground hover:text-sidebar-accent-foreground border border-sidebar-border/40 backdrop-blur-md transition-all duration-300 ease-in-out shadow-md',
                             isCollapsed ? 'w-8 h-8' : 'w-6 h-6',
                         )}
                     >

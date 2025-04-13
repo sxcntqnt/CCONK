@@ -50,9 +50,16 @@ export const getNavItemsByRole = (role: 'OWNER' | 'PASSENGER' | 'DRIVER'): NavIt
             return navItems; // Owner sees all items
         case 'PASSENGER':
             return navItems.filter((item) =>
-                ['Dashboard', 'Reservations', 'Geofence', 'Tracking', 'Change Password', 'Settings', 'Logout'].includes(
-                    item.name,
-                ),
+                [
+                    'Dashboard',
+                    'Vehicle',
+                    'Reservations',
+                    'Geofence',
+                    'Tracking',
+                    'Change Password',
+                    'Settings',
+                    'Logout',
+                ].includes(item.name),
             );
         case 'DRIVER':
             return navItems.filter((item) =>

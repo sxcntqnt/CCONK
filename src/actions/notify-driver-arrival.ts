@@ -6,6 +6,11 @@ import { currentUser } from '@clerk/nextjs/server';
 import { Knock } from '@knocklabs/node';
 import { db } from '@/lib';
 import { ROLES, Role } from '@/utils/constants/roles'; // Updated import
+import { Prisma, Reservation, User } from '@prisma/client';
+
+interface ReservationWithUser extends Reservation {
+    user: Pick<User, 'clerkId' | 'name' | 'email'> | null;
+}
 
 // Types
 interface Recipient {
@@ -89,7 +94,7 @@ async function fetchPassengers(tripId: number): Promise<Recipient[]> {
 
     if (!reservations.length) throw new Error('No confirmed passengers found for this trip');
 
-    return reservations.map((reservation) => {
+    return reservations.map((reservation: Reservation & { user: Pick<User, 'clerkId' | 'name' | 'email'> | null }) => {
         const user = reservation.user;
         const fallbackId = `passenger_${reservation.id}`;
         const fallbackName = `Passenger ${reservation.seatId}`;

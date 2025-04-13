@@ -95,11 +95,15 @@ const Navbar = () => {
                                                 </NavigationMenuContent>
                                             </>
                                         ) : (
-                                            <Link href={link.href} passHref>
-                                                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                                            <NavigationMenuLink asChild>
+                                                <Link
+                                                    href={link.href}
+                                                    passHref
+                                                    className={navigationMenuTriggerStyle()}
+                                                >
                                                     {link.title}
-                                                </NavigationMenuLink>
-                                            </Link>
+                                                </Link>
+                                            </NavigationMenuLink>
                                         )}
                                     </NavigationMenuItem>
                                 ))}
@@ -109,60 +113,23 @@ const Navbar = () => {
 
                     <div className="hidden items-center lg:flex">
                         {user ? (
-                            <div className="flex items-center">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className={cn(buttonVariants({ size: 'sm', variant: 'ghost' }), 'relative')}
-                                        >
-                                            <Bell className="h-5 w-5" />
-                                            {/* Optional: Notification badge */}
-                                            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-80 p-4">
-                                        <div className="space-y-4">
-                                            <h4 className="text-sm font-medium">Notifications</h4>
-                                            {/* Placeholder notifications */}
-                                            <div className="space-y-2">
-                                                <div className="rounded-md border p-2">
-                                                    <p className="text-sm">Trip #123 assigned to you.</p>
-                                                    <p className="text-xs text-muted-foreground">5 mins ago</p>
-                                                </div>
-                                                <div className="rounded-md border p-2">
-                                                    <p className="text-sm">Payment received: $50.</p>
-                                                    <p className="text-xs text-muted-foreground">1 hour ago</p>
-                                                </div>
-                                                <div className="rounded-md border p-2">
-                                                    <p className="text-sm">New passenger booked.</p>
-                                                    <p className="text-xs text-muted-foreground">2 hours ago</p>
-                                                </div>
-                                            </div>
-                                            <Link
-                                                href="/dashboard/notifications"
-                                                className={cn(
-                                                    buttonVariants({ variant: 'outline', size: 'sm' }),
-                                                    'w-full',
-                                                )}
-                                            >
-                                                View All Notifications
-                                            </Link>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
+                            <div className="flex items-center space-x-4">
+                                <Link href="/profile">
+                                    <Button variant="outline">Profile</Button>
+                                </Link>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        /* handle logout */
+                                    }}
+                                >
+                                    Logout
+                                </Button>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-x-4">
-                                <Link href="/auth/sign-in" className={buttonVariants({ size: 'sm', variant: 'ghost' })}>
-                                    Sign In
-                                </Link>
-                                <Link href="/auth/sign-up" className={buttonVariants({ size: 'sm' })}>
-                                    Get Started
-                                    <ZapIcon className="ml-1.5 size-3.5 fill-orange-500 text-orange-500" />
-                                </Link>
-                            </div>
+                            <Link href="/auth/sign-in">
+                                <Button variant="outline">Login</Button>
+                            </Link>
                         )}
                     </div>
 
@@ -173,34 +140,16 @@ const Navbar = () => {
     );
 };
 
-const ListItem = React.forwardRef<
-    React.ElementRef<'a'>,
-    React.ComponentPropsWithoutRef<'a'> & { title: string; icon: LucideIcon }
->(({ className, title, href, icon: Icon, children, ...props }, ref) => {
-    return (
-        <li>
-            <NavigationMenuLink asChild>
-                <Link
-                    href={href!}
-                    ref={ref}
-                    className={cn(
-                        'block select-none space-y-1 rounded-lg p-3 leading-none no-underline outline-none transition-all duration-100 ease-out hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
-                        className,
-                    )}
-                    {...props}
-                >
-                    <div className="flex items-center space-x-2 text-neutral-300">
-                        <Icon className="h-4 w-4" />
-                        <h6 className="text-sm font-medium !leading-none">{title}</h6>
-                    </div>
-                    <p title={children! as string} className="line-clamp-1 text-sm leading-snug text-muted-foreground">
-                        {children}
-                    </p>
-                </Link>
-            </NavigationMenuLink>
-        </li>
-    );
-});
-ListItem.displayName = 'ListItem';
+const ListItem = ({ title, href, icon, children }) => (
+    <li>
+        <NavigationMenuLink asChild>
+            <Link href={href} passHref className="flex items-center space-x-2 p-2 hover:bg-muted">
+                {icon && <span className="text-lg">{icon}</span>}
+                <span>{title}</span>
+            </Link>
+        </NavigationMenuLink>
+        {children && <p className="text-sm text-muted-foreground">{children}</p>}
+    </li>
+);
 
 export default Navbar;

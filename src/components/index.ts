@@ -6,9 +6,11 @@ import SignUpForm from './auth/signup-form';
 import { Icons } from './global/icons';
 import MaxWidthWrapper from './global/max-width-wrapper';
 import AnimationContainer from './global/animation-container';
+
 // navigation
 import Navbar from './navigation/navbar';
 import Footer from './navigation/footer';
+import AppSidebar from './navigation/appSidebar';
 
 // providers
 import Providers from './providers/providers';
@@ -31,6 +33,7 @@ export {
     AnimationContainer,
     Navbar,
     Footer,
+    AppSidebar,
     Providers,
     Sidebar,
     DashboardNavbar,

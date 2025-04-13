@@ -7,7 +7,7 @@ import { whitelist, WhitelistIP } from '@/utils/constants/whitelist';
 export default clerkMiddleware(
     async (auth, req) => {
         const url = req.nextUrl.pathname;
-        const paymentCallbackRoute = '/api/stk-callback';
+        const paymentCallbackRoute = '/api/webhooks/stk-callback';
 
         // IP validation only for payment callback route
         if (url === paymentCallbackRoute) {

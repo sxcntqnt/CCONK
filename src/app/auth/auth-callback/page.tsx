@@ -14,8 +14,9 @@ const AuthCallbackPage = () => {
             console.log('AuthCallbackPage - Running getAuthStatus');
             return await getAuthStatus();
         },
-        retry: 3, // Limited retries to avoid infinite loops
-        retryDelay: 500,
+        enabled: true,
+        retry: 5, // Limited retries to avoid infinite loops
+        retryDelay: 1000,
     });
 
     useEffect(() => {
