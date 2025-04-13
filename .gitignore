@@ -21,6 +21,7 @@
 /build
 .dockerignore
 prisma/migrations/
+prisma/app
 # misc
 .DS_Store
 *.pem
