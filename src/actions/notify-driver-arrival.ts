@@ -1,16 +1,10 @@
-// src/actions/notifyDriverArrival.ts
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { currentUser } from '@clerk/nextjs/server';
 import { Knock } from '@knocklabs/node';
-import { db } from '@/lib';
-import { ROLES, Role } from '@/utils/constants/roles'; // Updated import
-import { Prisma, Reservation, User } from '@prisma/client';
-
-interface ReservationWithUser extends Reservation {
-    user: Pick<User, 'clerkId' | 'name' | 'email'> | null;
-}
+import { db } from '@/lib'; // Use single import from '@/lib'
+import { ROLES } from '@/utils/constants/roles';
 
 // Types
 interface Recipient {
@@ -40,7 +34,6 @@ async function getAuthenticatedDriver() {
         include: { driver: true },
     });
 
-    // Use ROLES.DRIVER instead of Role.DRIVER
     if (!driver || driver.role !== ROLES.DRIVER || !driver.driver) {
         throw new Error('Authenticated user is not a driver');
     }
@@ -94,18 +87,24 @@ async function fetchPassengers(tripId: number): Promise<Recipient[]> {
 
     if (!reservations.length) throw new Error('No confirmed passengers found for this trip');
 
-    return reservations.map((reservation: Reservation & { user: Pick<User, 'clerkId' | 'name' | 'email'> | null }) => {
-        const user = reservation.user;
-        const fallbackId = `passenger_${reservation.id}`;
-        const fallbackName = `Passenger ${reservation.seatId}`;
-        const fallbackEmail = 'passenger@example.com';
+    return reservations.map(
+        (reservation: {
+            id: number;
+            seatId: number;
+            user: { clerkId: string; name: string | null; email: string | null } | null;
+        }) => {
+            const user = reservation.user;
+            const fallbackId = `passenger_${reservation.id}`;
+            const fallbackName = `Passenger ${reservation.seatId}`;
+            const fallbackEmail = 'passenger@example.com';
 
-        return {
-            id: user?.clerkId || fallbackId,
-            name: user?.name || fallbackName,
-            email: user?.email || fallbackEmail,
-        };
-    });
+            return {
+                id: user?.clerkId || fallbackId,
+                name: user?.name || fallbackName,
+                email: user?.email || fallbackEmail,
+            };
+        },
+    );
 }
 
 // Helper: Send and persist notification
@@ -134,7 +133,7 @@ async function sendArrivalNotification(
     // Send via Knock
     await knock.workflows.trigger('driver-arrived', {
         data: notificationData,
-        recipients: [driverRecipient, ...recipients],
+        recipients: recipients, // Exclude driverRecipient per your preference
     });
 
     // Persist notification in Prisma

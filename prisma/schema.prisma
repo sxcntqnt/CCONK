@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "app/generated/prisma/client"
+  output   = "../src/lib/prisma/client"
 }
 
 datasource db {
@@ -9,12 +9,15 @@ datasource db {
 }
 
 model Owner {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-  buses     Bus[]
-  user      User     @relation(fields: [userId], references: [id])
+  id             Int             @id @default(autoincrement())
+  userId         Int             @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  buses          Bus[]
+  geofences      Geofence[]
+  incomeExpenses IncomeExpense[]
+  user           User            @relation(fields: [userId], references: [id])
+  reports        Report[]
 
   @@index([userId])
 }
@@ -28,6 +31,7 @@ model User {
   phoneNumber   String?
   role          String         @default("passenger")
   driver        Driver?
+  geofences     Geofence[]
   notifications Notification[]
   owner         Owner?
   payments      Payment[]
@@ -163,5 +167,50 @@ model Notification {
 
   @@index([userId])
   @@index([tripId])
+  @@index([type])
+}
+
+model Report {
+  id          Int      @id @default(autoincrement())
+  ownerId     Int
+  title       String
+  description String?
+  type        String
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       Owner    @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+  @@index([type])
+}
+
+model Geofence {
+  id         Int      @id @default(autoincrement())
+  ownerId    Int?
+  userId     Int?
+  name       String
+  h3Index    String
+  resolution Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  owner      Owner?   @relation(fields: [ownerId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([ownerId])
+  @@index([userId])
+  @@index([h3Index])
+}
+
+model IncomeExpense {
+  id          Int      @id @default(autoincrement())
+  ownerId     Int
+  type        String
+  amount      Float
+  description String?
+  recordedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       Owner    @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
   @@index([type])
 }

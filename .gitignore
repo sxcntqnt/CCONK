@@ -22,6 +22,8 @@
 .dockerignore
 prisma/migrations/
 prisma/app
+src/lib/prisma/client/*
+
 # misc
 .DS_Store
 *.pem
