@@ -10,14 +10,13 @@ import AnimationContainer from './global/animation-container';
 // navigation
 import Navbar from './navigation/navbar';
 import Footer from './navigation/footer';
-import AppSidebar from './navigation/appSidebar';
+import MobileNavbar from './navigation/mobile-navbar';
 
 // providers
 import Providers from './providers/providers';
 
 // dashboard
-import Sidebar from './dashboard/sidebar';
-import DashboardNavbar from './dashboard/dashboard-navbar';
+import AppSidebar from './dashboard/appSidebar';
 
 // pricing
 import PricingCards from './pricing-cards';
@@ -32,11 +31,10 @@ export {
     MaxWidthWrapper,
     AnimationContainer,
     Navbar,
+    MobileNavbar,
     Footer,
     AppSidebar,
     Providers,
-    Sidebar,
-    DashboardNavbar,
     PricingCards,
     Blogs,
 };

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import RealTimeTripUpdates from '@/lib/websocket/RTU';
 import { useClerk, useUser } from '@clerk/nextjs';
 import { Role } from '@/utils/constants/roles';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma/client';
 import { MaxWidthWrapper } from '@/components';
 import MagicCard from '@/components/ui/magic-card';
 import { Separator } from '@/components/ui/separator';

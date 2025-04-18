@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
 
-npm run prettier --fix --write # && npm run type-check
+npm run prettier --fix --write && #npm run type-check
 npx lint-staged
 

@@ -6,6 +6,7 @@ import { getSeats, getBuses, reserveSeats, resetReservations } from '@/lib/prism
 import { validatePhonePrefix } from '@/utils/constants/phone-constants';
 import { useStkPush } from '@/hooks/use-mpesa';
 import { toast } from 'sonner';
+import { matatuConfigs } from '@/utils/constants/matatuSeats';
 
 interface StkPushResponse {
     CheckoutRequestID: string;
@@ -32,10 +33,14 @@ interface StkPushResult {
     error?: string;
 }
 
+type MatatuCapacity = keyof typeof matatuConfigs;
+
 interface Bus {
     id: number;
     licensePlate: string;
-    capacity: number;
+    capacity: MatatuCapacity;
+    category: string;
+    imageUrl?: string;
 }
 
 interface SeatData {
@@ -287,26 +292,33 @@ const useBusReservation = () => {
                 throw new Error(paymentData.ResultDesc || 'Payment failed');
             }
 
-            const reservationResult = await reserveSeats(selectedSeats);
-            if (!reservationResult.success) {
-                toast.error(reservationResult.error || 'Reservation failed');
-                throw new Error(reservationResult.error || 'Reservation failed');
-            }
+            // Handle reservation with try-catch
+            try {
+                const reservationResult = await reserveSeats(selectedSeats);
+                if (!reservationResult.success) {
+                    toast.error('Reservation failed');
+                    throw new Error('Reservation failed');
+                }
 
-            setSeats((prev) => {
-                const updatedSeats = { ...prev };
-                selectedSeats.forEach((id) => {
-                    updatedSeats[id] = { ...updatedSeats[id], status: 'reserved' };
+                setSeats((prev) => {
+                    const updatedSeats = { ...prev };
+                    selectedSeats.forEach((id) => {
+                        updatedSeats[id] = { ...updatedSeats[id], status: 'reserved' };
+                    });
+                    return updatedSeats;
                 });
-                return updatedSeats;
-            });
 
-            setSelectedSeats([]);
-            toast.success(
-                `Payment confirmed! Reserved ${reservationResult.reservedCount} seats. ${paymentData.CustomerMessage}`,
-            );
-            setIsCheckoutModalOpen(false);
-            resetPayment();
+                setSelectedSeats([]);
+                toast.success(
+                    `Payment confirmed! Reserved ${reservationResult.reservedCount} seats. ${paymentData.CustomerMessage}`,
+                );
+                setIsCheckoutModalOpen(false);
+                resetPayment();
+            } catch (reservationErr) {
+                const errorMessage = reservationErr instanceof Error ? reservationErr.message : 'Reservation failed';
+                toast.error(errorMessage);
+                throw new Error(errorMessage);
+            }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Checkout failed';
             let errorType: ReservationError['type'] = 'unknown';
@@ -336,6 +348,7 @@ const useBusReservation = () => {
         stkQueryLoading,
         resetPayment,
     ]);
+
     const handleReset = async () => {
         if (!selectedBusId) {
             setError({ message: 'No bus selected to reset', type: 'validation' });
@@ -347,8 +360,8 @@ const useBusReservation = () => {
         try {
             const resetResult = await resetReservations(selectedBusId);
             if (!resetResult.success) {
-                toast.error(resetResult.error || 'Reset failed');
-                throw new Error(resetResult.error || 'Reset failed');
+                toast.error('Reset failed');
+                throw new Error('Reset failed');
             }
             await loadSeats();
             setSelectedSeats([]);

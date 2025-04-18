@@ -1,7 +1,7 @@
 // src/app/(main)/dashboard/layout.tsx
 import React from 'react';
 import { Navbar, Footer } from '@/components';
-import AppSidebar from '@/components/navigation/appSidebar';
+import AppSidebar from '@/components/dashboard/appSidebar';
 import { cn } from '@/utils';
 import { Role, ROLES } from '@/utils/constants/roles';
 import { currentUser } from '@clerk/nextjs/server';

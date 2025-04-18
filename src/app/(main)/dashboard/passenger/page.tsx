@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { db } from '@/lib/prisma';
 import PassengerDashboardClient from './client';
 import { ROLES, Role } from '@/utils/constants/roles';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma/client';
 
 type Passenger = Prisma.UserGetPayload<{
     include: {
@@ -67,7 +67,13 @@ async function getPassengerData(clerkId: string): Promise<{ passenger: Passenger
 
 export default async function PassengerPage() {
     const user = await currentUser();
-    const rawRole = (user?.unsafeMetadata.role as string | undefined)?.toUpperCase().trim() as Role | undefined;
+
+    // Redirect to sign-in if user is not authenticated
+    if (!user) {
+        redirect('/auth/sign-in');
+    }
+
+    const rawRole = (user.unsafeMetadata.role as string | undefined)?.toUpperCase().trim() as Role | undefined;
     const role = rawRole || ROLES.PASSENGER;
 
     // Redirect non-PASSENGER roles

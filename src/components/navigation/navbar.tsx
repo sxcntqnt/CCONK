@@ -1,3 +1,4 @@
+// src/components/navigation/navbar.tsx
 'use client';
 
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -10,15 +11,23 @@ import {
     NavigationMenuTrigger,
     navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'; // Add Popover components
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn, NAV_LINKS } from '@/utils';
 import { useClerk } from '@clerk/nextjs';
-import { Bell, LucideIcon, ZapIcon } from 'lucide-react'; // Add Bell icon
+import { Bell, LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import MaxWidthWrapper from '../global/max-width-wrapper';
 import MobileNavbar from './mobile-navbar';
 import AnimationContainer from '../global/animation-container';
+
+// Define MenuItem type based on NAV_LINKS.menu structure
+interface MenuItem {
+    title: string;
+    href: string;
+    icon?: React.ReactNode; // Supports LucideIcon or other JSX elements
+    tagline?: string;
+}
 
 const Navbar = () => {
     const { user } = useClerk();
@@ -87,9 +96,8 @@ const Navbar = () => {
                                                                 title={menuItem.title}
                                                                 href={menuItem.href}
                                                                 icon={menuItem.icon}
-                                                            >
-                                                                {menuItem.tagline}
-                                                            </ListItem>
+                                                                tagline={menuItem.tagline}
+                                                            />
                                                         ))}
                                                     </ul>
                                                 </NavigationMenuContent>
@@ -140,7 +148,8 @@ const Navbar = () => {
     );
 };
 
-const ListItem = ({ title, href, icon, children }) => (
+// Define ListItem component with typed props
+const ListItem = ({ title, href, icon, tagline }: MenuItem) => (
     <li>
         <NavigationMenuLink asChild>
             <Link href={href} passHref className="flex items-center space-x-2 p-2 hover:bg-muted">
@@ -148,7 +157,7 @@ const ListItem = ({ title, href, icon, children }) => (
                 <span>{title}</span>
             </Link>
         </NavigationMenuLink>
-        {children && <p className="text-sm text-muted-foreground">{children}</p>}
+        {tagline && <p className="text-sm text-muted-foreground">{tagline}</p>}
     </li>
 );
 

@@ -23,6 +23,8 @@ interface Bus {
     id: number;
     licensePlate: string;
     capacity: MatatuCapacity;
+    category: string;
+    imageUrl?: string;
 }
 
 interface SeatData {
@@ -50,7 +52,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 export default function ReservePage() {
     const {
-        buses: reservationBuses,
+        buses,
         selectedBusId,
         seats,
         selectedSeats,
@@ -75,16 +77,12 @@ export default function ReservePage() {
         handlePrevPage,
     } = useBusReservation();
 
-    const buses: Bus[] = (reservationBuses || []).map((bus) => ({
-        id: bus.id,
-        licensePlate: bus.licensePlate || 'N/A',
-        capacity: (bus.capacity || 14) as MatatuCapacity,
-    }));
-
     const selectedBus = buses.find((bus) => bus.id === selectedBusId) || {
         id: 0,
         licensePlate: 'N/A',
         capacity: 14 as MatatuCapacity,
+        category: 'N/A',
+        imageUrl: undefined,
     };
     const busCapacity = selectedBus.capacity;
     const layout = matatuConfigs[busCapacity]?.layout || [];
@@ -175,7 +173,7 @@ export default function ReservePage() {
                 {selectedBusId && seatCount > 0 && layout.length > 0 ? (
                     <div className="mb-6">
                         <DynamicSeatLayout
-                            title={selectedBus.licensePlate}
+                            title={selectedBus.category} // Use category instead of licensePlate
                             seats={seatsForLayout}
                             layout={layout}
                             onSeatClick={handleNumericSeatClick}
@@ -183,6 +181,13 @@ export default function ReservePage() {
                             className="mt-2"
                         />
                         <p className="text-gray-300 text-center mt-1">Seats: {seatCount}</p>
+                        {selectedBus.imageUrl && (
+                            <img
+                                src={selectedBus.imageUrl}
+                                alt={selectedBus.category}
+                                className="mt-4 mx-auto w-48 h-48 object-cover rounded-md"
+                            />
+                        )}
                     </div>
                 ) : (
                     <p className="text-gray-400 text-center mb-6">
@@ -234,7 +239,9 @@ export default function ReservePage() {
                         <div className="py-4">
                             <p>Please review your Reservation details:</p>
                             <ul className="mt-2 space-y-2">
-                                <li>Bus: {selectedBus.licensePlate}</li>
+                                <li>
+                                    Bus: {selectedBus.category} ({selectedBus.licensePlate})
+                                </li>
                                 <li>Seats: {selectedSeats.map((id) => seats[id]?.label || id).join(', ') || 'None'}</li>
                                 <li>Total: {total}/=</li>
                                 <li>Phone: {phoneNumber}</li>
@@ -402,7 +409,7 @@ const BusSelectionCard = ({
                     {buses.length === 0 && <option value="">No buses available</option>}
                     {buses.map((bus) => (
                         <option key={bus.id} value={bus.id}>
-                            {bus.licensePlate} - {bus.capacity} Seats
+                            {bus.category} ({bus.licensePlate})
                         </option>
                     ))}
                 </select>

@@ -1,4 +1,9 @@
-import { BarChart3Icon, FolderOpenIcon, WandSparklesIcon } from 'lucide-react';
+import { BarChart3Icon, LineChartIcon, FolderOpenIcon, WandSparklesIcon } from 'lucide-react';
+import { SewingPinIcon, BellIcon, BarChartIcon } from '@radix-ui/react-icons';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import Image from 'next/image';
 
 export const DEFAULT_AVATAR_URL =
     'https://api.dicebear.com/8.x/initials/svg?backgroundType=gradientLinear&backgroundRotation=0,360&seed=';
@@ -7,27 +12,27 @@ export const PAGINATION_LIMIT = 10;
 
 export const COMPANIES = [
     {
-        name: 'Asana',
+        name: 'SUPERMETRO',
         logo: '/assets/company-01.svg',
     },
     {
-        name: 'Tidal',
+        name: 'NICCO',
         logo: '/assets/company-02.svg',
     },
     {
-        name: 'Innovaccer',
+        name: 'RONGAO',
         logo: '/assets/company-03.svg',
     },
     {
-        name: 'Linear',
+        name: 'BURUSACCO',
         logo: '/assets/company-04.svg',
     },
     {
-        name: 'Raycast',
+        name: 'UMOINNER',
         logo: '/assets/company-05.svg',
     },
     {
-        name: 'Labelbox',
+        name: 'FORWARD',
         logo: '/assets/company-06.svg',
     },
 ] as const;
@@ -140,5 +145,141 @@ export const REVIEWS = [
         avatar: 'https://randomuser.me/api/portraits/men/5.jpg',
         rating: 5,
         review: "This app has transformed my workflow. Managing and analyzing links is now a breeze. I can't imagine working without it.",
+    },
+] as const;
+
+export const MATATU_PARTNERS = [
+    {
+        name: 'Nairobi Trans',
+        logo: '/assets/partners/nairobi-trans.png',
+    },
+    {
+        name: 'City Shuttle',
+        logo: '/assets/partners/city-shuttle.png',
+    },
+    {
+        name: 'Super Metro',
+        logo: '/assets/partners/super-metro.png',
+    },
+    {
+        name: 'KBS',
+        logo: '/assets/partners/kbs.png',
+    },
+] as const;
+
+export const FLAM_FEATURES = [
+    {
+        Icon: SewingPinIcon,
+        name: 'Real-Time Tracking',
+        description: 'Monitor matatu locations live on an interactive map.',
+        href: '/dashboard',
+        cta: 'Try Now',
+        className: 'col-span-1 md:col-span-2',
+        background: '/assets/features/tracking.png', // String path, no JSX
+    },
+    {
+        Icon: LineChartIcon,
+        name: 'Route Optimization',
+        description: 'Find the fastest routes to save time and fuel.',
+        href: '/routes',
+        cta: 'Explore Routes',
+        className: 'col-span-1',
+        background: '/assets/features/routes.png',
+    },
+    {
+        Icon: BellIcon,
+        name: 'Smart Notifications',
+        description: 'Get alerts for arrivals, delays, and more.',
+        href: '/notifications',
+        cta: 'Set Alerts',
+        className: 'col-span-1',
+        background: '/assets/features/notifications.png',
+    },
+    {
+        Icon: BarChart3Icon,
+        name: 'Fleet Analytics',
+        description: 'Analyze performance and improve operations.',
+        href: '/analytics',
+        cta: 'View Insights',
+        className: 'col-span-1 md:col-span-2',
+        background: '/assets/features/analytics.png',
+    },
+] as const;
+
+export const TESTIMONIALS = [
+    {
+        name: 'John Mwangi',
+        userType: 'Commuter',
+        testimony: 'FLAM has made my daily commute so much easier. I always know when the matatu is arriving!',
+        rating: 5,
+    },
+    {
+        name: 'Grace Wanjiku',
+        userType: 'Matatu Operator',
+        testimony: 'The analytics dashboard helps me optimize routes and increase profits.',
+        rating: 4,
+    },
+    {
+        name: 'Peter Kamau',
+        userType: 'Commuter',
+        testimony: 'Real-time tracking is a game-changer. No more waiting blindly at the bus stop.',
+        rating: 5,
+    },
+    {
+        name: 'Mary Achieng',
+        userType: 'Commuter',
+        testimony: 'Notifications keep me updated on delays, so I can plan better.',
+        rating: 4,
+    },
+    {
+        name: 'David Otieno',
+        userType: 'Matatu Operator',
+        testimony: 'FLAM’s fleet management tools have streamlined our operations.',
+        rating: 5,
+    },
+    {
+        name: 'Sarah Njeri',
+        userType: 'Commuter',
+        testimony: 'I love how easy it is to find the fastest route with FLAM.',
+        rating: 4,
+    },
+    {
+        name: 'James Njoroge',
+        userType: 'Commuter',
+        testimony: 'The app is user-friendly and saves me time every day.',
+        rating: 5,
+    },
+    {
+        name: 'Esther Muthoni',
+        userType: 'Matatu Operator',
+        testimony: 'FLAM helps us keep passengers happy with timely updates.',
+        rating: 4,
+    },
+    {
+        name: 'Michael Omondi',
+        userType: 'Commuter',
+        testimony: 'Best app for matatu tracking in Nairobi!',
+        rating: 5,
+    },
+] as const;
+
+export const FLAM_USE_CASES = [
+    {
+        icon: SewingPinIcon,
+        title: 'Track Your Matatu',
+        description: 'Enter your route and see real-time locations of all matatus on your selected path.',
+        link: '/dashboard',
+    },
+    {
+        icon: LineChartIcon,
+        title: 'Optimize Your Journey',
+        description: 'Get recommendations for fastest routes and estimated arrival times.',
+        link: '/routes',
+    },
+    {
+        icon: BellIcon,
+        title: 'Stay Informed',
+        description: 'Receive notifications about arrivals, delays, and changes to your usual routes.',
+        link: '/notifications',
     },
 ] as const;

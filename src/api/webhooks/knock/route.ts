@@ -8,22 +8,25 @@ const handler = createWebhooksHandler({
     onUserCreated: async (payload: UserJSON) => {
         await knock.users.identify(payload.id, {
             name: payload.first_name || '',
-            email: payload.email_addresses.find((email) => email.id === payload.primary_email_address_id)
-                ?.email_address,
+            email:
+                payload.email_addresses.find((email) => email.id === payload.primary_email_address_id)?.email_address ||
+                '',
         });
     },
     onUserUpdated: async (payload: UserJSON) => {
         await knock.users.identify(payload.id, {
             name: payload.first_name || '',
-            email: payload.email_addresses.find((email) => email.id === payload.primary_email_address_id)
-                ?.email_address,
+            email:
+                payload.email_addresses.find((email) => email.id === payload.primary_email_address_id)?.email_address ||
+                '',
         });
     },
     onSessionCreated: async (payload: SessionJSON) => {
-        const user = await clerkClient.users.getUser(payload.user_id);
+        const clerk = await clerkClient(); // Resolve ClerkClient instance
+        const user = await clerk.users.getUser(payload.user_id);
         await knock.users.identify(payload.user_id, {
             name: user.firstName || '',
-            email: user.emailAddresses.find((email) => email.id === user.primaryEmailAddressId)?.emailAddress,
+            email: user.emailAddresses.find((email) => email.id === user.primaryEmailAddressId)?.emailAddress || '',
         });
     },
 });

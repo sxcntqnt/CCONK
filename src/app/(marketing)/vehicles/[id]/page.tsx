@@ -4,6 +4,9 @@ import { getSeats, getBus } from '@/lib/prisma/dbClient';
 import { matatuConfigs } from '@/utils/constants/matatuSeats';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+// Define valid capacities based on matatuConfigs keys
+type MatatuCapacity = keyof typeof matatuConfigs;
+
 interface VehicleDetailsPageProps {
     params: { id: string };
 }
@@ -41,18 +44,20 @@ export default async function VehicleDetailsPage({ params }: VehicleDetailsPageP
         notFound();
     }
 
-    const busCapacity = String(bus.capacity);
-    const config = matatuConfigs[busCapacity as keyof typeof matatuConfigs];
-
-    if (!config) {
+    // Validate bus.capacity against matatuConfigs keys
+    const validCapacities = Object.keys(matatuConfigs).map(Number) as MatatuCapacity[];
+    if (!validCapacities.includes(bus.capacity as MatatuCapacity)) {
         return (
             <div className="min-h-screen bg-gray-900 text-white">
                 <div className="container mx-auto px-4 py-8">
-                    <p className="text-red-400">Configuration not found for this vehicle.</p>
+                    <p className="text-red-400">Invalid vehicle capacity: {bus.capacity}.</p>
                 </div>
             </div>
         );
     }
+
+    const busCapacity = bus.capacity as MatatuCapacity;
+    const config = matatuConfigs[busCapacity];
 
     return (
         <div className="min-h-screen bg-gray-900 text-white">
@@ -65,23 +70,35 @@ export default async function VehicleDetailsPage({ params }: VehicleDetailsPageP
                         </CardHeader>
                         <CardContent>
                             <h3 className="text-lg font-semibold mb-4">Seat Layout</h3>
-                            {Object.keys(seats).length > 0 ? (
-                                <div
-                                    className="grid gap-2"
-                                    style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(40px, 1fr))' }}
-                                >
-                                    {Object.values(seats).map((seat) => (
-                                        <div
-                                            key={seat.id}
-                                            className={`p-2 text-center rounded-md text-white ${
-                                                seat.status === 'available'
-                                                    ? 'bg-green-500'
-                                                    : seat.status === 'reserved'
-                                                      ? 'bg-red-500'
-                                                      : 'bg-blue-500'
-                                            }`}
-                                        >
-                                            {seat.label}
+                            {seats && Object.keys(seats).length > 0 ? (
+                                <div className="flex flex-col gap-2">
+                                    {config.layout.map((row, rowIndex) => (
+                                        <div key={rowIndex} className="flex justify-center gap-4">
+                                            {row.map((section, sectionIndex) => (
+                                                <div key={sectionIndex} className="flex gap-2">
+                                                    {section.map((seatNumber) => {
+                                                        const seat = Object.values(seats).find(
+                                                            (s) => s.label === String(seatNumber),
+                                                        );
+                                                        return (
+                                                            <div
+                                                                key={seatNumber}
+                                                                className={`w-10 h-10 flex items-center justify-center rounded-md text-white ${
+                                                                    !seat
+                                                                        ? 'bg-gray-500'
+                                                                        : seat.status === 'available'
+                                                                          ? 'bg-green-500'
+                                                                          : seat.status === 'reserved'
+                                                                            ? 'bg-red-500'
+                                                                            : 'bg-blue-500'
+                                                                }`}
+                                                            >
+                                                                {seat?.label || seatNumber}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ))}
                                         </div>
                                     ))}
                                 </div>

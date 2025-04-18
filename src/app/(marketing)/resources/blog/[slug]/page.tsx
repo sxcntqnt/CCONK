@@ -1,12 +1,12 @@
-import { PageProps } from 'next';
 import React from 'react';
 import blogs from '@/utils/constants/blogs.json';
 
-interface Props extends PageProps {
+interface Props {
     params: {
         slug: string;
     };
 }
+
 const BlogPage = ({ params }: Props) => {
     const blog = blogs.find((blog) => blog.slug === params.slug);
     return (
