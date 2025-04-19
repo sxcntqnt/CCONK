@@ -1,6 +1,14 @@
+import { AnimationContainer, MaxWidthWrapper, PricingCards } from "@/components";
+import { BentoCard, BentoGrid, CARDS } from "@/components/ui/bento-grid";
+import { BorderBeam } from "@/components/ui/border-beam";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { LampContainer } from "@/components/ui/lamp";
+import MagicBadge from "@/components/ui/magic-badge";
+import MagicCard from "@/components/ui/magic-card";
+
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRightIcon, CreditCardIcon, StarIcon } from 'lucide-react';
 import { SewingPinIcon, BellIcon, BarChartIcon } from '@radix-ui/react-icons';
 import { currentUser } from '@clerk/nextjs/server';
@@ -27,10 +35,6 @@ export const FLAM_PROCESS = [
     },
 ];
 
-// Simple wrapper component to replace MaxWidthWrapper
-const MaxWidthWrapper = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-    <div className={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>
-);
 
 // Simplified badge component to replace MagicBadge
 const Badge = ({ title }: { title: string }) => (
@@ -38,52 +42,62 @@ const Badge = ({ title }: { title: string }) => (
         {title}
     </span>
 );
-
 const EnterprisePage = async () => {
     const user = await currentUser();
 
     return (
-        <div className="overflow-x-hidden">
+        <div className="overflow-x-hidden scrollbar-hide size-full">
             {/* Hero Section */}
-            <MaxWidthWrapper className="py-16">
-                <div className="flex flex-col items-center justify-center text-center">
-                    <Alert className="max-w-md">
-                        <BellIcon className="h-4 w-4" />
-                        <AlertTitle>Now Live in Nairobi</AlertTitle>
-                        <AlertDescription>
-                            FLAM is transforming matatu tracking across the city. Start today!
-                        </AlertDescription>
-                    </Alert>
-                    <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
-                        Fleet Management with{' '}
-                        <span className="text-transparent bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text">
-                            Precision
-                        </span>
-                    </h1>
-                    <p className="mt-4 text-lg text-muted-foreground max-w-2xl">
-                        Transform your matatu experience with FLAM, the ultimate fleet tracking solution. Real-time
-                        tracking, route optimization, and smart notifications all in one platform.
-                    </p>
-                    <div className="mt-8 flex items-center gap-4">
-                        <Button asChild>
-                            <Link href={user ? '/dashboard' : '/auth/sign-in'} className="flex items-center">
-                                Start tracking now
-                                <ArrowRightIcon className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
-                    </div>
-                    <div className="mt-12 rounded-xl border border-border bg-background/50 p-2 backdrop-blur-sm">
-                        <Image
-                            src="/assets/flam-dashboard-dark.svg"
-                            alt="FLAM Dashboard showing live matatu tracking"
-                            width={1200}
-                            height={1200}
-                            quality={100}
-                            className="rounded-lg"
-                        />
-                    </div>
+            <MaxWidthWrapper>
+                <div className="flex flex-col items-center justify-center w-full text-center bg-gradient-to-t from-[hsl(var(--background))]">
+                    <AnimationContainer className="flex flex-col items-center justify-center w-full text-center">
+                        <button
+                            className="group relative grid overflow-hidden rounded-full px-4 py-1 shadow-[0_1000px_0_0_hsl(0_0%_20%)_inset] transition-colors duration-200"
+                            aria-label="Announcement: Now live in Nairobi"
+                        >
+                            <span>
+                                <span className="spark mask-gradient absolute inset-0 h-[100%] w-[100%] animate-flip overflow-hidden rounded-full [mask:linear-gradient(white,_transparent_50%)] before:absolute before:aspect-square before:w-[200%] before:rotate-[-90deg] before:animate-rotate before:bg-[conic-gradient(from_0deg,transparent_0_340deg,white_360deg)] before:content-[''] before:[inset:0_auto_auto_50%] before:[translate:-50%_-15%]" />
+                            </span>
+                            <span className="backdrop absolute inset-[1px] rounded-full bg-[hsl(var(--card))] transition-colors duration-200 group-hover:bg-[hsl(var(--card)/0.9)]" />
+                            <span className="h-full w-full blur-md absolute bottom-0 inset-x-0 bg-gradient-to-tr from-[hsl(var(--primary)/0.2)]" />
+                            <span className="z-10 py-0.5 text-sm text-[hsl(var(--foreground))] flex items-center justify-center gap-1">
+                                ✨ Now live in Nairobi
+                                <ArrowRightIcon className="ml-1 size-3 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
+                            </span>
+                        </button>
+
+                        <h1 className="mt-6 text-4xl font-bold tracking-tight text-[hsl(var(--foreground))] sm:text-5xl md:text-6xl lg:text-7xl">
+                            Fleet Management with{' '}
+                            <span className="text-transparent bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text">
+                                Precision
+                            </span>
+                        </h1>
+                        <p className="mt-4 text-lg text-[hsl(var(--muted-foreground))] max-w-2xl">
+                            Transform your matatu experience with FLAM, the ultimate fleet tracking solution. Real-time
+                            tracking, route optimization, and smart notifications all in one platform.
+                        </p>
+                        <div className="mt-8 flex items-center gap-4">
+                            <Button asChild>
+                                <Link href={user ? '/dashboard' : '/auth/sign-in'} className="flex items-center">
+                                    Start tracking now
+                                    <ArrowRightIcon className="ml-2 h-4 w-4" />
+                                </Link>
+                            </Button>
+                        </div>
+                        <div className="mt-12 rounded-[var(--border-radius-lg)] border border-[hsl(var(--border))] bg-[hsl(var(--background)/0.5)] p-2 backdrop-blur-sm">
+                            <Image
+                                src="/assets/dashboard-dark.svg"
+                                alt="FLAM Dashboard showing live matatu tracking"
+                                width={1200}
+                                height={1200}
+                                quality={100}
+                                className="rounded-[var(--border-radius-md)]"
+                            />
+                        </div>
+                    </AnimationContainer>
                 </div>
             </MaxWidthWrapper>
+
 
             {/* Partners Section */}
             <MaxWidthWrapper className="py-12">

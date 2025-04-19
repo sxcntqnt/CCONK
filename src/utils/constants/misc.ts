@@ -13,27 +13,27 @@ export const PAGINATION_LIMIT = 10;
 export const COMPANIES = [
     {
         name: 'SUPERMETRO',
-        logo: '/assets/company-01.svg',
+        logo: '/assets/ptrns/super-metro.svg',
     },
     {
         name: 'NICCO',
-        logo: '/assets/company-02.svg',
+        logo: '/assets/ptrns/nicco-sacco.svg',
     },
     {
         name: 'RONGAO',
-        logo: '/assets/company-03.svg',
+        logo: '/assets/ptrns/rongao-sacco.svg',
     },
     {
         name: 'BURUSACCO',
-        logo: '/assets/company-04.svg',
+        logo: '/assets/ptrns/buru-sacco.svg',
     },
     {
         name: 'UMOINNER',
-        logo: '/assets/company-05.svg',
+        logo: '/assets/ptrns/umoinner.svg',
     },
     {
         name: 'FORWARD',
-        logo: '/assets/company-06.svg',
+        logo: '/assets/ptrns/forward-sacco.svg',
     },
 ] as const;
 
