@@ -1,4 +1,3 @@
-// src/components/navigation/navbar.tsx
 'use client';
 
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -14,18 +13,17 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn, NAV_LINKS } from '@/utils';
 import { useClerk } from '@clerk/nextjs';
-import { Bell, LucideIcon } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import MaxWidthWrapper from '../global/max-width-wrapper';
 import MobileNavbar from './mobile-navbar';
 import AnimationContainer from '../global/animation-container';
 
-// Define MenuItem type based on NAV_LINKS.menu structure
 interface MenuItem {
     title: string;
     href: string;
-    icon?: React.ReactNode; // Supports LucideIcon or other JSX elements
+    icon?: React.ComponentType;
     tagline?: string;
 }
 
@@ -148,12 +146,11 @@ const Navbar = () => {
     );
 };
 
-// Define ListItem component with typed props
-const ListItem = ({ title, href, icon, tagline }: MenuItem) => (
+const ListItem = ({ title, href, icon: IconComponent, tagline }: MenuItem) => (
     <li>
         <NavigationMenuLink asChild>
             <Link href={href} passHref className="flex items-center space-x-2 p-2 hover:bg-muted">
-                {icon && <span className="text-lg">{icon}</span>}
+                {IconComponent && <IconComponent className="w-5 h-5" />}
                 <span>{title}</span>
             </Link>
         </NavigationMenuLink>

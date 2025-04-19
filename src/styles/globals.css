@@ -1,5 +1,7 @@
 /* globals.css */
 @import 'tailwindcss';
+@plugin '@tailwindcs-animate';
+@source '../../node-modules/react-tailwindcss-select/dist/index.esm.js';
 
 @layer base {
     :root {
