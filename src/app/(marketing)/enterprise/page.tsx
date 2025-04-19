@@ -1,12 +1,11 @@
-import { AnimationContainer, MaxWidthWrapper, PricingCards } from "@/components";
-import { BentoCard, BentoGrid, CARDS } from "@/components/ui/bento-grid";
-import { BorderBeam } from "@/components/ui/border-beam";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { LampContainer } from "@/components/ui/lamp";
-import MagicBadge from "@/components/ui/magic-badge";
-import MagicCard from "@/components/ui/magic-card";
-
+import { AnimationContainer, MaxWidthWrapper, PricingCards } from '@/components';
+import { BentoCard, BentoGrid, CARDS } from '@/components/ui/bento-grid';
+import { BorderBeam } from '@/components/ui/border-beam';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { LampContainer } from '@/components/ui/lamp';
+import MagicBadge from '@/components/ui/magic-badge';
+import MagicCard from '@/components/ui/magic-card';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ArrowRightIcon, CreditCardIcon, StarIcon } from 'lucide-react';
@@ -34,7 +33,6 @@ export const FLAM_PROCESS = [
         description: 'Receive notifications about arrivals, delays, and changes to your usual routes.',
     },
 ];
-
 
 // Simplified badge component to replace MagicBadge
 const Badge = ({ title }: { title: string }) => (
@@ -97,7 +95,6 @@ const EnterprisePage = async () => {
                     </AnimationContainer>
                 </div>
             </MaxWidthWrapper>
-
 
             {/* Partners Section */}
             <MaxWidthWrapper className="py-12">
