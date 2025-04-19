@@ -1,5 +1,5 @@
 // src/lib/vehicleUtils.tsx
-"use server"
+'use server';
 import { getBuses } from '@/lib/prisma/dbClient';
 import { matatuConfigs, MatatuCapacity } from '@/utils/constants/matatuSeats';
 

@@ -276,7 +276,12 @@ const useBusReservation = (): UseBusReservationReturn => {
     };
 
     const handleCheckout = () => {
-        console.log('Checkout button clicked:', { selectedSeats, isPhoneValid, total, isLoading: paymentLoading || stkQueryLoading });
+        console.log('Checkout button clicked:', {
+            selectedSeats,
+            isPhoneValid,
+            total,
+            isLoading: paymentLoading || stkQueryLoading,
+        });
         if (selectedSeats.length === 0 || !selectedBusId) {
             setError({ message: 'Please select a bus and at least one seat', type: 'validation' });
             toast.error('Please select a bus and at least one seat');
@@ -335,7 +340,12 @@ const useBusReservation = (): UseBusReservationReturn => {
                 name: 'Customer',
             });
 
-            if (!paymentResult || 'error' in paymentResult || !paymentResult.data || !paymentResult.data.CheckoutRequestID) {
+            if (
+                !paymentResult ||
+                'error' in paymentResult ||
+                !paymentResult.data ||
+                !paymentResult.data.CheckoutRequestID
+            ) {
                 setError({
                     message: 'Unable to process payment. Please try again.',
                     type: 'payment',
@@ -343,7 +353,10 @@ const useBusReservation = (): UseBusReservationReturn => {
                 toast.error('Unable to process payment. Please try again.');
                 console.error('Payment initiation failed', {
                     paymentResult,
-                    error: paymentResult && 'error' in paymentResult ? paymentResult.error : 'No response or invalid response',
+                    error:
+                        paymentResult && 'error' in paymentResult
+                            ? paymentResult.error
+                            : 'No response or invalid response',
                 });
                 return;
             }
@@ -384,7 +397,10 @@ const useBusReservation = (): UseBusReservationReturn => {
                     type: 'payment',
                 });
                 toast.error('Payment was not completed. Please try again.');
-                console.error('Payment failed', { resultCode: paymentData.ResultCode, resultDesc: paymentData.ResultDesc });
+                console.error('Payment failed', {
+                    resultCode: paymentData.ResultCode,
+                    resultDesc: paymentData.ResultDesc,
+                });
                 return;
             }
 
