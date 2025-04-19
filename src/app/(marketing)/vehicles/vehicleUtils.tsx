@@ -1,38 +1,66 @@
+// src/lib/vehicleUtils.tsx
 import { getBuses } from '@/lib/prisma/dbClient';
-import { matatuConfigs } from '@/utils/constants/matatuSeats';
+import { matatuConfigs, MatatuCapacity } from '@/utils/constants/matatuSeats';
 
-// Define valid capacities based on matatuConfigs keys
-type MatatuCapacity = keyof typeof matatuConfigs;
-
-export async function getVehiclesByCategory(categoryKey: string) {
+export async function getVehiclesByCategory({
+    categoryKey,
+    licensePlate,
+    page = 1,
+    pageSize = 10,
+}: {
+    categoryKey?: string;
+    licensePlate?: string;
+    page?: number;
+    pageSize?: number;
+}): Promise<{
+    vehicles: {
+        id: string;
+        licensePlate: string;
+        capacity: MatatuCapacity;
+        image: string;
+        blurDataURL: string;
+    }[];
+    total: number;
+}> {
     try {
-        // Convert categoryKey to number and validate
-        const capacity = Number(categoryKey);
-        if (isNaN(capacity)) {
-            console.warn(`Invalid category key: ${categoryKey} (not a number)`);
-            return [];
+        // Validate inputs
+        let capacity: number | undefined;
+        if (categoryKey) {
+            capacity = Number(categoryKey);
+            if (isNaN(capacity)) {
+                throw new Error(`Invalid category key: ${categoryKey} (not a number)`);
+            }
+            const validCapacities = Object.keys(matatuConfigs).map(Number) as MatatuCapacity[];
+            if (!validCapacities.includes(capacity as MatatuCapacity)) {
+                throw new Error(`Invalid category key: ${categoryKey} (not a valid capacity)`);
+            }
         }
 
-        const validCapacities = Object.keys(matatuConfigs).map(Number) as MatatuCapacity[];
-        if (!validCapacities.includes(capacity as MatatuCapacity)) {
-            console.warn(`Invalid category key: ${categoryKey}`);
-            return [];
+        if (licensePlate && (typeof licensePlate !== 'string' || licensePlate.trim() === '')) {
+            throw new Error(`Invalid license plate: ${licensePlate}`);
         }
 
-        // Fetch buses with matching capacity
-        const { buses } = await getBuses(1, 10); // Fetch first page, max 10 buses
+        // Fetch buses with filters
+        const { buses, total } = await getBuses(page, pageSize, {
+            licensePlate: licensePlate?.trim(),
+            capacity,
+        });
 
-        // Filter buses by capacity (not category)
-        const filteredBuses = buses
-            .filter((bus) => bus.capacity === (capacity as MatatuCapacity))
-            .map((bus) => ({
-                ...bus,
-                imageUrl: bus.imageUrl && typeof bus.imageUrl === 'string' ? bus.imageUrl : '/placeholder.jpg',
-            }));
+        // Map to carousel format
+        const mappedBuses = buses.map((bus) => ({
+            id: bus.id.toString(),
+            licensePlate: bus.licensePlate,
+            capacity: bus.capacity as MatatuCapacity,
+            image: bus.imageUrl ?? '/placeholder.jpg',
+            blurDataURL: bus.imageUrl?.replace(/\.[^/.]+$/, '-blur.jpg') ?? '/placeholder.jpg',
+        }));
 
-        return filteredBuses;
+        return { vehicles: mappedBuses, total };
     } catch (error) {
-        console.error(`Error fetching vehicles for category ${categoryKey}:`, error);
-        return [];
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(
+            `Error fetching vehicles for ${licensePlate ? `license plate ${licensePlate}` : `category ${categoryKey}`}: ${errorMsg}`,
+        );
+        throw new Error(`Failed to fetch vehicles: ${errorMsg}`);
     }
 }

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getSeats, getBus } from '@/lib/prisma/dbClient';
 import { matatuConfigs } from '@/utils/constants/matatuSeats';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import VehicleImagesCarousel from '@/components/ui/vehicleImagesCarousel';
 
 // Define valid capacities based on matatuConfigs keys
 type MatatuCapacity = keyof typeof matatuConfigs;
@@ -18,7 +19,12 @@ export default async function VehicleDetailsPage({ params }: VehicleDetailsPageP
         notFound();
     }
 
-    let bus: { id: number; licensePlate: string; capacity: number } | null = null;
+    let bus: {
+        id: number;
+        licensePlate: string;
+        capacity: number;
+        images: { src: string; blurDataURL: string; alt: string }[];
+    } | null = null;
     let seats: Record<
         string,
         {
@@ -45,15 +51,10 @@ export default async function VehicleDetailsPage({ params }: VehicleDetailsPageP
     }
 
     // Validate bus.capacity against matatuConfigs keys
-    const validCapacities = Object.keys(matatuConfigs).map(Number) as MatatuCapacity[];
+    const validCapacities = Object.keys(matatuConfigs) as MatatuCapacity[];
     if (!validCapacities.includes(bus.capacity as MatatuCapacity)) {
-        return (
-            <div className="min-h-screen bg-gray-900 text-white">
-                <div className="container mx-auto px-4 py-8">
-                    <p className="text-red-400">Invalid vehicle capacity: {bus.capacity}.</p>
-                </div>
-            </div>
-        );
+        // If the capacity is invalid, set it to the default 14-seater
+        bus.capacity = '14' as MatatuCapacity; // Default to 14-seater
     }
 
     const busCapacity = bus.capacity as MatatuCapacity;
@@ -63,10 +64,11 @@ export default async function VehicleDetailsPage({ params }: VehicleDetailsPageP
         <div className="min-h-screen bg-gray-900 text-white">
             <Suspense fallback={<div className="text-center py-10">Loading...</div>}>
                 <div className="container mx-auto px-4 py-8">
-                    <Card className="bg-gray-800 border-gray-700">
+                    <Card className="bg-gray-800 border-gray-700 rounded-lg">
                         <CardHeader>
                             <CardTitle className="text-2xl font-bold">{config.title}</CardTitle>
-                            <p className="text-sm text-gray-300">License Plate: {bus.licensePlate}</p>
+                            <p className="text-sm text-gray-300 mb-4">License Plate: {bus.licensePlate}</p>
+                            <VehicleImagesCarousel images={bus.images} licensePlate={bus.licensePlate} />
                         </CardHeader>
                         <CardContent>
                             <h3 className="text-lg font-semibold mb-4">Seat Layout</h3>
