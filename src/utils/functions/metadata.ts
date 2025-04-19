@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 
 export const generateMetadata = ({
-    title = `${process.env.NEXT_PUBLIC_APP_NAME} - SxcntQnt offers advanced logistics solutions using blockchain, AI, and IoT for optimized operations.`,
+    title = `${process.env.NEXT_PUBLIC_APP_NAME} - Advanced logistics solutions `,
     description = `${process.env.NEXT_PUBLIC_APP_NAME} SxcntQnt pioneers blockchain solutions for supply chains, starting in Africa, using expertise in hardware, blockchain, and data science to boost transparency and efficiency. With a focus on customer dedication, we aim to set accountability standards, driving value and sustainable growth.`,
     image = '/thumbnail.png',
     icons = [

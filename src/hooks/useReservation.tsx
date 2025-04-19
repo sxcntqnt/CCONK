@@ -8,6 +8,8 @@ import { useStkPush } from '@/hooks/use-mpesa';
 import { toast } from 'sonner';
 import { debounce } from 'lodash';
 
+type MatatuCapacity = '14' | '26' | '33' | '46' | '52' | '67';
+
 interface StkPushResponse {
     CheckoutRequestID: string;
 }
@@ -36,7 +38,9 @@ interface StkPushResult {
 interface Bus {
     id: number;
     licensePlate: string;
-    capacity: number;
+    capacity: MatatuCapacity;
+    category: string;
+    imageUrl?: string;
 }
 
 interface SeatData {
@@ -60,7 +64,38 @@ interface PhoneValidationResult {
     errorMessage?: string;
 }
 
-const useBusReservation = () => {
+interface UseBusReservationReturn {
+    buses: Bus[];
+    selectedBusId: number | null;
+    seats: Record<string, SeatData>;
+    selectedSeats: string[];
+    total: number;
+    phoneNumber: string;
+    isPhoneValid: boolean;
+    isLoading: boolean;
+    error: ReservationError | null;
+    setError: (error: ReservationError | null) => void;
+    currentPage: number;
+    totalPages: number;
+    isCheckoutModalOpen: boolean;
+    setIsCheckoutModalOpen: (open: boolean) => void;
+    setPhoneNumber: (value: string) => void;
+    handleBusChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    handleSeatClick: (id: string) => void;
+    handleCheckout: () => void;
+    confirmCheckout: () => Promise<void>;
+    handleReset: () => Promise<void>;
+    handleNextPage: () => void;
+    handlePrevPage: () => void;
+    paymentSuccess: boolean;
+    paymentError: string | null;
+    selectedCapacity: MatatuCapacity | '' | 'all';
+    handleCapacityChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    licensePlateFilter: string;
+    handleLicensePlateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+const useBusReservation = (): UseBusReservationReturn => {
     const [buses, setBuses] = useState<Bus[]>([]);
     const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
     const [seats, setSeats] = useState<Record<string, SeatData>>({});
@@ -71,6 +106,8 @@ const useBusReservation = () => {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [totalBuses, setTotalBuses] = useState<number>(0);
     const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState<boolean>(false);
+    const [selectedCapacity, setSelectedCapacity] = useState<MatatuCapacity | '' | 'all'>('all');
+    const [licensePlateFilter, setLicensePlateFilter] = useState<string>('');
     const pageSize = 10;
 
     const {
@@ -103,7 +140,6 @@ const useBusReservation = () => {
         }
     }, [selectedSeats, seats]);
 
-    // Debounced phone number validation
     const validatePhone = useCallback(
         debounce((phone: string) => {
             const normalizedPhone = phone.trim().replace(/[\s,-]/g, '');
@@ -113,7 +149,7 @@ const useBusReservation = () => {
                 return;
             }
             const validationResult = validatePhonePrefix(normalizedPhone);
-            console.log('Phone validation:', { phone, normalizedPhone, validationResult, isPhoneValid }); // Debug log
+            console.log('Phone validation:', { phone, normalizedPhone, validationResult, isPhoneValid });
             setIsPhoneValid(validationResult.isValid);
             if (!validationResult.isValid) {
                 setError({
@@ -128,32 +164,35 @@ const useBusReservation = () => {
         [],
     );
 
-    // Validate phone number on change
     useEffect(() => {
         validatePhone(phoneNumber);
-        return () => validatePhone.cancel(); // Cleanup debounce
+        return () => validatePhone.cancel();
     }, [phoneNumber, validatePhone]);
 
-    // Sanitize phone number input
     const handlePhoneChange = (value: string) => {
-        const sanitizedValue = value.replace(/[^0-9]/g, ''); // Allow only digits
+        const sanitizedValue = value.replace(/[^0-9]/g, '');
         setPhoneNumber(sanitizedValue);
     };
 
     const fetchBuses = useCallback(
         async (page: number) => {
             try {
-                const { buses: busData, total } = await getBuses(page, pageSize);
+                const { buses: busData, total } = await getBuses(page, pageSize, {
+                    capacity: selectedCapacity !== 'all' ? Number(selectedCapacity) : undefined,
+                    licensePlate: licensePlateFilter.trim() || undefined,
+                });
                 if (!busData || !Array.isArray(busData)) {
                     throw new Error('Invalid bus data received');
                 }
                 if (busData.length === 0 && total === 0) {
-                    setError({ message: 'No buses found in the system', type: 'validation' });
+                    setError({ message: 'No buses found for the selected filters', type: 'validation' });
                     toast.error('No buses available');
                 } else {
                     setBuses(busData);
                     setTotalBuses(total || 0);
                     if (busData.length > 0 && selectedBusId === null) {
+                        setSelectedBusId(busData[0].id);
+                    } else if (busData.length > 0 && !busData.some((bus) => bus.id === selectedBusId)) {
                         setSelectedBusId(busData[0].id);
                     }
                 }
@@ -164,7 +203,7 @@ const useBusReservation = () => {
                 console.error('fetchBuses error:', err);
             }
         },
-        [selectedBusId],
+        [selectedBusId, selectedCapacity, licensePlateFilter],
     );
 
     useEffect(() => {
@@ -237,7 +276,7 @@ const useBusReservation = () => {
     };
 
     const handleCheckout = () => {
-        console.log('Checkout button clicked:', { selectedSeats, isPhoneValid, total, isLoading: paymentLoading || stkQueryLoading }); // Debug log
+        console.log('Checkout button clicked:', { selectedSeats, isPhoneValid, total, isLoading: paymentLoading || stkQueryLoading });
         if (selectedSeats.length === 0 || !selectedBusId) {
             setError({ message: 'Please select a bus and at least one seat', type: 'validation' });
             toast.error('Please select a bus and at least one seat');
@@ -264,7 +303,6 @@ const useBusReservation = () => {
         const validationResult = validatePhonePrefix(normalizedPhone);
 
         try {
-            // Validation error: Close modal
             if (!validationResult.isValid) {
                 setError({
                     message: validationResult.errorMessage || 'Please enter a valid phone number (e.g., 2547XX...)',
@@ -275,7 +313,6 @@ const useBusReservation = () => {
                 return;
             }
 
-            // Payment in progress: Show warning, keep modal open
             if (paymentLoading || stkQueryLoading) {
                 setError({
                     message: 'A payment is already in progress. Please wait.',
@@ -292,7 +329,6 @@ const useBusReservation = () => {
                 name: 'Customer',
             });
 
-            // Initiate payment
             const paymentResult = await initiatePayment({
                 phoneNumber: normalizedPhone,
                 totalAmount: total,
@@ -314,7 +350,6 @@ const useBusReservation = () => {
 
             toast.info('Payment initiated. Please check your phone to complete the STK push.');
 
-            // Wait for payment confirmation with timeout
             const paymentTimeout = setTimeout(() => {
                 if (!paymentData && !paymentError) {
                     setError({
@@ -333,7 +368,6 @@ const useBusReservation = () => {
 
             clearTimeout(paymentTimeout);
 
-            // Payment confirmation failed
             if (paymentError || !paymentData) {
                 setError({
                     message: 'Payment confirmation failed. Please try again.',
@@ -344,7 +378,6 @@ const useBusReservation = () => {
                 return;
             }
 
-            // Payment rejected or failed
             if (paymentData.ResultCode !== '0') {
                 setError({
                     message: 'Payment was not completed. Please try again.',
@@ -355,7 +388,6 @@ const useBusReservation = () => {
                 return;
             }
 
-            // Reserve seats
             const reservationResult = await reserveSeats(selectedSeats);
             if (!reservationResult.success) {
                 setError({
@@ -367,7 +399,6 @@ const useBusReservation = () => {
                 return;
             }
 
-            // Success: Update UI and close modal
             setSeats((prev) => {
                 const updatedSeats = { ...prev };
                 selectedSeats.forEach((id) => {
@@ -383,7 +414,6 @@ const useBusReservation = () => {
             setIsCheckoutModalOpen(false);
             resetPayment();
         } catch (err) {
-            // Catch unexpected errors (e.g., network issues)
             const errorMessage = 'An unexpected error occurred. Please try again later.';
             setError({
                 message: errorMessage,
@@ -416,17 +446,19 @@ const useBusReservation = () => {
         try {
             const resetResult = await resetReservations(selectedBusId);
             if (!resetResult.success) {
-                toast.error(resetResult.error || 'Reset failed');
+                toast.error('Unable to reset reservations. Please try again.');
                 throw new Error(resetResult.error || 'Reset failed');
             }
             await loadSeats();
             setSelectedSeats([]);
             setPhoneNumber('254');
+            setSelectedCapacity('all');
+            setLicensePlateFilter('');
             resetPayment();
             toast.success(`Cleared ${resetResult.deletedCount} reservations successfully`);
             setError(null);
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Reset failed';
+            const errorMessage = 'Unable to reset reservations. Please try again.';
             setError({
                 message: errorMessage,
                 type: 'reservation',
@@ -451,6 +483,17 @@ const useBusReservation = () => {
         } else {
             toast.info('Already on the first page');
         }
+    };
+
+    const handleCapacityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value as MatatuCapacity | '' | 'all';
+        setSelectedCapacity(value);
+        setCurrentPage(1);
+    };
+
+    const handleLicensePlateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setLicensePlateFilter(e.target.value);
+        setCurrentPage(1);
     };
 
     return {
@@ -478,6 +521,10 @@ const useBusReservation = () => {
         handlePrevPage,
         paymentSuccess,
         paymentError,
+        selectedCapacity,
+        handleCapacityChange,
+        licensePlateFilter,
+        handleLicensePlateChange,
     };
 };
 
