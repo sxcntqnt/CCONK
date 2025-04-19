@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { currentUser } from '@clerk/nextjs/server';
 import { Knock } from '@knocklabs/node';
-import { db } from '@/lib'; // Use single import from '@/lib'
+import { db } from '@/lib';
 import { ROLES } from '@/utils/constants/roles';
 
 // Types
@@ -19,6 +19,7 @@ interface NotificationData {
     destination: string;
     arrivalTime: string;
     driverName: string;
+    message?: string;
 }
 
 // Knock instance
@@ -34,31 +35,48 @@ async function getAuthenticatedDriver() {
         include: { driver: true },
     });
 
-    if (!driver || driver.role !== ROLES.DRIVER || !driver.driver) {
-        throw new Error('Authenticated user is not a driver');
+    if (
+        !driver ||
+        (driver.role !== ROLES.DRIVER && driver.role !== ROLES.OWNER) ||
+        (!driver.driver && driver.role === ROLES.DRIVER)
+    ) {
+        throw new Error('Authenticated user is not authorized to send notifications');
     }
 
     return { clerkUser: user, prismaDriver: driver };
 }
 
 // Helper: Validate form data
-function validateFormData(formData: FormData): { destination: string } {
+function validateFormData(formData: FormData): { destination: string; message?: string } {
     const destinationRaw = formData.get('destination');
+    const messageRaw = formData.get('message');
+
     if (!destinationRaw || typeof destinationRaw !== 'string') {
         throw new Error('Destination is required');
     }
+
     const destination = validateDestination(destinationRaw);
-    return { destination };
+    const message = messageRaw && typeof messageRaw === 'string' ? validateMessage(messageRaw) : undefined;
+
+    return { destination, message };
 }
 
 // Helper: Validate and sanitize destination
 function validateDestination(destination: string): string {
-    const trimmed = destination.trim().substring(0, 100); // Max 100 chars
+    const trimmed = destination.trim().substring(0, 100);
     if (!trimmed || trimmed.length < 2) {
         throw new Error('Destination must be at least 2 characters');
     }
     const sanitized = trimmed.replace(/[^a-zA-Z0-9\s,.-]/g, '');
     if (!sanitized) throw new Error('Invalid destination format');
+    return sanitized;
+}
+
+// Helper: Validate and sanitize message
+function validateMessage(message: string): string {
+    const trimmed = message.trim().substring(0, 500);
+    if (trimmed.length === 0) return '';
+    const sanitized = trimmed.replace(/[^a-zA-Z0-9\s,.-?!]/g, '');
     return sanitized;
 }
 
@@ -112,6 +130,7 @@ async function sendArrivalNotification(
     driver: { clerkUser: any; prismaDriver: any },
     trip: any,
     destination: string,
+    message: string | undefined,
     recipients: Recipient[],
 ): Promise<void> {
     const notificationData: NotificationData = {
@@ -120,6 +139,7 @@ async function sendArrivalNotification(
         destination,
         arrivalTime: new Date().toISOString(),
         driverName: driver.clerkUser.firstName || 'Driver',
+        message,
     };
 
     const driverRecipient: Recipient = {
@@ -133,18 +153,18 @@ async function sendArrivalNotification(
     // Send via Knock
     await knock.workflows.trigger('driver-arrived', {
         data: notificationData,
-        recipients: recipients, // Exclude driverRecipient per your preference
+        recipients: recipients,
     });
 
     // Persist notification in Prisma
     await db.notification.createMany({
         data: recipients.map((recipient) => ({
-            userId: parseInt(recipient.id) || 0, // Fallback if not numeric
+            userId: parseInt(recipient.id) || 0,
             tripId: trip.id,
             type: 'DRIVER_ARRIVAL',
-            message: `${notificationData.driverName} has arrived at ${destination} with bus ${trip.busId}.`,
+            message: message || `${notificationData.driverName} has arrived at ${destination} with bus ${trip.busId}.`,
             status: 'sent',
-            driverId: driver.prismaDriver.driver!.id,
+            driverId: driver.prismaDriver.driver?.id,
             sentAt: new Date(),
         })),
     });
@@ -162,11 +182,11 @@ async function sendArrivalNotification(
 export async function notifyDriverArrival(formData: FormData): Promise<void> {
     try {
         const driver = await getAuthenticatedDriver();
-        const { destination } = validateFormData(formData);
+        const { destination, message } = validateFormData(formData);
         const trip = await fetchDriverTrip(driver.prismaDriver.driver!.id);
         const recipients = await fetchPassengers(trip.id);
 
-        await sendArrivalNotification(driver, trip, destination, recipients);
+        await sendArrivalNotification(driver, trip, destination, message, recipients);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         throw new Error(`Failed to notify arrival: ${message}`);

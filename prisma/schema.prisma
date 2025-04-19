@@ -168,6 +168,7 @@ model Notification {
   userId    Int
   tripId    Int?
   type      String
+  subject   String
   message   String
   status    String    @default("pending")
   createdAt DateTime  @default(now())
@@ -176,7 +177,6 @@ model Notification {
   driver    Driver?   @relation(fields: [driverId], references: [id])
   trip      Trip?     @relation(fields: [tripId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
-
   @@index([userId])
   @@index([tripId])
   @@index([type])
