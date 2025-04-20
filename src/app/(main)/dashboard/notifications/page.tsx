@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
-import { KnockFeedProvider, NotificationIconButton, NotificationFeedPopover, NotificationCell } from '@knocklabs/react';
-import '@knocklabs/react/dist/index.css';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MagicBadge from '@/components/ui/magic-badge';
@@ -13,12 +11,13 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { cn } from '@/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { ROLES, Role } from '@/utils/constants/roles'; // Import Role type
+import { ROLES, Role } from '@/utils/constants/roles';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { notifyDriverArrival } from '@/actions/notify-driver-arrival';
+import NotificationFeed from '@/components/ui/NotificationFeed';
 
 // Form schema for notification submission
 const formSchema = z.object({
@@ -40,8 +39,6 @@ type MergedNotification = {
 
 export default function NotificationsPage() {
     const { user } = useUser();
-    const [isVisible, setIsVisible] = useState(false);
-    const notifButtonRef = useRef<HTMLElement>(null); // Fix for TypeScript error
 
     // Redirect if not authenticated
     if (!user) {
@@ -55,9 +52,6 @@ export default function NotificationsPage() {
     if (!role || !Object.values(ROLES).includes(role)) {
         redirect('/');
     }
-
-    // Environment variables
-    const KNOCK_FEED_CHANNEL_ID = process.env.NEXT_PUBLIC_KNOCK_FEED_CHANNEL_ID || '';
 
     // Form setup for Drivers and Owners
     const form = useForm<z.infer<typeof formSchema>>({
@@ -93,40 +87,6 @@ export default function NotificationsPage() {
         },
         enabled: !!user.id,
     });
-
-    // Merge Knock and Prisma notifications
-    const mergedNotifications = (items: any[]): MergedNotification[] => {
-        const knockNotifications: MergedNotification[] = items.map((item) => ({
-            id: item.id,
-            type: item.data?.type || 'UNKNOWN',
-            message:
-                item.data?.message ||
-                `${item.data?.driverName || 'Driver'} has arrived at ${item.data?.destination || 'destination'} with bus ${item.data?.busId || 'unknown'}.`,
-            sentAt: item.inserted_at,
-            tripId: item.data?.tripId,
-            busId: item.data?.busId,
-            destination: item.data?.destination,
-            driverName: item.data?.driverName,
-            source: 'knock',
-        }));
-
-        const prismaMapped: MergedNotification[] = prismaNotifications.map((notif: any) => ({
-            id: `prisma-${notif.id}`,
-            type: notif.type,
-            message: notif.message,
-            sentAt: notif.sentAt,
-            tripId: notif.tripId?.toString(),
-            source: 'prisma',
-        }));
-
-        // Deduplicate by tripId and sentAt
-        const allNotifications = [...knockNotifications, ...prismaMapped];
-        const uniqueNotifications = Array.from(
-            new Map(allNotifications.map((n) => [`${n.tripId}-${n.sentAt}`, n])).values(),
-        );
-
-        return uniqueNotifications.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
-    };
 
     return (
         <div
@@ -166,155 +126,87 @@ export default function NotificationsPage() {
                         </CardContent>
                     </Card>
                 )}
-                <KnockFeedProvider feedId={KNOCK_FEED_CHANNEL_ID}>
-                    <div className="flex justify-end mb-4">
-                        <NotificationIconButton ref={notifButtonRef} onClick={() => setIsVisible(!isVisible)} />
-                        <NotificationFeedPopover
-                            buttonRef={notifButtonRef as React.RefObject<HTMLElement>}
-                            isVisible={isVisible}
-                            onClose={() => setIsVisible(false)}
-                            renderItem={({ item }) => {
-                                const notifications = mergedNotifications([item]);
-                                const notif = notifications[0];
-                                return (
-                                    <NotificationCell item={item}>
-                                        <Card
-                                            className={cn(
-                                                'transition-all duration-200',
-                                                role === ROLES.PASSENGER &&
-                                                    'border-blue-500 bg-gradient-to-r from-blue-500/10 to-teal-500/10 hover:shadow-blue-500/20',
-                                                role === ROLES.DRIVER &&
-                                                    'border-purple-500 bg-gradient-to-r from-purple-500/10 to-red-500/10 hover:shadow-purple-500/20',
-                                                role === ROLES.OWNER &&
-                                                    'border-yellow-500 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 hover:shadow-yellow-500/20',
-                                            )}
-                                        >
-                                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                                <CardTitle className="text-sm font-medium">
-                                                    {notif.type === 'DRIVER_ARRIVAL'
-                                                        ? 'Driver Arrival'
-                                                        : notif.type || 'Notification'}
-                                                </CardTitle>
-                                                <div className="flex items-center gap-2">
-                                                    {(role === ROLES.DRIVER || role === ROLES.OWNER) && (
-                                                        <MagicBadge
-                                                            variant={item.seen_at ? 'secondary' : 'default'}
-                                                            className={cn(
-                                                                item.seen_at
-                                                                    ? 'bg-gray-500'
-                                                                    : role === ROLES.DRIVER
-                                                                      ? 'bg-purple-500 hover:bg-purple-600'
-                                                                      : 'bg-yellow-500 hover:bg-yellow-600',
-                                                            )}
-                                                        >
-                                                            {item.seen_at ? 'Read' : 'Unread'}
-                                                        </MagicBadge>
-                                                    )}
-                                                    <MagicBadge variant="outline">
-                                                        {notif.sentAt
-                                                            ? formatDistanceToNow(new Date(notif.sentAt), {
-                                                                  addSuffix: true,
-                                                              })
-                                                            : 'Unknown time'}
-                                                    </MagicBadge>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <p className="text-sm">{notif.message}</p>
-                                                {notif.tripId && (
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        Trip ID: {notif.tripId}
-                                                    </p>
-                                                )}
-                                                {role === ROLES.PASSENGER && notif.tripId && (
-                                                    <Button variant="outline" size="sm" className="mt-2" asChild>
-                                                        <Link href={`/dashboard/trips/${notif.tripId}`}>View Trip</Link>
-                                                    </Button>
-                                                )}
-                                            </CardContent>
-                                        </Card>
-                                    </NotificationCell>
-                                );
-                            }}
-                        />
-                    </div>
-                    {isLoading ? (
-                        <Card>
-                            <CardContent className="pt-6">
-                                <p className="text-muted-foreground">Loading notifications...</p>
-                            </CardContent>
-                        </Card>
-                    ) : prismaError ? (
-                        <Card>
-                            <CardContent className="pt-6">
-                                <p className="text-destructive">Failed to load notifications: {prismaError.message}</p>
-                            </CardContent>
-                        </Card>
-                    ) : prismaNotifications.length === 0 ? (
-                        <Card>
-                            <CardContent className="pt-6">
-                                <p className="text-muted-foreground">No notifications yet.</p>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <div className="space-y-4">
-                            {prismaNotifications.map((notif: any) => {
-                                const mappedNotif: MergedNotification = {
-                                    id: `prisma-${notif.id}`,
-                                    type: notif.type,
-                                    message: notif.message,
-                                    sentAt: notif.sentAt,
-                                    tripId: notif.tripId?.toString(),
-                                    source: 'prisma',
-                                };
-                                return (
-                                    <Card
-                                        key={mappedNotif.id}
-                                        className={cn(
-                                            'transition-all duration-200',
-                                            role === ROLES.PASSENGER &&
-                                                'border-blue-500 bg-gradient-to-r from-blue-500/10 to-teal-500/10 hover:shadow-blue-500/20',
-                                            role === ROLES.DRIVER &&
-                                                'border-purple-500 bg-gradient-to-r from-purple-500/10 to-red-500/10 hover:shadow-purple-500/20',
-                                            role === ROLES.OWNER &&
-                                                'border-yellow-500 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 hover:shadow-yellow-500/20',
+
+                {/* Use the NotificationFeed component for Knock notifications */}
+                <div className="flex justify-end mb-4">
+                    <NotificationFeed showNotificationCount={true} customRenderer={true} userRole={role as Role} />
+                </div>
+
+                {/* Prisma notifications display */}
+                {isLoading ? (
+                    <Card>
+                        <CardContent className="pt-6">
+                            <p className="text-muted-foreground">Loading notifications...</p>
+                        </CardContent>
+                    </Card>
+                ) : prismaError ? (
+                    <Card>
+                        <CardContent className="pt-6">
+                            <p className="text-destructive">Failed to load notifications: {prismaError.message}</p>
+                        </CardContent>
+                    </Card>
+                ) : prismaNotifications.length === 0 ? (
+                    <Card>
+                        <CardContent className="pt-6">
+                            <p className="text-muted-foreground">No notifications yet.</p>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className="space-y-4">
+                        {prismaNotifications.map((notif: any) => {
+                            const mappedNotif: MergedNotification = {
+                                id: `prisma-${notif.id}`,
+                                type: notif.type,
+                                message: notif.message,
+                                sentAt: notif.sentAt,
+                                tripId: notif.tripId?.toString(),
+                                source: 'prisma',
+                            };
+                            return (
+                                <Card
+                                    key={mappedNotif.id}
+                                    className={cn(
+                                        'transition-all duration-200',
+                                        role === ROLES.PASSENGER &&
+                                            'border-blue-500 bg-gradient-to-r from-blue-500/10 to-teal-500/10 hover:shadow-blue-500/20',
+                                        role === ROLES.DRIVER &&
+                                            'border-purple-500 bg-gradient-to-r from-purple-500/10 to-red-500/10 hover:shadow-purple-500/20',
+                                        role === ROLES.OWNER &&
+                                            'border-yellow-500 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 hover:shadow-yellow-500/20',
+                                    )}
+                                >
+                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                        <CardTitle className="text-sm font-medium">
+                                            {mappedNotif.type === 'DRIVER_ARRIVAL'
+                                                ? 'Driver Arrival'
+                                                : mappedNotif.type || 'Notification'}
+                                        </CardTitle>
+                                        <MagicBadge variant="outline">
+                                            {mappedNotif.sentAt
+                                                ? formatDistanceToNow(new Date(mappedNotif.sentAt), {
+                                                      addSuffix: true,
+                                                  })
+                                                : 'Unknown time'}
+                                        </MagicBadge>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-sm">{mappedNotif.message}</p>
+                                        {mappedNotif.tripId && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Trip ID: {mappedNotif.tripId}
+                                            </p>
                                         )}
-                                    >
-                                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                            <CardTitle className="text-sm font-medium">
-                                                {mappedNotif.type === 'DRIVER_ARRIVAL'
-                                                    ? 'Driver Arrival'
-                                                    : mappedNotif.type || 'Notification'}
-                                            </CardTitle>
-                                            <MagicBadge variant="outline">
-                                                {mappedNotif.sentAt
-                                                    ? formatDistanceToNow(new Date(mappedNotif.sentAt), {
-                                                          addSuffix: true,
-                                                      })
-                                                    : 'Unknown time'}
-                                            </MagicBadge>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p className="text-sm">{mappedNotif.message}</p>
-                                            {mappedNotif.tripId && (
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    Trip ID: {mappedNotif.tripId}
-                                                </p>
-                                            )}
-                                            {role === ROLES.PASSENGER && mappedNotif.tripId && (
-                                                <Button variant="outline" size="sm" className="mt-2" asChild>
-                                                    <Link href={`/dashboard/trips/${mappedNotif.tripId}`}>
-                                                        View Trip
-                                                    </Link>
-                                                </Button>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                        </div>
-                    )}
-                </KnockFeedProvider>
+                                        {role === ROLES.PASSENGER && mappedNotif.tripId && (
+                                            <Button variant="outline" size="sm" className="mt-2" asChild>
+                                                <Link href={`/dashboard/trips/${mappedNotif.tripId}`}>View Trip</Link>
+                                            </Button>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );

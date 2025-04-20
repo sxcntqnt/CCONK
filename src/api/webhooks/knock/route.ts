@@ -2,8 +2,8 @@ import { UserJSON, SessionJSON, clerkClient } from '@clerk/nextjs/server';
 import { createWebhooksHandler } from '@brianmmdev/clerk-webhooks-handler';
 import { Knock } from '@knocklabs/node';
 import { NextResponse } from 'next/server';
-import { db } from '@/lib';
 import { auth } from '@clerk/nextjs/server';
+import { db } from '@/lib';
 import { ROLES, Role } from '@/utils/constants/roles';
 
 const knock = new Knock(process.env.KNOCK_API_SECRET ?? '');
@@ -14,9 +14,7 @@ if (!process.env.KNOCK_API_SECRET) {
 
 const handler = createWebhooksHandler({
     onUserCreated: async (payload: UserJSON) => {
-        const clerk = await clerkClient();
-        // Normalize role to uppercase before checks
-        const roleFromMetadata = (payload?.unsafeMetadata?.role as string | undefined)?.toUpperCase().trim() as
+        const roleFromMetadata = (payload?.unsafe_metadata?.role as string | undefined)?.toUpperCase().trim() as
             | Role
             | undefined;
         const role =
@@ -28,16 +26,10 @@ const handler = createWebhooksHandler({
                 payload.email_addresses.find((email) => email.id === payload.primary_email_address_id)?.email_address ||
                 '',
             role,
-        });
-        // Update Clerk with validated uppercase role
-        await clerk.users.updateUser(payload.id, {
-            unsafeMetadata: { role },
         });
     },
     onUserUpdated: async (payload: UserJSON) => {
-        const clerk = await clerkClient();
-        // Normalize role to uppercase before checks
-        const roleFromMetadata = (payload?.unsafeMetadata?.role as string | undefined)?.toUpperCase().trim() as
+        const roleFromMetadata = (payload?.unsafe_metadata?.role as string | undefined)?.toUpperCase().trim() as
             | Role
             | undefined;
         const role =
@@ -50,14 +42,10 @@ const handler = createWebhooksHandler({
                 '',
             role,
         });
-        await clerk.users.updateUser(payload.id, {
-            unsafeMetadata: { role },
-        });
     },
     onSessionCreated: async (payload: SessionJSON) => {
-        const clerk = await clerkClient();
-        const user = await clerk.users.getUser(payload.user_id);
-        // Normalize role to uppercase before checks
+        const client = await clerkClient(); // Await the factory function
+        const user = await client.users.getUser(payload.user_id);
         const roleFromMetadata = (user.unsafeMetadata?.role as string | undefined)?.toUpperCase().trim() as
             | Role
             | undefined;
