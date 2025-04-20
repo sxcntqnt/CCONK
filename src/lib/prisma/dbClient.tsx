@@ -33,12 +33,16 @@ type BusImage = {
 // Shared validation for capacities
 const validCapacities: MatatuCapacity[] = Object.keys(matatuConfigs) as MatatuCapacity[];
 
-function validateCapacity(capacity: number): MatatuCapacity {
-    const capacityStr = String(capacity) as MatatuCapacity;
-    if (!validCapacities.includes(capacityStr)) {
-        throw new Error(`Invalid bus capacity: ${capacity}`);
+export async function validateCapacity(capacity: number | string | null | undefined): Promise<MatatuCapacity> {
+    const validCapacities = Object.keys(matatuConfigs) as MatatuCapacity[];
+    const capacityStr = String(capacity);
+
+    if (validCapacities.includes(capacityStr as MatatuCapacity)) {
+        return capacityStr as MatatuCapacity;
     }
-    return capacityStr;
+
+    console.warn(`Invalid capacity ${capacity}, defaulting to '14'`);
+    return '14'; // Default to 14-seater
 }
 
 // Shared bus query logic
@@ -145,6 +149,7 @@ export async function getBus(busId: number): Promise<{
             select: {
                 id: true,
                 licensePlate: true,
+                capacity: true, // Ensure capacity is selected
                 category: true,
                 images: {
                     select: {
@@ -171,7 +176,7 @@ export async function getBus(busId: number): Promise<{
 
         return {
             ...bus,
-            capacity: validateCapacity(bus.capacity),
+            capacity: validateCapacity(bus.capacity), // Uses updated validateCapacity
             images,
         };
     } catch (error) {
@@ -453,3 +458,22 @@ export async function cleanupBusData(busId: number = 1): Promise<void> {
         throw new Error('Failed to clean up bus data');
     }
 }
+export const getServerSideProps: GetServerSideProps = async (context) => {
+    const licensePlate = (context.query.licensePlate as string) || '';
+    const categories = Object.entries(matatuConfigs).map(([key, config]) => ({
+        key: key as MatatuCapacity,
+        title: config.title,
+    }));
+
+    const searchResults = licensePlate.trim()
+        ? await getVehiclesByCategory({ licensePlate: licensePlate.trim() })
+        : null;
+
+    return {
+        props: {
+            categories,
+            searchResults,
+            licensePlate,
+        },
+    };
+};

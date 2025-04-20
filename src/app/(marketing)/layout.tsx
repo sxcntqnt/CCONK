@@ -1,4 +1,4 @@
-// src/app/[nested]/layout.tsx
+// src/app/(marketing)/layout.tsx
 import React from 'react';
 import { Navbar, Footer } from '@/components';
 import { cn } from '@/utils';
@@ -13,7 +13,7 @@ const MarketingLayout = ({ children }: Props) => {
             {/* Decorative Background Grid */}
             <div
                 id="home"
-                className="absolute inset-0 min-h-screen bg-[linear-gradient(to_right,#161616_1px,transparent_1px),linear-gradient(to_bottom,#161616_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] dark:bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] z-[-1]"
+                className="absolute inset-0 min-h-screen bg-[linear-gradient(to_right,#161616_1px,transparent_1px),linear-gradient(to_bottom,#161616_1px,transparent_1px)] bg-[length:24px_24px]"
             />
             {/* Navbar */}
             <Navbar className="fixed top-0 left-0 right-0 z-50 bg-[hsl(var(--background))]" />

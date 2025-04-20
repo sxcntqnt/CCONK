@@ -20,6 +20,11 @@ import MaxWidthWrapper from '../global/max-width-wrapper';
 import MobileNavbar from './mobile-navbar';
 import AnimationContainer from '../global/animation-container';
 
+// Define props interface for Navbar
+interface NavbarProps {
+    className?: string;
+}
+
 interface MenuItem {
     title: string;
     href: string;
@@ -27,8 +32,8 @@ interface MenuItem {
     tagline?: string;
 }
 
-const Navbar = () => {
-    const { user } = useClerk();
+const Navbar: React.FC<NavbarProps> = ({ className }) => {
+    const { user, signOut } = useClerk(); // Access signOut from useClerk
     const [scroll, setScroll] = useState(false);
 
     const handleScroll = () => {
@@ -45,6 +50,7 @@ const Navbar = () => {
             className={cn(
                 'sticky inset-x-0 top-0 z-[99999] h-14 w-full select-none border-b border-transparent',
                 scroll && 'border-background/80 bg-background/40 backdrop-blur-md',
+                className,
             )}
         >
             <AnimationContainer reverse delay={0.1} className="size-full">
@@ -125,9 +131,7 @@ const Navbar = () => {
                                 </Link>
                                 <Button
                                     variant="outline"
-                                    onClick={() => {
-                                        /* handle logout */
-                                    }}
+                                    onClick={() => signOut({ redirectUrl: '/' })} // Sign out and redirect to homepage
                                 >
                                     Logout
                                 </Button>

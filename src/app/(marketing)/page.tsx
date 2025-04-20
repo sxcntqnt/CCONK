@@ -113,7 +113,7 @@ const HomePage = async () => {
             <MaxWidthWrapper className="pt-10">
                 <AnimationContainer delay={0.1}>
                     <div className="flex w-full flex-col items-center justify-center py-8 lg:items-center">
-                        <MagicBadge title="Features" />
+                        <MagicBadge>Features</MagicBadge>
                         <h2 className="mt-6 text-center font-heading text-3xl font-medium !leading-[1.1] text-foreground md:text-5xl lg:text-center">
                             Manage Links Like a Pro
                         </h2>
@@ -135,7 +135,7 @@ const HomePage = async () => {
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
                     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center py-8 lg:items-center">
-                        <MagicBadge title="The Process" />
+                        <MagicBadge>The Process</MagicBadge>
                         <h2 className="mt-6 text-center font-heading text-3xl font-medium !leading-[1.1] text-foreground md:text-5xl lg:text-center">
                             Effortless link management in 3 steps
                         </h2>
@@ -167,7 +167,7 @@ const HomePage = async () => {
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
                     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center py-8 lg:items-center">
-                        <MagicBadge title="Simple Pricing" />
+                        <MagicBadge>Simple Pricing</MagicBadge>
                         <h2 className="mt-6 text-center font-heading text-3xl font-medium !leading-[1.1] text-foreground md:text-5xl lg:text-center">
                             Choose a plan that works for you
                         </h2>
@@ -192,7 +192,7 @@ const HomePage = async () => {
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
                     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center py-8 lg:items-center">
-                        <MagicBadge title="Our Customers" />
+                        <MagicBadge>Our Customers</MagicBadge>
                         <h2 className="mt-6 text-center font-heading text-3xl font-medium !leading-[1.1] text-foreground md:text-5xl lg:text-center">
                             What our users are saying
                         </h2>

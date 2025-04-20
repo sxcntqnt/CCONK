@@ -22,7 +22,8 @@ export default async function VehicleDetailsPage({ params }: VehicleDetailsPageP
     let bus: {
         id: number;
         licensePlate: string;
-        capacity: number;
+        capacity: MatatuCapacity;
+        category: string;
         images: { src: string; blurDataURL: string; alt: string }[];
     } | null = null;
     let seats: Record<
@@ -50,14 +51,8 @@ export default async function VehicleDetailsPage({ params }: VehicleDetailsPageP
         notFound();
     }
 
-    // Validate bus.capacity against matatuConfigs keys
-    const validCapacities = Object.keys(matatuConfigs) as MatatuCapacity[];
-    if (!validCapacities.includes(bus.capacity as MatatuCapacity)) {
-        // If the capacity is invalid, set it to the default 14-seater
-        bus.capacity = '14' as MatatuCapacity; // Default to 14-seater
-    }
-
-    const busCapacity = bus.capacity as MatatuCapacity;
+    // No validation needed since getBus ensures valid MatatuCapacity
+    const busCapacity = bus.capacity;
     const config = matatuConfigs[busCapacity];
 
     return (

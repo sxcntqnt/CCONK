@@ -1,10 +1,21 @@
 import Link from 'next/link';
 import { AnimationContainer, Icons } from '@/components';
 import { TextHoverEffect } from '@/components/ui/text-hover-effect';
+import { cn } from '@/utils';
 
-const Footer = () => {
+// Define props interface for Footer
+interface FooterProps {
+    className?: string; // Add className as an optional prop
+}
+
+const Footer: React.FC<FooterProps> = ({ className }) => {
     return (
-        <footer className="relative mx-auto flex w-full max-w-6xl flex-col items-center justify-center border-t border-border bg-[radial-gradient(35%_128px_at_50%_0%,theme(backgroundColor.white/8%),transparent)] px-6 pb-8 pt-16 md:pb-0 lg:px-8 lg:pt-32">
+        <footer
+            className={cn(
+                'relative mx-auto flex w-full max-w-6xl flex-col items-center justify-center border-t border-border bg-[radial-gradient(35%_128px_at_50%_0%,theme(backgroundColor.white/8%),transparent)] px-6 pb-8 pt-16 md:pb-0 lg:px-8 lg:pt-32',
+                className, // Apply the passed className
+            )}
+        >
             <div className="absolute left-1/2 right-1/2 top-0 h-1.5 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground"></div>
 
             <div className="grid w-full gap-8 xl:grid-cols-3 xl:gap-8">
@@ -139,7 +150,7 @@ const Footer = () => {
             <div className="mt-8 w-full border-t border-border/40 pt-4 md:flex md:items-center md:justify-between md:pt-8">
                 <AnimationContainer delay={0.6}>
                     <p className="mt-8 text-sm text-muted-foreground md:mt-0">
-                        &copy; {new Date().getFullYear()} Sxcntqnt INC. All rights reserved.
+                        © {new Date().getFullYear()} Sxcntqnt INC. All rights reserved.
                     </p>
                 </AnimationContainer>
             </div>

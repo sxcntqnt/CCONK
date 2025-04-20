@@ -160,7 +160,7 @@ export default function ReservePage() {
                 <LampContainer>
                     <AnimationContainer>
                         <h1 className="text-4xl font-bold text-white text-center mb-4">Reserve Your Seat</h1>
-                        <MagicBadge title="Book your ride in style!" />
+                        <MagicBadge>Book your ride in style!</MagicBadge>
                     </AnimationContainer>
                 </LampContainer>
 
@@ -328,7 +328,7 @@ const BookingSummaryCard = ({
             <CardContent>
                 <div className="flex justify-between items-center mb-4">
                     <span className="text-lg">Selected Seats:</span>
-                    <MagicBadge title={selectedSeats.length.toString()} />
+                    <MagicBadge>{selectedSeats.length.toString()}</MagicBadge>
                 </div>
                 <ScrollArea className="h-40 mb-4">
                     {selectedSeats.length > 0 ? (

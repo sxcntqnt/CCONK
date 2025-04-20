@@ -13,7 +13,7 @@ const LinkShorteningPage = () => {
             <MaxWidthWrapper>
                 <AnimationContainer delay={0.1} className="w-full">
                     <div className="mx-auto flex max-w-xl flex-col items-center justify-center py-10">
-                        <MagicBadge title="Simple" />
+                        <MagicBadge>Simple"</MagicBadge>
                         <h1 className="mt-6 text-center font-heading text-2xl font-semibold !leading-tight md:text-4xl lg:text-5xl">
                             Shorten links and track their performance
                         </h1>

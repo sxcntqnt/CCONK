@@ -1,77 +1,64 @@
-// src/app/vehicles/page.tsx
-'use client';
-import { Suspense, useState } from 'react';
+// src/app/(marketing)/vehicles/page.tsx
+import { GetServerSideProps } from 'next';
+import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { getVehiclesByCategory } from './vehicleUtils';
-import Link from 'next/link';
-import { matatuConfigs } from '@/utils/constants/matatuSeats';
+import { matatuConfigs, MatatuCapacity } from '@/utils/constants/matatuSeats';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import NRCCarousel, { Frame, FrameRenderedComponentPropsWithIndex } from '@/components/ui/NRCCarousel';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-export default function VehiclesPage() {
-    const [licensePlate, setLicensePlate] = useState('');
-    return (
-        <div className="min-h-screen bg-gray-900 text-white">
-            <Suspense fallback={<div className="text-center py-10">Loading...</div>}>
-                <VehiclesContent licensePlate={licensePlate} setLicensePlate={setLicensePlate} />
-            </Suspense>
-        </div>
-    );
+interface VehiclesPageProps {
+    categories: { key: MatatuCapacity; title: string }[];
+    searchResults: {
+        vehicles: { id: string; licensePlate: string; capacity: MatatuCapacity; image: string; blurDataURL: string }[];
+        total: number;
+    } | null;
+    licensePlate: string;
 }
 
-async function VehiclesContent({
-    licensePlate,
-    setLicensePlate,
-}: {
-    licensePlate: string;
-    setLicensePlate: (value: string) => void;
-}) {
-    const categories = Object.entries(matatuConfigs).map(([key, config]) => ({
-        key,
-        title: config.title,
-    }));
-
-    const searchResults = licensePlate.trim()
-        ? await getVehiclesByCategory({ licensePlate: licensePlate.trim() })
-        : null;
-
+export default function VehiclesPage({ categories, searchResults, licensePlate }: VehiclesPageProps) {
     return (
-        <div className="container mx-auto px-4 py-12">
-            <div className="mb-8">
-                <Input
-                    value={licensePlate}
-                    onChange={(e) => setLicensePlate(e.target.value)}
-                    placeholder="Search by license plate (e.g., KAA 123B)"
-                    className="bg-gray-800 text-white border-gray-700 placeholder-gray-500"
-                />
-            </div>
-            {licensePlate.trim() && searchResults ? (
-                <section className="mb-12">
-                    <h2 className="text-3xl font-bold mb-6 text-white">
-                        Search Results {searchResults.vehicles.length > 0 ? `(${searchResults.vehicles.length})` : ''}
-                    </h2>
-                    {searchResults.vehicles.length > 0 ? (
-                        <VehicleCarousel
-                            vehicles={searchResults.vehicles}
-                            total={searchResults.total}
-                            categoryKey="search"
-                        />
-                    ) : (
-                        <p className="text-gray-400">No vehicles found for license plate &quot;{licensePlate}&quot;.</p>
-                    )}
-                </section>
-            ) : (
-                categories.map(({ key, title }) => (
-                    <section key={key} className="mb-12">
-                        <h2 className="text-3xl font-bold mb-6 text-white">{title}</h2>
-                        <VehicleCarousel categoryKey={key} />
+        <div className="min-h-screen bg-gray-900 text-white">
+            <div className="container mx-auto px-4 py-12">
+                <div className="mb-8">
+                    <Input
+                        value={licensePlate}
+                        onChange={(e) => {
+                            window.location.href = `/vehicles?licensePlate=${encodeURIComponent(e.target.value)}`;
+                        }}
+                        placeholder="Search by license plate (e.g., KAA 123B)"
+                        className="bg-gray-800 text-white border-gray-700 placeholder-gray-500"
+                    />
+                </div>
+                {licensePlate.trim() && searchResults ? (
+                    <section className="mb-12">
+                        <h2 className="text-3xl font-bold mb-6 text-white">
+                            Search Results{' '}
+                            {searchResults.vehicles.length > 0 ? `(${searchResults.vehicles.length})` : ''}
+                        </h2>
+                        {searchResults.vehicles.length > 0 ? (
+                            <VehicleCarousel
+                                categoryKey="search"
+                                vehicles={searchResults.vehicles}
+                                total={searchResults.total}
+                            />
+                        ) : (
+                            <p className="text-gray-400">No vehicles found for license plate "{licensePlate}".</p>
+                        )}
                     </section>
-                ))
-            )}
+                ) : (
+                    categories.map(({ key, title }) => (
+                        <section key={key} className="mb-12">
+                            <h2 className="text-3xl font-bold mb-6 text-white">{title}</h2>
+                            <VehicleCarousel categoryKey={key} />
+                        </section>
+                    ))
+                )}
+            </div>
         </div>
     );
 }
@@ -81,31 +68,23 @@ async function VehicleCarousel({
     vehicles: propVehicles,
     total: propTotal,
 }: {
-    categoryKey: string;
+    categoryKey: MatatuCapacity | 'search';
     vehicles?: { id: string; licensePlate: string; capacity: MatatuCapacity; image: string; blurDataURL: string }[];
     total?: number;
 }) {
     const pageSize = 10;
-    const [page, setPage] = useState(1);
+    const page = 1; // Simplified for server-side rendering; add pagination if needed
 
     const { vehicles, total } =
         propVehicles && propTotal !== undefined
             ? { vehicles: propVehicles, total: propTotal }
-            : await getVehiclesByCategory({ categoryKey, page, pageSize });
+            : await getVehiclesByCategory({
+                  categoryKey: categoryKey === 'search' ? undefined : categoryKey,
+                  page,
+                  pageSize,
+              });
 
     const totalPages = Math.ceil(total / pageSize) || 1;
-
-    const handleNextPage = () => {
-        if (page < totalPages) {
-            setPage((prev) => prev + 1);
-        }
-    };
-
-    const handlePrevPage = () => {
-        if (page > 1) {
-            setPage((prev) => prev - 1);
-        }
-    };
 
     const frames: Frame[] = vehicles.map((vehicle) => ({
         key: vehicle.id,
@@ -237,34 +216,13 @@ async function VehicleCarousel({
                 slideDuration={5000}
                 noAutoPlay={false}
                 blurQuality={30}
-                ariaLabel={`Carousel of ${matatuConfigs[categoryKey].title} vehicles`}
+                ariaLabel={`Carousel of ${matatuConfigs[categoryKey === 'search' ? '14' : categoryKey].title} vehicles`}
                 controlsComponent={ControlsComponent}
                 willAutoPlayOutsideViewport={false}
                 loadingComponent={
                     <div className="absolute inset-0 bg-gray-300 animate-pulse rounded-lg" aria-busy="true" />
                 }
             />
-            {totalPages > 1 && (
-                <div className="flex justify-between items-center mt-4">
-                    <Button
-                        onClick={handlePrevPage}
-                        disabled={page === 1}
-                        className="bg-gray-700 hover:bg-gray-600 text-white"
-                    >
-                        Previous
-                    </Button>
-                    <span className="text-gray-300">
-                        Page {page} of {totalPages}
-                    </span>
-                    <Button
-                        onClick={handleNextPage}
-                        disabled={page === totalPages}
-                        className="bg-gray-700 hover:bg-gray-600 text-white"
-                    >
-                        Next
-                    </Button>
-                </div>
-            )}
         </div>
     );
 }

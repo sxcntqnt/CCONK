@@ -46,7 +46,7 @@ const EnterprisePage = async () => {
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
                     <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <MagicBadge title="Features" />
+                        <MagicBadge>Features</MagicBadge>
                         <h2 className="mt-6 text-3xl font-medium font-heading text-[hsl(var(--foreground))] !leading-[1.1] md:text-5xl">
                             Smart Matatu Management For Everyone
                         </h2>
@@ -78,7 +78,7 @@ const EnterprisePage = async () => {
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
                     <div className="flex flex-col items-center justify-center py-8 max-w-xl mx-auto text-center">
-                        <MagicBadge title="How It Works" />
+                        <MagicBadge>How it Works</MagicBadge>
                         <h2 className="mt-6 text-3xl font-medium font-heading text-[hsl(var(--foreground))] !leading-[1.1] md:text-5xl">
                             Transform your commute in 3 simple steps
                         </h2>
@@ -118,7 +118,7 @@ const EnterprisePage = async () => {
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
                     <div className="flex flex-col items-center justify-center py-8 max-w-xl mx-auto text-center">
-                        <MagicBadge title="Flexible Plans" />
+                        <MagicBadge>Flexible Plans</MagicBadge>
                         <h2 className="mt-6 text-3xl font-medium font-heading text-[hsl(var(--foreground))] !leading-[1.1] md:text-5xl">
                             Plans for commuters and operators
                         </h2>
@@ -177,7 +177,7 @@ const EnterprisePage = async () => {
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
                     <div className="flex flex-col items-center justify-center py-8 max-w-xl mx-auto text-center">
-                        <MagicBadge title="Success Stories" />
+                        <MagicBadge>Success Stories</MagicBadge>
                         <h2 className="mt-6 text-3xl font-medium font-heading text-[hsl(var(--foreground))] !leading-[1.1] md:text-5xl">
                             What our users are saying
                         </h2>
@@ -225,7 +225,7 @@ const EnterprisePage = async () => {
             <MaxWidthWrapper className="py-10">
                 <AnimationContainer delay={0.1}>
                     <div className="flex flex-col items-center justify-center py-8 max-w-xl mx-auto text-center">
-                        <MagicBadge title="Real World Impact" />
+                        <MagicBadge>Real World Impact</MagicBadge>
                         <h2 className="mt-6 text-3xl font-medium font-heading text-[hsl(var(--foreground))] !leading-[1.1] md:text-5xl">
                             FLAM in action
                         </h2>

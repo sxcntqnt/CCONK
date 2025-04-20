@@ -1,4 +1,4 @@
-type MatatuCapacity = '14' | '26' | '33' | '46' | '52' | '67';
+export type MatatuCapacity = '14' | '26' | '33' | '46' | '52' | '67';
 
 interface MatatuConfig {
     totalSeats: number;

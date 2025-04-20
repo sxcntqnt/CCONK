@@ -17,18 +17,21 @@ export const NRCFrame = ({
     decrementCarousel,
     incrementCarousel,
     jumpTo,
+    currentIndex = 0, // Default to 0 if not provided
 }: NRCFrameComponent & {
     priority?: boolean;
     onLoad?: () => void;
     incrementCarousel: () => void;
     decrementCarousel: () => void;
     jumpTo: (i: number) => void;
+    currentIndex?: number; // Add currentIndex
     loadingComponent?: React.ReactNode;
     blurQuality?: number;
     noBlur?: boolean;
 }) => {
     const [blurUri, setBlurUri] = useState<undefined | string>(undefined);
     const [loaded, setLoaded] = useState(false);
+
     useEffect(() => {
         if (!image?.src || image.blurDataURL || noBlur) {
             return;
@@ -40,12 +43,17 @@ export const NRCFrame = ({
                 setBlurUri(`data:image/jpeg;base64,${base64}`);
             })
             .catch(console.error);
-    }, [image]);
+    }, [image, blurQuality, noBlur]);
+
     const imageStyles: React.CSSProperties = {
         height: '100%',
         objectPosition: getObjectPosition(image, image?.imageFocalPoint),
         width: '100%',
     };
+
+    const isFunction = (value: unknown): value is (props: FrameRenderedComponentPropsWithIndex) => React.ReactNode =>
+        typeof value === 'function';
+
     return (
         <>
             {!!image?.src && (
@@ -81,7 +89,9 @@ export const NRCFrame = ({
 
             {!!component && (
                 <div className="absolute inset-0 w-full h-full">
-                    {isFunction(component) ? component({ decrementCarousel, incrementCarousel, jumpTo }) : component}
+                    {isFunction(component)
+                        ? component({ decrementCarousel, incrementCarousel, jumpTo, currentIndex })
+                        : component}
                 </div>
             )}
         </>

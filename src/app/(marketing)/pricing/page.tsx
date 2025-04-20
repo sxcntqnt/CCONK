@@ -8,7 +8,7 @@ const PricingPage = () => {
         <MaxWidthWrapper className="mb-40">
             <AnimationContainer delay={0.1}>
                 <div className="mx-auto flex max-w-lg flex-col items-center justify-center py-10">
-                    <MagicBadge title="Pricing" />
+                    <MagicBadge>Pricing</MagicBadge>
                     <h1 className="mt-6 text-center font-heading text-2xl font-semibold !leading-tight md:text-4xl lg:text-5xl">
                         Simple and transparent pricing
                     </h1>

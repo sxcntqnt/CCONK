@@ -1,6 +1,6 @@
 // src/lib/vehicleUtils.tsx
 'use server';
-import { getBuses } from '@/lib/prisma/dbClient';
+import { getBuses, getServerSideProps } from '@/lib/prisma/dbClient';
 import { matatuConfigs, MatatuCapacity } from '@/utils/constants/matatuSeats';
 
 export async function getVehiclesByCategory({
@@ -25,14 +25,12 @@ export async function getVehiclesByCategory({
 }> {
     try {
         // Validate inputs
-        let capacity: number | undefined;
+        let capacity: MatatuCapacity | undefined;
         if (categoryKey) {
-            capacity = Number(categoryKey);
-            if (isNaN(capacity)) {
-                throw new Error(`Invalid category key: ${categoryKey} (not a number)`);
-            }
-            const validCapacities = Object.keys(matatuConfigs).map(Number) as MatatuCapacity[];
-            if (!validCapacities.includes(capacity as MatatuCapacity)) {
+            const validCapacities = Object.keys(matatuConfigs) as MatatuCapacity[];
+            if (validCapacities.includes(categoryKey as MatatuCapacity)) {
+                capacity = categoryKey as MatatuCapacity;
+            } else {
                 throw new Error(`Invalid category key: ${categoryKey} (not a valid capacity)`);
             }
         }
@@ -41,17 +39,20 @@ export async function getVehiclesByCategory({
             throw new Error(`Invalid license plate: ${licensePlate}`);
         }
 
+        // Convert capacity to number for getBuses
+        const numericCapacity = capacity ? parseInt(capacity) : undefined;
+
         // Fetch buses with filters
         const { buses, total } = await getBuses(page, pageSize, {
             licensePlate: licensePlate?.trim(),
-            capacity,
+            capacity: numericCapacity, // Pass numeric capacity
         });
 
         // Map to carousel format
         const mappedBuses = buses.map((bus) => ({
             id: bus.id.toString(),
             licensePlate: bus.licensePlate,
-            capacity: bus.capacity as MatatuCapacity,
+            capacity: bus.capacity, // Already MatatuCapacity from getBuses
             image: bus.imageUrl ?? '/placeholder.jpg',
             blurDataURL: bus.imageUrl?.replace(/\.[^/.]+$/, '-blur.jpg') ?? '/placeholder.jpg',
         }));

@@ -173,12 +173,18 @@ const useBusReservation = (): UseBusReservationReturn => {
         const sanitizedValue = value.replace(/[^0-9]/g, '');
         setPhoneNumber(sanitizedValue);
     };
+    const capacityFilter: MatatuCapacity | undefined =
+        selectedCapacity !== 'all' &&
+        selectedCapacity !== '' &&
+        (Object.keys(matatuConfigs) as MatatuCapacity[]).includes(selectedCapacity as MatatuCapacity)
+            ? selectedCapacity
+            : undefined;
 
     const fetchBuses = useCallback(
         async (page: number) => {
             try {
                 const { buses: busData, total } = await getBuses(page, pageSize, {
-                    capacity: selectedCapacity !== 'all' ? Number(selectedCapacity) : undefined,
+                    capacity: capacityFilter,
                     licensePlate: licensePlateFilter.trim() || undefined,
                 });
                 if (!busData || !Array.isArray(busData)) {

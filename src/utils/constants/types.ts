@@ -27,17 +27,16 @@ export type FrameRenderedComponentPropsWithIndex = FrameRenderedComponentProps &
     currentIndex: number;
 };
 
-export type NRCFrameComponent = {
-    image?: Partial<StaticImageData> & NRCImage;
-    /* This component will be absolutely positioned on top of the image. */
-    component?: React.ReactNode | ((props: FrameRenderedComponentProps) => React.ReactNode);
-};
-
 export type Frame = {
     /* The key will default to frame.default.src if this is blank */
     key?: string;
     mobile?: NRCFrameComponent;
     desktop?: NRCFrameComponent;
+};
+export type NRCFrameComponent = {
+    image?: Partial<StaticImageData> & NRCImage;
+    /* This component will be absolutely positioned on top of the image. */
+    component?: React.ReactNode | ((props: FrameRenderedComponentPropsWithIndex) => React.ReactNode);
 };
 
 export type NRCCarouselProps = {
