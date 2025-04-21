@@ -27,6 +27,7 @@ import {
     PaginationNext,
 } from '@/components/ui/pagination';
 import { cn } from '@/utils';
+import { ErrorBoundary } from '@/components';
 
 /**
  * Interfaces for type safety
@@ -53,22 +54,6 @@ interface ReservationError {
     message: string;
     type: 'validation' | 'payment' | 'reservation' | 'network' | 'unknown';
     details?: string;
-}
-
-/**
- * ErrorBoundary component to catch and display runtime errors
- */
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
-    state = { hasError: false, error: '' };
-    static getDerivedStateFromError(error: Error) {
-        return { hasError: true, error: error.message };
-    }
-    render() {
-        if (this.state.hasError) {
-            return <div className="text-red-500 p-4">Error: {this.state.error}</div>;
-        }
-        return this.props.children;
-    }
 }
 
 /**
@@ -105,8 +90,8 @@ const BusImageDisplay: React.FC<{ imageUrl?: string; category: string; isLoading
  * Main ReservePage component
  */
 export default function ReservePage() {
-    const { user } = useUser();
-    const clerkId = user?.id;
+    const { user, isLoaded: userLoaded } = useUser();
+    const clerkId = user?.id ?? null; // Safely handle undefined user
 
     const {
         buses,
@@ -206,6 +191,17 @@ export default function ReservePage() {
         }
         confirmCheckout(clerkId);
     };
+
+    // Show loading state while Clerk user data is loading
+    if (!userLoaded) {
+        return (
+            <ErrorBoundary>
+                <MaxWidthWrapper className="flex items-center justify-center min-h-screen">
+                    <div className="text-white">Loading reservation...</div>
+                </MaxWidthWrapper>
+            </ErrorBoundary>
+        );
+    }
 
     return (
         <ErrorBoundary>
@@ -563,6 +559,7 @@ const BusSelectionCard: React.FC<BusSelectionCardProps> = ({
         </Card>
     );
 };
+
 /**
  * ErrorMessage component for displaying error messages
  */

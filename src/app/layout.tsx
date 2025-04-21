@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import { Providers } from '@/components';
 import { Toaster } from '@/components/ui/sonner';
+import { ErrorBoundary } from '@/components';
 import '@/styles/globals.css';
 import { aeonik, cn, generateMetadata, inter } from '@/utils';
 
@@ -16,10 +17,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     inter.variable,
                 )}
             >
-                <Providers>
-                    <Toaster richColors theme="dark" position="top-right" />
-                    {children}
-                </Providers>
+                <ErrorBoundary>
+                    <Providers>
+                        <Toaster richColors theme="dark" position="top-right" />
+                        {children}
+                    </Providers>
+                </ErrorBoundary>
             </body>
         </html>
     );

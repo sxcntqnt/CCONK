@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently  -k -r --success=first \"next dev -p 5001\" \"npx ts-node --esm ./src/lib/server/wsserver.mjs\"",
-    "build": "node --max-old-space-size=4096 next build",
+    "dev": "DEBUG=* concurrently -k -r --success=first \"next dev -p 5001\" \"npx ts-node --esm --log-error ./src/lib/server/wsserver.mjs\"",
+    "build": "pnpm next build ",
     "start": "next start -p 5001",
     "lint": "npx lint-staged",
     "format": "npm run prettier:check",

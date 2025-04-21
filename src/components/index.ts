@@ -6,6 +6,7 @@ import SignUpForm from './auth/signup-form';
 import { Icons } from './global/icons';
 import MaxWidthWrapper from './global/max-width-wrapper';
 import AnimationContainer from './global/animation-container';
+import ErrorBoundary from './global/error-boundary';
 
 // navigation
 import Navbar from './navigation/navbar';
@@ -37,4 +38,5 @@ export {
     Providers,
     PricingCards,
     Blogs,
+    ErrorBoundary,
 };

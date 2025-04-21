@@ -1,7 +1,6 @@
-// components/providers.tsx
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { ClerkProvider, useUser, useAuth } from '@clerk/nextjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -18,52 +17,86 @@ interface Props {
 }
 
 const InnerProviders = ({ children }: Props) => {
-    const { user } = useUser();
-    const { getToken } = useAuth(); // Get Clerk JWT
+    const { user, isLoaded: userLoaded, isSignedIn } = useUser();
+    const { getToken } = useAuth();
     const [knockToken, setKnockToken] = React.useState<string | null>(null);
+    const [error, setError] = React.useState<string | null>(null);
 
-    // Fetch Clerk JWT for Knock
+    // Fetch Clerk JWT for Knock only for signed-in users
     React.useEffect(() => {
         async function fetchToken() {
             try {
                 const token = await getToken(); // Get Clerk's default JWT
-                setKnockToken(token);
+                if (token) {
+                    setKnockToken(token);
+                } else {
+                    setError('No Clerk token available');
+                }
             } catch (error) {
                 console.error('Failed to fetch Clerk token:', error);
+                setError('Failed to fetch Clerk token');
             }
         }
-        if (user?.id) {
+        if (userLoaded && isSignedIn && user?.id) {
             fetchToken();
         }
-    }, [user?.id, getToken]);
+    }, [userLoaded, isSignedIn, user?.id, getToken]);
 
-    if (!user?.id || !knockToken) {
-        // Render nothing or a loading state until token is ready
-        return null;
+    // Common providers for all users (authenticated or not)
+    const commonProviders = (
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <SidebarProvider>
+                <TooltipProvider>{children}</TooltipProvider>
+            </SidebarProvider>
+        </ThemeProvider>
+    );
+
+    // If user data is not loaded, show a loading state
+    if (!userLoaded) {
+        return (
+            <>
+                <div className="flex items-center justify-center min-h-screen">Loading authentication...</div>
+                {commonProviders}
+            </>
+        );
     }
 
+    // If there's an error, show an error state
+    if (error) {
+        return (
+            <>
+                <div className="flex items-center justify-center min-h-screen">Error: {error}</div>
+                {commonProviders}
+            </>
+        );
+    }
+
+    // If user is not signed in or no token, render without KnockProvider
+    if (!isSignedIn || !user?.id || !knockToken) {
+        return commonProviders;
+    }
+
+    // Render with KnockProvider for authenticated users
     return (
         <KnockProvider
             apiKey={KNOCK_PUBLIC_API_KEY}
             userId={user.id}
-            userToken={knockToken} // Pass Clerk JWT as Knock user token
+            userToken={knockToken}
         >
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-                <SidebarProvider>
-                    <TooltipProvider>{children}</TooltipProvider>
-                </SidebarProvider>
-            </ThemeProvider>
+            {commonProviders}
         </KnockProvider>
     );
 };
 
 const Providers = ({ children }: Props) => {
-    const client = new QueryClient();
+    const queryClient = new QueryClient();
 
     return (
-        <QueryClientProvider client={client}>
+        <QueryClientProvider client={queryClient}>
             <ClerkProvider>
-                <InnerProviders>{children}</InnerProviders>
+                <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+                    <InnerProviders>{children}</InnerProviders>
+                </Suspense>
             </ClerkProvider>
         </QueryClientProvider>
     );
