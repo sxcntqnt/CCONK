@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { getSeats, getBus } from '@/lib/prisma/dbClient';
+import { getBus } from '@/lib/prisma/dbClient';
 import { matatuConfigs } from '@/utils/constants/matatuSeats';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VehicleImagesCarousel from '@/components/ui/vehicleImagesCarousel';
@@ -24,24 +24,11 @@ export default async function VehicleDetailsPage({ params }: VehicleDetailsPageP
         licensePlate: string;
         capacity: MatatuCapacity;
         category: string;
-        images: { src: string; blurDataURL: string; alt: string }[];
+        images: { src: string; blurDataURL?: string | null; alt: string }[];
     } | null = null;
-    let seats: Record<
-        string,
-        {
-            id: string;
-            label: string;
-            status: 'available' | 'selected' | 'reserved';
-            price: number;
-            row?: number;
-            column?: number;
-            category?: string;
-        }
-    > | null = null;
 
     try {
         bus = await getBus(busId);
-        seats = await getSeats(busId);
     } catch (error) {
         console.error('Error fetching bus details:', error);
         notFound();
@@ -62,46 +49,12 @@ export default async function VehicleDetailsPage({ params }: VehicleDetailsPageP
                     <Card className="bg-gray-800 border-gray-700 rounded-lg">
                         <CardHeader>
                             <CardTitle className="text-2xl font-bold">{config.title}</CardTitle>
-                            <p className="text-sm text-gray-300 mb-4">License Plate: {bus.licensePlate}</p>
-                            <VehicleImagesCarousel images={bus.images} licensePlate={bus.licensePlate} />
+                            <p className="text-sm text-gray-300">Category: {bus.category}</p>
                         </CardHeader>
+
                         <CardContent>
-                            <h3 className="text-lg font-semibold mb-4">Seat Layout</h3>
-                            {seats && Object.keys(seats).length > 0 ? (
-                                <div className="flex flex-col gap-2">
-                                    {config.layout.map((row, rowIndex) => (
-                                        <div key={rowIndex} className="flex justify-center gap-4">
-                                            {row.map((section, sectionIndex) => (
-                                                <div key={sectionIndex} className="flex gap-2">
-                                                    {section.map((seatNumber) => {
-                                                        const seat = Object.values(seats).find(
-                                                            (s) => s.label === String(seatNumber),
-                                                        );
-                                                        return (
-                                                            <div
-                                                                key={seatNumber}
-                                                                className={`w-10 h-10 flex items-center justify-center rounded-md text-white ${
-                                                                    !seat
-                                                                        ? 'bg-gray-500'
-                                                                        : seat.status === 'available'
-                                                                          ? 'bg-green-500'
-                                                                          : seat.status === 'reserved'
-                                                                            ? 'bg-red-500'
-                                                                            : 'bg-blue-500'
-                                                                }`}
-                                                            >
-                                                                {seat?.label || seatNumber}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-gray-300">No seats available.</p>
-                            )}
+                            {/* Our updated Instagram-style carousel component */}
+                            <VehicleImagesCarousel images={bus.images} licensePlate={bus.licensePlate} />
                         </CardContent>
                     </Card>
                 </div>

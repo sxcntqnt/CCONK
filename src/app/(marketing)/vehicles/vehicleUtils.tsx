@@ -34,20 +34,16 @@ export async function getVehiclesByCategory({
                 throw new Error(`Invalid category key: ${categoryKey} (not a valid capacity)`);
             }
         }
-
         if (licensePlate && (typeof licensePlate !== 'string' || licensePlate.trim() === '')) {
             throw new Error(`Invalid license plate: ${licensePlate}`);
         }
-
         // Convert capacity to number for getBuses
         const numericCapacity = capacity ? parseInt(capacity) : undefined;
-
         // Fetch buses with filters
         const { buses, total } = await getBuses(page, pageSize, {
             licensePlate: licensePlate?.trim(),
             capacity: numericCapacity, // Pass numeric capacity
         });
-
         // Map to carousel format
         const mappedBuses = buses.map((bus) => ({
             id: bus.id.toString(),
@@ -56,7 +52,6 @@ export async function getVehiclesByCategory({
             image: bus.imageUrl ?? '/placeholder.jpg',
             blurDataURL: bus.imageUrl?.replace(/\.[^/.]+$/, '-blur.jpg') ?? '/placeholder.jpg',
         }));
-
         return { vehicles: mappedBuses, total };
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -66,8 +61,10 @@ export async function getVehiclesByCategory({
         throw new Error(`Failed to fetch vehicles: ${errorMsg}`);
     }
 }
-export const getServerSideProps: GetServerSideProps = async (context) => {
-    const licensePlate = (context.query.licensePlate as string) || '';
+
+// This is the App Router way to fetch data for server components
+export async function getServerSideData(params: { licensePlate?: string }) {
+    const licensePlate = params.licensePlate || '';
     const categories = Object.entries(matatuConfigs).map(([key, config]) => ({
         key: key as MatatuCapacity,
         title: config.title,
@@ -78,10 +75,8 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         : null;
 
     return {
-        props: {
-            categories,
-            searchResults,
-            licensePlate,
-        },
+        categories,
+        searchResults,
+        licensePlate,
     };
-};
+}

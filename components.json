@@ -12,6 +12,11 @@
   },
   "aliases": {
     "components": "@/components",
-    "utils": "@/utils"
+    "utils": "@/utils",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  {
+    "style": "new-york"
   }
 }
