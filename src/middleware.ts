@@ -58,7 +58,7 @@ export default clerkMiddleware(
             return NextResponse.redirect(new URL('/not-found', req.url));
         }
     },
-    { debug: true },
+    { debug: false },
 );
 
 export const config = {
