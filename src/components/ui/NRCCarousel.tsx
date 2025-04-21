@@ -176,7 +176,7 @@ const NRCCarousel = ({
                             height: heights?.mobile,
                         }}
                         aria-hidden={i < index || i >= index + currentVisibleCount}
-                        inert={i < index || i >= index + currentVisibleCount ? '' : undefined}
+                        inert={i < index || i >= index + currentVisibleCount ? true : undefined}
                     >
                         <NRCFrame
                             priority={i === 0}
@@ -218,7 +218,7 @@ const NRCCarousel = ({
                                 height: heights?.desktop,
                             }}
                             aria-hidden={i < index || i >= index + currentVisibleCount}
-                            inert={i < index || i >= index + currentVisibleCount ? '' : undefined}
+                            inert={i < index || i >= index + currentVisibleCount ? true : undefined}
                         >
                             <NRCFrame
                                 priority={i === 0}

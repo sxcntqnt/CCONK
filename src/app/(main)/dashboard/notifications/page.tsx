@@ -129,7 +129,7 @@ export default function NotificationsPage() {
 
                 {/* Use the NotificationFeed component for Knock notifications */}
                 <div className="flex justify-end mb-4">
-                    <NotificationFeed showNotificationCount={true} customRenderer={true} userRole={role as Role} />
+                    <NotificationFeed badgeCountVisible={true} customRenderer={true} userRole={role as Role} />
                 </div>
 
                 {/* Prisma notifications display */}

@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
-import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import MaplibreDraw, { DrawCustomMode, DrawCustomModeThis, MapMouseEvent } from 'maplibre-gl-draw';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+import 'maplibre-gl-draw/dist/maplibre-gl-draw.css';
 import GeofenceControls from './GeofenceControls';
+import { GeoJSON } from 'geojson';
 
 interface Geofence {
     id: string;
@@ -16,6 +17,52 @@ interface Geofence {
     createdAt: Date;
 }
 
+// Custom Rectangle Mode
+interface RectangleModeState {
+    startPoint: maplibregl.LngLat | null;
+}
+
+const RectangleMode: DrawCustomMode<RectangleModeState, any> = {
+    onSetup(this: DrawCustomModeThis, options: any): RectangleModeState {
+        this.clearSelectedFeatures();
+        this.setActionableState({ trash: true, combineFeatures: false, uncombineFeatures: false });
+        return { startPoint: null };
+    },
+    onClick(this: DrawCustomModeThis, state: RectangleModeState, e: MapMouseEvent) {
+        if (!state.startPoint) {
+            state.startPoint = e.lngLat;
+            return;
+        }
+        const endPoint = e.lngLat;
+        const coordinates = [
+            [state.startPoint.lng, state.startPoint.lat],
+            [state.startPoint.lng, endPoint.lat],
+            [endPoint.lng, endPoint.lat],
+            [endPoint.lng, state.startPoint.lat],
+            [state.startPoint.lng, state.startPoint.lat],
+        ];
+        const feature = {
+            id: `geofence-${Date.now()}`,
+            type: 'Feature',
+            geometry: {
+                type: 'Polygon',
+                coordinates: [coordinates],
+            },
+            properties: {},
+        };
+        this.map.fire('draw.create', { features: [feature] });
+        this.changeMode('simple_select');
+    },
+    toDisplayFeatures(
+        this: DrawCustomModeThis,
+        state: RectangleModeState,
+        geojson: GeoJSON,
+        display: (geojson: GeoJSON) => void,
+    ) {
+        display(geojson);
+    },
+};
+
 const GeofenceMap = () => {
     const [geofences, setGeofences] = useState<Geofence[]>([]);
     const [activeGeofence, setActiveGeofence] = useState<string | null>(null);
@@ -24,7 +71,7 @@ const GeofenceMap = () => {
     const [isLoading, setIsLoading] = useState(true);
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null);
-    const draw = useRef<MapboxDraw | null>(null);
+    const draw = useRef<MaplibreDraw | null>(null);
 
     const colorPalette = ['#FF5F6D', '#47B881', '#4299E1', '#FFC107', '#9F7AEA', '#ED64A6'];
     const getRandomColor = () => colorPalette[Math.floor(Math.random() * colorPalette.length)];
@@ -59,15 +106,19 @@ const GeofenceMap = () => {
 
         map.current.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
-        draw.current = new MapboxDraw({
+        draw.current = new MaplibreDraw({
             displayControlsDefault: false,
             controls: {
                 polygon: false,
                 trash: false,
             },
+            modes: {
+                ...MaplibreDraw.modes,
+                draw_rectangle: RectangleMode,
+            },
         });
 
-        map.current.addControl(draw.current, 'top-right');
+        map.current.addControl(draw.current as any, 'top-right');
 
         map.current.on('load', () => {
             setIsLoading(false);
@@ -141,7 +192,7 @@ const GeofenceMap = () => {
 
     const startDrawing = (mode: 'draw_rectangle' | 'draw_polygon') => {
         if (draw.current && editMode) {
-            draw.current.changeMode(mode);
+            draw.current.changeMode(mode as any);
         }
     };
 

@@ -1,6 +1,6 @@
 import Image, { StaticImageData } from 'next/image';
 import React, { useEffect, useState } from 'react';
-import { FocalPoint, FrameRenderedComponentProps, NRCFrameComponent, NRCImage } from '@/utils/constants/types';
+import { FocalPoint, FrameRenderedComponentProps, FrameRenderedComponentPropsWithIndex, NRCFrameComponent, NRCImage } from '@/utils/constants/types';
 import clsx from 'clsx';
 
 const DEFAULT_BLUR_WIDTH = 200;
@@ -90,7 +90,7 @@ export const NRCFrame = ({
             {!!component && (
                 <div className="absolute inset-0 w-full h-full">
                     {isFunction(component)
-                        ? component({ decrementCarousel, incrementCarousel, jumpTo, currentIndex })
+                        ? (component({ decrementCarousel, incrementCarousel, jumpTo, currentIndex }) as React.ReactNode)
                         : component}
                 </div>
             )}
@@ -103,6 +103,3 @@ const getObjectPosition = (image?: Partial<StaticImageData> & NRCImage, focal?: 
         ? `${100 * (focal?.x / image?.width)}% ${100 * (focal?.y / image?.height)}%`
         : undefined;
 };
-
-const isFunction = (value: unknown): value is (props: FrameRenderedComponentProps) => React.ReactNode =>
-    typeof value === 'function';

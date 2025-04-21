@@ -1,4 +1,3 @@
-// components/RTU.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -23,6 +22,30 @@ function RealTimeTripUpdates({ tripId }: { tripId: number }) {
             console.error('NEXT_PUBLIC_WEBSOCKET_URL is not defined in .env');
         }
 
+        // First, ensure the server has a webhook set up for this trip
+        const setupWebhook = async () => {
+            try {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1738';
+                const response = await fetch(`${apiUrl}/api/setup-trip-webhook`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ tripId }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to set up trip webhook');
+                }
+            } catch (error) {
+                console.error('Error setting up webhook:', error);
+                toast.error('Failed to set up trip updates');
+            }
+        };
+        
+        setupWebhook();
+
+        // Now set up WebSocket connection
         const wsManager = WebSocketManager.getInstance({
             url: wsUrl,
             reconnectInterval: 3000,
