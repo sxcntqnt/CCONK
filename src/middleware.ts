@@ -1,62 +1,60 @@
-// src/middleware.ts
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { ClerkMiddlewareAuthObject } from '@clerk/nextjs/server';
-import { whitelist, WhitelistIP } from '@/utils/constants/whitelist';
+import { whitelist, isWhitelistedIP, isValidIPv4 } from '@/utils/constants/whitelist';
 
 export default clerkMiddleware(
     async (auth, req) => {
         const url = req.nextUrl.pathname;
         const paymentCallbackRoute = '/api/webhooks/stk-callback';
 
-        // IP validation only for payment callback route
+        // IP validation for payment callback route
         if (url === paymentCallbackRoute) {
-            // Get IP using your suggested approach
-            const clientIp = (req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.ip) as
-                | string
-                | undefined;
+            // Extract client IP from x-forwarded-for header
+            const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
 
             if (!clientIp) {
-                console.log('Middleware - No IP detected in payment callback request');
-                // Redirect to /not-found instead of JSON response
+                console.warn('Middleware - No client IP detected for payment callback');
+                return NextResponse.redirect(new URL('/not-found', req.url));
+            }
+
+            // Validate IP format
+            if (!isValidIPv4(clientIp)) {
+                console.warn(`Middleware - Invalid IP format: ${clientIp}`);
                 return NextResponse.redirect(new URL('/not-found', req.url));
             }
 
             // Check if the IP is in the whitelist
-            const isWhitelisted = whitelist.some((entry: WhitelistIP) => entry.ip === clientIp);
-            if (!isWhitelisted) {
-                console.log(`Middleware - IP ${clientIp} not whitelisted for payment callback`);
-                // Redirect to /not-found instead of JSON response
+            if (!isWhitelistedIP(clientIp)) {
+                console.warn(`Middleware - IP ${clientIp} not whitelisted for payment callback`);
                 return NextResponse.redirect(new URL('/not-found', req.url));
             }
 
-            // If IP is valid, proceed without further auth checks for this route
-            console.log(`Middleware - IP ${clientIp} whitelisted for payment callback`);
+            console.info(`Middleware - IP ${clientIp} whitelisted for payment callback`);
             return NextResponse.next();
         }
 
-        // Existing auth logic (applies to all routes except payment callback)
+        // Authentication logic for other routes
         try {
             const authResult: ClerkMiddlewareAuthObject = await auth();
             const { userId } = authResult;
 
-            console.log('Middleware - Path:', url, 'userId:', userId);
+            console.debug(`Middleware - Path: ${url}, UserId: ${userId || 'none'}`);
 
             if (!userId && url.startsWith('/dashboard')) {
-                console.log('Middleware - Redirecting to /auth/sign-in (unauthenticated)');
+                console.info('Middleware - Unauthenticated user, redirecting to /auth/sign-in');
                 return NextResponse.redirect(new URL('/auth/sign-in', req.url));
             }
 
             if (userId && (url.startsWith('/auth/sign-in') || url.startsWith('/auth/sign-up'))) {
-                console.log('Middleware - Redirecting to /dashboard (authenticated)');
+                console.info('Middleware - Authenticated user, redirecting to /dashboard');
                 return NextResponse.redirect(new URL('/dashboard', req.url));
             }
 
-            console.log('Middleware - Proceeding without redirect');
+            console.debug('Middleware - Proceeding without redirect');
             return NextResponse.next();
         } catch (error) {
             console.error('Middleware - Authentication error:', error);
-            // Redirect to /not-found for any errors during auth
             return NextResponse.redirect(new URL('/not-found', req.url));
         }
     },
@@ -65,12 +63,13 @@ export default clerkMiddleware(
 
 export const config = {
     matcher: [
-        '/((?!.*\\..*|_next).*)',
-        '/(api|trpc)(.*)',
-        '/dashboard(.*)',
+        '/((?!.*\\..*|_next).*)', // Match all pages except static files and _next
+        '/(api|trpc)(.*)', // Match API and TRPC routes
+        '/dashboard(.*)', // Match dashboard routes
         '/',
+        '/reserve',
         '/auth/sign-in',
         '/auth/sign-up',
-        '/api/stk-callback', // Explicitly include the payment callback route
+        '/api/webhooks/stk-callback', // Match payment callback route
     ],
 };

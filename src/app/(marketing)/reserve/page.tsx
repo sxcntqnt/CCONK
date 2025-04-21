@@ -1,25 +1,28 @@
-// src/app/(reservation)/reserve/page.tsx
 'use client';
 
 import React, { useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
 import useBusReservation from '@/hooks/useReservation';
-import { matatuConfigs } from '@/utils/constants/matatuSeats';
+import { matatuConfigs, MatatuCapacity } from '@/utils/constants/matatuSeats';
 import { DynamicSeatLayout, Seat } from '@/components/ui/seat-layout';
 import { AnimationContainer, MaxWidthWrapper } from '@/components';
 import { Button } from '@/components/ui/button';
 import { LampContainer } from '@/components/ui/lamp';
 import MagicBadge from '@/components/ui/magic-badge';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import PhoneNumberForm from '@/components/ui/PhonNumberForm';
+import Image from 'next/image';
 
-type MatatuCapacity = '14' | '26' | '33' | '46' | '52' | '67';
-
+/**
+ * Interfaces for type safety
+ */
 interface Bus {
     id: number;
     licensePlate: string;
@@ -44,6 +47,9 @@ interface ReservationError {
     details?: string;
 }
 
+/**
+ * ErrorBoundary component to catch and display runtime errors
+ */
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
     state = { hasError: false, error: '' };
     static getDerivedStateFromError(error: Error) {
@@ -57,7 +63,43 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     }
 }
 
+/**
+ * Component to display the selected bus image
+ */
+const BusImageDisplay: React.FC<{ imageUrl?: string; category: string; isLoading: boolean }> = ({
+    imageUrl,
+    category,
+    isLoading,
+}) => {
+    if (!imageUrl) {
+        return <p className="text-gray-400 text-center">No image available for this bus</p>;
+    }
+
+    return (
+        <div className="flex justify-center">
+            <Image
+                src={imageUrl}
+                alt={category}
+                width={192}
+                height={192}
+                className="object-cover rounded-md"
+                placeholder="blur"
+                blurDataURL="/placeholder.jpg"
+                priority={false}
+                onLoadingComplete={() => console.log(`Loaded image for ${category}`)}
+                onError={() => toast.error(`Failed to load image for ${category}`)}
+            />
+        </div>
+    );
+};
+
+/**
+ * Main ReservePage component
+ */
 export default function ReservePage() {
+    const { user } = useUser();
+    const clerkId = user?.id;
+
     const {
         buses,
         selectedBusId,
@@ -66,15 +108,10 @@ export default function ReservePage() {
         total,
         phoneNumber,
         isPhoneValid,
-        isLoading: combinedLoading,
-        error: combinedError,
+        isLoading,
+        error,
         paymentSuccess,
         paymentError,
-        setError,
-        currentPage,
-        totalPages,
-        isCheckoutModalOpen,
-        setIsCheckoutModalOpen,
         setPhoneNumber,
         handleBusChange,
         handleSeatClick,
@@ -87,6 +124,10 @@ export default function ReservePage() {
         handleCapacityChange,
         licensePlateFilter,
         handleLicensePlateChange,
+        currentPage,
+        totalPages,
+        isCheckoutModalOpen,
+        setIsCheckoutModalOpen,
     } = useBusReservation();
 
     const selectedBus = buses.find((bus) => bus.id === selectedBusId) || {
@@ -100,25 +141,21 @@ export default function ReservePage() {
     const layout = matatuConfigs[busCapacity as keyof typeof matatuConfigs]?.layout || matatuConfigs['14'].layout;
 
     const seatsForLayout: Record<number, Seat> = Object.fromEntries(
-        Object.entries(seats || {}).map(([id, seat]) => {
-            const numericId = parseInt(id, 10);
-            return [
-                numericId,
-                {
-                    id: numericId,
-                    busId: selectedBusId || 0,
-                    seatNumber: parseInt(seat.label, 10) || 0,
-                    price: seat.price || 0,
-                    row: seat.row || 0,
-                    column: seat.column || 0,
-                    status: seat.status || 'available',
-                } as Seat,
-            ];
-        }),
+        Object.entries(seats).map(([id, seat]) => [
+            parseInt(id, 10),
+            {
+                id: parseInt(id, 10),
+                busId: selectedBusId || 0,
+                seatNumber: parseInt(seat.label, 10) || 0,
+                price: seat.price || 0,
+                row: seat.row || 0,
+                column: seat.column || 0,
+                status: seat.status || 'available',
+            } as Seat,
+        ]),
     );
 
     const seatCount = Object.keys(seatsForLayout).length;
-    const handleNumericSeatClick = (id: number) => handleSeatClick(id.toString());
 
     useEffect(() => {
         if (paymentSuccess) {
@@ -154,6 +191,14 @@ export default function ReservePage() {
         }
     }, [paymentSuccess, paymentError]);
 
+    const handleConfirmCheckout = () => {
+        if (!clerkId) {
+            toast.error('Please sign in to complete your reservation');
+            return;
+        }
+        confirmCheckout(clerkId);
+    };
+
     return (
         <ErrorBoundary>
             <MaxWidthWrapper className="py-6">
@@ -164,28 +209,28 @@ export default function ReservePage() {
                     </AnimationContainer>
                 </LampContainer>
 
-                {combinedError && !paymentSuccess && (
-                    <ErrorMessage message={combinedError.message || 'An error occurred'} />
-                )}
+                {error && !paymentSuccess && <ErrorMessage message={error.message || 'An error occurred'} />}
 
                 {selectedBusId && seatCount > 0 && layout.length > 0 ? (
-                    <div className="mb-6">
-                        <DynamicSeatLayout
-                            title={selectedBus.category}
-                            seats={seatsForLayout}
-                            layout={layout}
-                            onSeatClick={handleNumericSeatClick}
-                            isLoading={combinedLoading}
-                            className="mt-2"
-                        />
-                        <p className="text-gray-300 text-center mt-1">Seats: {seatCount}</p>
-                        {selectedBus.imageUrl && (
-                            <img
-                                src={selectedBus.imageUrl}
-                                alt={selectedBus.category}
-                                className="mt-4 mx-auto w-48 h-48 object-cover rounded-md"
+                    <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <div>
+                            <DynamicSeatLayout
+                                title={selectedBus.category}
+                                seats={seatsForLayout}
+                                layout={layout}
+                                onSeatClick={(id: number) => handleSeatClick(id.toString())}
+                                isLoading={isLoading}
+                                className="mt-2"
                             />
-                        )}
+                            <p className="text-gray-300 text-center mt-1">Seats: {seatCount}</p>
+                        </div>
+                        <div className="flex items-center justify-center">
+                            <BusImageDisplay
+                                imageUrl={selectedBus.imageUrl}
+                                category={selectedBus.category}
+                                isLoading={isLoading}
+                            />
+                        </div>
                     </div>
                 ) : (
                     <p className="text-gray-400 text-center mb-6">
@@ -201,7 +246,7 @@ export default function ReservePage() {
                         selectedBusId={selectedBusId}
                         handleBusChange={handleBusChange}
                         selectedBus={selectedBus}
-                        isLoading={combinedLoading}
+                        isLoading={isLoading}
                         currentPage={currentPage}
                         totalPages={totalPages}
                         handleNextPage={handleNextPage}
@@ -220,17 +265,16 @@ export default function ReservePage() {
                         handleCheckout={handleCheckout}
                         handleReset={handleReset}
                         handleSeatClick={handleSeatClick}
-                        isLoading={combinedLoading}
+                        isLoading={isLoading}
                         isPhoneValid={isPhoneValid}
-                        error={combinedError}
+                        error={error}
                     />
                 </div>
 
                 <Dialog
                     open={isCheckoutModalOpen}
                     onOpenChange={(isOpen) => {
-                        if (!combinedLoading) {
-                            setError(null);
+                        if (!isLoading) {
                             setIsCheckoutModalOpen(isOpen);
                             if (!isOpen && paymentSuccess) {
                                 handleReset();
@@ -243,7 +287,7 @@ export default function ReservePage() {
                             <DialogTitle>Confirm Your Reservation</DialogTitle>
                         </DialogHeader>
                         <div className="py-4">
-                            <p>Please review your Reservation details:</p>
+                            <p>Please review your reservation details:</p>
                             <ul className="mt-2 space-y-2">
                                 <li>
                                     Bus: {selectedBus.category} ({selectedBus.licensePlate})
@@ -269,18 +313,18 @@ export default function ReservePage() {
                             <Button
                                 variant="outline"
                                 onClick={() => setIsCheckoutModalOpen(false)}
-                                disabled={combinedLoading}
+                                disabled={isLoading}
                                 className="text-white border-gray-700 w-24"
                             >
                                 {paymentSuccess ? 'Close' : 'Cancel'}
                             </Button>
                             {!paymentSuccess && (
                                 <Button
-                                    onClick={confirmCheckout}
-                                    disabled={combinedLoading || total === 0}
+                                    onClick={handleConfirmCheckout}
+                                    disabled={isLoading || total === 0 || !clerkId}
                                     className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 w-48"
                                 >
-                                    {combinedLoading ? 'Processing...' : 'Confirm'}
+                                    {isLoading ? 'Processing...' : 'Confirm'}
                                 </Button>
                             )}
                         </DialogFooter>
@@ -291,19 +335,10 @@ export default function ReservePage() {
     );
 }
 
-const BookingSummaryCard = ({
-    selectedSeats,
-    seats,
-    total,
-    phoneNumber,
-    setPhoneNumber,
-    handleCheckout,
-    handleReset,
-    handleSeatClick,
-    isLoading,
-    isPhoneValid,
-    error,
-}: {
+/**
+ * BookingSummaryCard component for displaying reservation details
+ */
+interface BookingSummaryCardProps {
     selectedSeats: string[];
     seats: Record<string, SeatData>;
     total: number;
@@ -315,11 +350,21 @@ const BookingSummaryCard = ({
     isLoading: boolean;
     isPhoneValid: boolean;
     error: ReservationError | null;
-}) => {
-    useEffect(() => {
-        console.log('BookingSummaryCard state:', { isPhoneValid, selectedSeats, total, isLoading, error }); // Debug log
-    }, [isPhoneValid, selectedSeats, total, isLoading, error]);
+}
 
+const BookingSummaryCard: React.FC<BookingSummaryCardProps> = ({
+    selectedSeats,
+    seats,
+    total,
+    phoneNumber,
+    setPhoneNumber,
+    handleCheckout,
+    handleReset,
+    handleSeatClick,
+    isLoading,
+    isPhoneValid,
+    error,
+}) => {
     return (
         <Card className="bg-gray-900 text-white border-none shadow-lg">
             <CardHeader>
@@ -358,29 +403,12 @@ const BookingSummaryCard = ({
                     <span className="text-xl font-bold">{total}/=</span>
                 </div>
                 <div className="mb-6">
-                    <div className="relative flex items-center">
-                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-300">254</span>
-                        <Input
-                            type="text"
-                            placeholder="708920430"
-                            value={phoneNumber.startsWith('254') ? phoneNumber.slice(3) : phoneNumber}
-                            onChange={(e) => setPhoneNumber('254' + e.target.value.replace(/[^0-9]/g, '').slice(0, 9))}
-                            disabled={isLoading}
-                            maxLength={9}
-                            className="pl-12 bg-gray-800 border-gray-700 text-white placeholder-gray-500 w-full"
-                        />
-                    </div>
-                    {error && error.type === 'validation' && (
-                        <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
-                            <AlertCircle className="h-4 w-4" />
-                            {error.message}
-                        </p>
-                    )}
+                    <PhoneNumberForm onValidSubmit={setPhoneNumber} defaultPhone={phoneNumber} isLoading={isLoading} />
                 </div>
                 <div className="flex gap-4">
                     <Button
                         onClick={handleCheckout}
-                        disabled={isLoading || selectedSeats.length === 0 || !isPhoneValid || total <= 0}
+                        disabled={isLoading || selectedSeats.length === 0 || !isPhoneValid || total < 20}
                         className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
                     >
                         {isLoading ? 'Processing...' : 'Checkout'}
@@ -394,7 +422,26 @@ const BookingSummaryCard = ({
     );
 };
 
-const BusSelectionCard = ({
+/**
+ * BusSelectionCard component for selecting a bus
+ */
+interface BusSelectionCardProps {
+    buses: Bus[];
+    selectedBusId: number | null;
+    handleBusChange: (busId: number) => void;
+    selectedBus: Bus;
+    isLoading: boolean;
+    currentPage: number;
+    totalPages: number;
+    handleNextPage: () => void;
+    handlePrevPage: () => void;
+    selectedCapacity: MatatuCapacity | '' | 'all';
+    handleCapacityChange: (capacity: MatatuCapacity | '' | 'all') => void;
+    licensePlateFilter: string;
+    handleLicensePlateChange: (value: string) => void;
+}
+
+const BusSelectionCard: React.FC<BusSelectionCardProps> = ({
     buses,
     selectedBusId,
     handleBusChange,
@@ -408,20 +455,6 @@ const BusSelectionCard = ({
     handleCapacityChange,
     licensePlateFilter,
     handleLicensePlateChange,
-}: {
-    buses: Bus[];
-    selectedBusId: number | null;
-    handleBusChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-    selectedBus: Bus;
-    isLoading: boolean;
-    currentPage: number;
-    totalPages: number;
-    handleNextPage: () => void;
-    handlePrevPage: () => void;
-    selectedCapacity: MatatuCapacity | '' | 'all';
-    handleCapacityChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-    licensePlateFilter: string;
-    handleLicensePlateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) => {
     return (
         <Card className="bg-gray-900 text-white border-none shadow-lg">
@@ -433,11 +466,7 @@ const BusSelectionCard = ({
                     <label htmlFor="capacitySelect" className="text-sm text-gray-300">
                         Filter by Capacity
                     </label>
-                    <Select
-                        value={selectedCapacity || 'all'}
-                        onValueChange={(value) => handleCapacityChange({ target: { value } } as any)}
-                        disabled={isLoading}
-                    >
+                    <Select value={selectedCapacity} onValueChange={handleCapacityChange} disabled={isLoading}>
                         <SelectTrigger
                             id="capacitySelect"
                             className="mt-1 bg-gray-800 border-gray-700 text-white focus:ring-2 focus:ring-blue-500"
@@ -461,7 +490,7 @@ const BusSelectionCard = ({
                     <Input
                         id="licensePlateInput"
                         value={licensePlateFilter}
-                        onChange={handleLicensePlateChange}
+                        onChange={(e) => handleLicensePlateChange(e.target.value)}
                         placeholder="Enter license plate (e.g., KAA 123B)"
                         disabled={isLoading}
                         className="mt-1 bg-gray-800 border-gray-700 text-white placeholder-gray-500"
@@ -469,8 +498,8 @@ const BusSelectionCard = ({
                     <Button
                         variant="outline"
                         onClick={() => {
-                            handleCapacityChange({ target: { value: 'all' } } as any);
-                            handleLicensePlateChange({ target: { value: '' } } as any);
+                            handleCapacityChange('all');
+                            handleLicensePlateChange('');
                         }}
                         disabled={isLoading}
                         className="mt-2 text-white border-gray-700 hover:bg-gray-800 w-full"
@@ -485,7 +514,7 @@ const BusSelectionCard = ({
                     <select
                         id="busSelect"
                         value={selectedBusId || ''}
-                        onChange={handleBusChange}
+                        onChange={(e) => handleBusChange(parseInt(e.target.value, 10))}
                         disabled={isLoading || buses.length === 0}
                         className="mt-1 block w-full p-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                     >
@@ -521,7 +550,10 @@ const BusSelectionCard = ({
     );
 };
 
-const ErrorMessage = ({ message }: { message: string }) => (
+/**
+ * ErrorMessage component for displaying error messages
+ */
+const ErrorMessage: React.FC<{ message: string }> = ({ message }) => (
     <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-md mb-4 flex items-center gap-2">
         <AlertCircle className="h-5 w-5" />
         <span>{message}</span>

@@ -55,11 +55,7 @@ type NotificationFeedProps = {
     userRole: Role; // Add userRole prop
 };
 
-const NotificationFeed = ({
-    badgeCountVisible = true,
-    customRenderer = false,
-    userRole,
-}: NotificationFeedProps) => {
+const NotificationFeed = ({ badgeCountVisible = true, customRenderer = false, userRole }: NotificationFeedProps) => {
     const [isVisible, setIsVisible] = useState(false);
     const notifButtonRef = useRef<HTMLButtonElement>(null);
     const { user } = useUser();

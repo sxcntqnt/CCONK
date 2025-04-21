@@ -1,17 +1,16 @@
-// src/hooks/use-mpesa.ts
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { initiateStkPush } from '@/lib/mpesa/stkPush';
 import { stkPushQuery } from '@/lib/mpesa/stkPushQuery';
-import { PHONE_PREFIX_REGEX, validatePhonePrefix, PHONE_VALIDATION_CONFIG } from '@/utils/constants/phone-constants';
+import { PHONE_PREFIX_REGEX, validatePhonePrefix } from '@/utils/constants/phone-constants';
 
 interface StkPushQueryData {
     MerchantRequestID: string;
     CheckoutRequestID: string;
     ResponseCode: string;
     ResponseDescription: string;
-    CustomerMessage: string;
+    CustomerMessage?: string; // Made optional to match API response
     ResultCode: string;
     ResultDesc: string;
     CallbackMetadata?: {
@@ -33,7 +32,16 @@ interface StkPushState {
 interface StkPushParams {
     phoneNumber: string;
     totalAmount: number;
-    name?: string;
+    clerkId: string; // Replaced name with clerkId
+}
+
+interface StkPushResponse {
+    CheckoutRequestID: string;
+}
+
+interface StkPushResult {
+    data?: StkPushResponse;
+    error?: string;
 }
 
 const POLLING_INTERVAL = 2000;
@@ -59,7 +67,7 @@ export const useStkPush = () => {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
-            reset(); // Clear state on unmount
+            reset();
         };
     }, []);
 
@@ -141,8 +149,17 @@ export const useStkPush = () => {
     );
 
     const initiatePayment = useCallback(
-        async ({ phoneNumber, totalAmount, name = 'PASSENGER' }: StkPushParams) => {
-            if (!isMountedRef.current) return;
+        async ({ phoneNumber, totalAmount, clerkId }: StkPushParams): Promise<StkPushResult> => {
+            if (!isMountedRef.current) return { error: 'Component unmounted' };
+
+            if (!clerkId) {
+                setState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                    paymentError: 'Clerk user ID is required',
+                }));
+                return { error: 'Clerk user ID is required' };
+            }
 
             // Clean the phone number (remove spaces, dashes, etc.)
             const cleanedPhoneNumber = phoneNumber.replace(/[\s,-]/g, '');
@@ -168,7 +185,7 @@ export const useStkPush = () => {
                 return { error: prefixValidation.errorMessage || 'Invalid phone number prefix' };
             }
 
-            // Validate full number with PHONE_PREFIX_REGEX and remaining digits
+            // Validate full number with PHONE_PREFIX_REGEX
             if (!PHONE_PREFIX_REGEX.test(cleanedPhoneNumber)) {
                 setState((prev) => ({
                     ...prev,
@@ -189,7 +206,7 @@ export const useStkPush = () => {
             try {
                 const result = await initiateStkPush({
                     mpesa_number: cleanedPhoneNumber,
-                    name,
+                    name: clerkId, // Use clerkId as the name
                     amount: totalAmount,
                 });
 

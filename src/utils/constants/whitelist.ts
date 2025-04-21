@@ -16,3 +16,14 @@ export const whitelist = [
 ] as const;
 
 export type WhitelistIP = (typeof whitelist)[number];
+
+// Type guard to check if a string is a WhitelistIP
+export function isWhitelistedIP(ip: string): ip is WhitelistIP {
+    return whitelist.includes(ip as WhitelistIP);
+}
+
+// Simple IP format validation (basic regex for IPv4)
+export function isValidIPv4(ip: string): boolean {
+    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    return ipv4Regex.test(ip);
+}

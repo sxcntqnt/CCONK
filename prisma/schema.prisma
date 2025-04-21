@@ -109,17 +109,16 @@ model Trip {
 }
 
 model Seat {
-  id           Int           @id @default(autoincrement())
+  id           Int          @id @default(autoincrement())
   busId        Int
   seatNumber   Int
-  category     String
   price        Float
   row          Int
   column       Int
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  category     String       // 'window' | 'middle' | 'single' | 'aisle'
+  status       String       @default("available") // 'reserved' | 'available'
+  bus          Bus          @relation(fields: [busId], references: [id])
   reservations Reservation[]
-  bus          Bus           @relation(fields: [busId], references: [id])
 
   @@unique([busId, seatNumber])
   @@index([busId])
@@ -168,15 +167,16 @@ model Notification {
   userId    Int
   tripId    Int?
   type      String
-  subject   String
   message   String
   status    String    @default("pending")
   createdAt DateTime  @default(now())
   sentAt    DateTime?
   driverId  Int?
+  subject   String
   driver    Driver?   @relation(fields: [driverId], references: [id])
   trip      Trip?     @relation(fields: [tripId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
+
   @@index([userId])
   @@index([tripId])
   @@index([type])

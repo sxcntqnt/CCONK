@@ -1,6 +1,12 @@
 import Image, { StaticImageData } from 'next/image';
 import React, { useEffect, useState } from 'react';
-import { FocalPoint, FrameRenderedComponentProps, FrameRenderedComponentPropsWithIndex, NRCFrameComponent, NRCImage } from '@/utils/constants/types';
+import {
+    FocalPoint,
+    FrameRenderedComponentProps,
+    FrameRenderedComponentPropsWithIndex,
+    NRCFrameComponent,
+    NRCImage,
+} from '@/utils/constants/types';
 import clsx from 'clsx';
 
 const DEFAULT_BLUR_WIDTH = 200;

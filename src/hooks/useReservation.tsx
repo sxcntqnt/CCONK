@@ -1,4 +1,3 @@
-// src/hooks/useReservation.tsx
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -7,9 +6,11 @@ import { validatePhonePrefix } from '@/utils/constants/phone-constants';
 import { useStkPush } from '@/hooks/use-mpesa';
 import { toast } from 'sonner';
 import { debounce } from 'lodash';
+import { MatatuCapacity } from '@/utils/constants/matatuSeats';
 
-type MatatuCapacity = '14' | '26' | '33' | '46' | '52' | '67';
-
+/**
+ * Interfaces for type safety
+ */
 interface StkPushResponse {
     CheckoutRequestID: string;
 }
@@ -19,14 +20,11 @@ interface StkPushQueryData {
     CheckoutRequestID: string;
     ResponseCode: string;
     ResponseDescription: string;
-    CustomerMessage: string;
+    CustomerMessage?: string;
     ResultCode: string;
     ResultDesc: string;
     CallbackMetadata?: {
-        Item: Array<{
-            Name: string;
-            Value?: string | number;
-        }>;
+        Item: Array<{ Name: string; Value?: string | number }>;
     };
 }
 
@@ -59,11 +57,6 @@ interface ReservationError {
     details?: string;
 }
 
-interface PhoneValidationResult {
-    isValid: boolean;
-    errorMessage?: string;
-}
-
 interface UseBusReservationReturn {
     buses: Bus[];
     selectedBusId: number | null;
@@ -74,28 +67,39 @@ interface UseBusReservationReturn {
     isPhoneValid: boolean;
     isLoading: boolean;
     error: ReservationError | null;
-    setError: (error: ReservationError | null) => void;
-    currentPage: number;
-    totalPages: number;
-    isCheckoutModalOpen: boolean;
-    setIsCheckoutModalOpen: (open: boolean) => void;
     setPhoneNumber: (value: string) => void;
-    handleBusChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    handleBusChange: (busId: number) => void;
     handleSeatClick: (id: string) => void;
     handleCheckout: () => void;
-    confirmCheckout: () => Promise<void>;
+    confirmCheckout: (clerkId: string) => Promise<void>;
     handleReset: () => Promise<void>;
     handleNextPage: () => void;
     handlePrevPage: () => void;
     paymentSuccess: boolean;
     paymentError: string | null;
     selectedCapacity: MatatuCapacity | '' | 'all';
-    handleCapacityChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    handleCapacityChange: (capacity: MatatuCapacity | '' | 'all') => void;
     licensePlateFilter: string;
-    handleLicensePlateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    handleLicensePlateChange: (value: string) => void;
+    currentPage: number;
+    totalPages: number;
+    isCheckoutModalOpen: boolean;
+    setIsCheckoutModalOpen: (open: boolean) => void;
 }
 
-const useBusReservation = (): UseBusReservationReturn => {
+/**
+ * Constants
+ */
+const MINIMUM_PAYMENT_THRESHOLD = 20;
+const PAGE_SIZE = 10;
+const MAX_SEATS = 5;
+
+/**
+ * Custom hook for managing bus reservation logic
+ * @returns {UseBusReservationReturn} Reservation state and handlers
+ */
+export default function useBusReservation(): UseBusReservationReturn {
+    // State
     const [buses, setBuses] = useState<Bus[]>([]);
     const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
     const [seats, setSeats] = useState<Record<string, SeatData>>({});
@@ -108,38 +112,29 @@ const useBusReservation = (): UseBusReservationReturn => {
     const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState<boolean>(false);
     const [selectedCapacity, setSelectedCapacity] = useState<MatatuCapacity | '' | 'all'>('all');
     const [licensePlateFilter, setLicensePlateFilter] = useState<string>('');
-    const pageSize = 10;
 
+    // Payment Hook
     const {
-        initiatePayment,
-        isLoading: paymentLoading,
-        stkQueryLoading,
-        paymentSuccess,
-        paymentError,
-        paymentData,
-        reset: resetPayment,
-    } = useStkPush() || {
-        initiatePayment: async () =>
-            ({
-                error: 'Payment hook unavailable',
-            }) as StkPushResult,
-        isLoading: false,
-        stkQueryLoading: false,
-        paymentSuccess: false,
-        paymentError: null,
-        paymentData: null,
-        reset: () => {},
-    };
+        initiatePayment = async () => ({ error: 'Payment hook unavailable' }) as StkPushResult,
+        isLoading: paymentLoading = false,
+        stkQueryLoading = false,
+        paymentSuccess = false,
+        paymentError = null,
+        paymentData = null,
+        reset: resetPayment = () => {},
+    } = useStkPush() ?? {};
 
-    const total = useMemo(() => {
-        try {
-            return selectedSeats.reduce((sum, id) => sum + (seats[id]?.price || 0), 0);
-        } catch (err) {
-            console.error('Error calculating total:', err);
-            return 0;
-        }
-    }, [selectedSeats, seats]);
+    // Computed values
+    const total = useMemo(
+        () => selectedSeats.reduce((sum, id) => sum + (seats[id]?.price || 0), 0),
+        [selectedSeats, seats],
+    );
 
+    const totalPages = useMemo(() => Math.ceil(totalBuses / PAGE_SIZE) || 1, [totalBuses]);
+
+    /**
+     * Validates phone number with debouncing
+     */
     const validatePhone = useCallback(
         debounce((phone: string) => {
             const normalizedPhone = phone.trim().replace(/[\s,-]/g, '');
@@ -149,7 +144,6 @@ const useBusReservation = (): UseBusReservationReturn => {
                 return;
             }
             const validationResult = validatePhonePrefix(normalizedPhone);
-            console.log('Phone validation:', { phone, normalizedPhone, validationResult, isPhoneValid });
             setIsPhoneValid(validationResult.isValid);
             if (!validationResult.isValid) {
                 setError({
@@ -164,71 +158,60 @@ const useBusReservation = (): UseBusReservationReturn => {
         [],
     );
 
-    useEffect(() => {
-        validatePhone(phoneNumber);
-        return () => validatePhone.cancel();
-    }, [phoneNumber, validatePhone]);
-
-    const handlePhoneChange = (value: string) => {
+    /**
+     * Handles phone number input changes
+     */
+    const handlePhoneChange = useCallback((value: string) => {
         const sanitizedValue = value.replace(/[^0-9]/g, '');
         setPhoneNumber(sanitizedValue);
-    };
-    const capacityFilter: MatatuCapacity | undefined =
-        selectedCapacity !== 'all' &&
-        selectedCapacity !== '' &&
-        (Object.keys(matatuConfigs) as MatatuCapacity[]).includes(selectedCapacity as MatatuCapacity)
-            ? selectedCapacity
-            : undefined;
+    }, []);
 
-    const fetchBuses = useCallback(
-        async (page: number) => {
-            try {
-                const { buses: busData, total } = await getBuses(page, pageSize, {
-                    capacity: capacityFilter,
-                    licensePlate: licensePlateFilter.trim() || undefined,
-                });
-                if (!busData || !Array.isArray(busData)) {
-                    throw new Error('Invalid bus data received');
-                }
-                if (busData.length === 0 && total === 0) {
-                    setError({ message: 'No buses found for the selected filters', type: 'validation' });
-                    toast.error('No buses available');
-                } else {
-                    setBuses(busData);
-                    setTotalBuses(total || 0);
-                    if (busData.length > 0 && selectedBusId === null) {
-                        setSelectedBusId(busData[0].id);
-                    } else if (busData.length > 0 && !busData.some((bus) => bus.id === selectedBusId)) {
-                        setSelectedBusId(busData[0].id);
-                    }
-                }
-            } catch (err) {
-                const message = err instanceof Error ? err.message : 'Failed to load buses';
-                setError({ message, type: 'network', details: err instanceof Error ? err.stack : undefined });
-                toast.error(message);
-                console.error('fetchBuses error:', err);
+    /**
+     * Fetches buses based on filters and pagination
+     */
+    const fetchBuses = useCallback(async () => {
+        try {
+            const capacityFilter =
+                selectedCapacity !== 'all' && selectedCapacity ? Number(selectedCapacity) : undefined;
+            const { buses: busData, total } = await getBuses(currentPage, PAGE_SIZE, {
+                capacity: capacityFilter,
+                licensePlate: licensePlateFilter.trim() || undefined,
+            });
+
+            if (!busData || !Array.isArray(busData)) {
+                throw new Error('Invalid bus data received');
             }
-        },
-        [selectedBusId, selectedCapacity, licensePlateFilter],
-    );
 
-    useEffect(() => {
-        fetchBuses(currentPage);
-    }, [currentPage, fetchBuses]);
+            setBuses(busData);
+            setTotalBuses(total || 0);
 
+            if (busData.length > 0) {
+                if (selectedBusId === null || !busData.some((bus) => bus.id === selectedBusId)) {
+                    setSelectedBusId(busData[0].id);
+                }
+            } else if (total === 0) {
+                setError({ message: 'No buses found for the selected filters', type: 'validation' });
+                toast.error('No buses available');
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to load buses';
+            setError({ message, type: 'network', details: err instanceof Error ? err.stack : undefined });
+            toast.error(message);
+        }
+    }, [currentPage, selectedBusId, selectedCapacity, licensePlateFilter]);
+
+    /**
+     * Loads seats for the selected bus
+     */
     const loadSeats = useCallback(async () => {
         if (selectedBusId === null) {
             setError({ message: 'No bus selected', type: 'validation' });
             toast.error('No bus selected');
             return;
         }
-
         try {
             const seatData = await getSeats(selectedBusId);
-            if (!seatData || typeof seatData !== 'object') {
-                throw new Error('Invalid seat data received');
-            }
-            if (Object.keys(seatData).length === 0) {
+            if (!seatData || Object.keys(seatData).length === 0) {
                 throw new Error('No seats available for this bus');
             }
             setSeats(seatData);
@@ -237,239 +220,194 @@ const useBusReservation = (): UseBusReservationReturn => {
             const message = err instanceof Error ? err.message : 'Failed to fetch seats';
             setError({ message, type: 'network', details: err instanceof Error ? err.stack : undefined });
             toast.error(message);
-            console.error('loadSeats error:', err);
         }
     }, [selectedBusId]);
 
-    useEffect(() => {
-        loadSeats();
-    }, [loadSeats]);
-
-    const handleBusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newBusId = parseInt(e.target.value, 10);
-        if (isNaN(newBusId)) {
+    /**
+     * Handles bus selection
+     */
+    const handleBusChange = useCallback((busId: number) => {
+        if (isNaN(busId)) {
             setError({ message: 'Invalid bus selection', type: 'validation' });
             toast.error('Invalid bus selection');
             return;
         }
-        setSelectedBusId(newBusId);
-    };
+        setSelectedBusId(busId);
+    }, []);
 
-    const handleSeatClick = (id: string) => {
-        const seat = seats[id];
-        if (!seat) {
-            setError({ message: `Seat ${id} not found`, type: 'validation' });
-            toast.error(`Seat ${id} not found`);
-            return;
-        }
-        if (seat.status === 'reserved') {
-            toast.info('This seat is already reserved');
-            return;
-        }
+    /**
+     * Handles seat selection/deselection
+     */
+    const handleSeatClick = useCallback(
+        (id: string) => {
+            const seat = seats[id];
+            if (!seat) {
+                setError({ message: `Seat ${id} not found`, type: 'validation' });
+                toast.error(`Seat ${id} not found`);
+                return;
+            }
+            if (seat.status === 'reserved') {
+                toast.info('This seat is already reserved');
+                return;
+            }
+            if (selectedSeats.length >= MAX_SEATS && seat.status === 'available') {
+                toast.info(`You can only select up to ${MAX_SEATS} seats.`);
+                return;
+            }
+            const newStatus = seat.status === 'available' ? 'selected' : 'available';
+            setSeats((prev) => ({ ...prev, [id]: { ...seat, status: newStatus } }));
+            setSelectedSeats((prev) =>
+                newStatus === 'selected' ? [...prev, id] : prev.filter((seatId) => seatId !== id),
+            );
+        },
+        [seats, selectedSeats],
+    );
 
-        const maxSeats = 5;
-        if (selectedSeats.length >= maxSeats && seat.status === 'available') {
-            toast.info(`You can only select up to ${maxSeats} seats.`);
-            return;
-        }
-
-        const newStatus = seat.status === 'available' ? 'selected' : 'available';
-        setSeats((prevSeats) => ({
-            ...prevSeats,
-            [id]: { ...seat, status: newStatus },
-        }));
-        setSelectedSeats((prev) => (newStatus === 'selected' ? [...prev, id] : prev.filter((seatId) => seatId !== id)));
-    };
-
-    const handleCheckout = () => {
-        console.log('Checkout button clicked:', {
-            selectedSeats,
-            isPhoneValid,
-            total,
-            isLoading: paymentLoading || stkQueryLoading,
-        });
+    /**
+     * Initiates checkout process
+     */
+    const handleCheckout = useCallback(() => {
         if (selectedSeats.length === 0 || !selectedBusId) {
             setError({ message: 'Please select a bus and at least one seat', type: 'validation' });
             toast.error('Please select a bus and at least one seat');
             return;
         }
-
         if (!isPhoneValid) {
             setError({ message: 'Invalid phone number format', type: 'validation' });
             toast.error('Please enter a valid phone number (e.g., 2547XX...)');
             return;
         }
-
-        if (total <= 0) {
-            setError({ message: 'Total amount must be greater than zero', type: 'validation' });
-            toast.error('Total amount must be greater than zero');
-            return;
-        }
-
-        setIsCheckoutModalOpen(true);
-    };
-
-    const confirmCheckout = useCallback(async () => {
-        const normalizedPhone = phoneNumber.trim().replace(/[\s,-]/g, '');
-        const validationResult = validatePhonePrefix(normalizedPhone);
-
-        try {
-            if (!validationResult.isValid) {
-                setError({
-                    message: validationResult.errorMessage || 'Please enter a valid phone number (e.g., 2547XX...)',
-                    type: 'validation',
-                });
-                toast.error(validationResult.errorMessage || 'Please enter a valid phone number (e.g., 2547XX...)');
-                setIsCheckoutModalOpen(false);
-                return;
-            }
-
-            if (paymentLoading || stkQueryLoading) {
-                setError({
-                    message: 'A payment is already in progress. Please wait.',
-                    type: 'payment',
-                });
-                toast.error('A payment is already in progress. Please wait.');
-                console.error('Payment already in progress', { paymentLoading, stkQueryLoading });
-                return;
-            }
-
-            console.log('Initiating payment with:', {
-                phoneNumber: normalizedPhone,
-                totalAmount: total,
-                name: 'Customer',
-            });
-
-            const paymentResult = await initiatePayment({
-                phoneNumber: normalizedPhone,
-                totalAmount: total,
-                name: 'Customer',
-            });
-
-            if (
-                !paymentResult ||
-                'error' in paymentResult ||
-                !paymentResult.data ||
-                !paymentResult.data.CheckoutRequestID
-            ) {
-                setError({
-                    message: 'Unable to process payment. Please try again.',
-                    type: 'payment',
-                });
-                toast.error('Unable to process payment. Please try again.');
-                console.error('Payment initiation failed', {
-                    paymentResult,
-                    error:
-                        paymentResult && 'error' in paymentResult
-                            ? paymentResult.error
-                            : 'No response or invalid response',
-                });
-                return;
-            }
-
-            toast.info('Payment initiated. Please check your phone to complete the STK push.');
-
-            const paymentTimeout = setTimeout(() => {
-                if (!paymentData && !paymentError) {
-                    setError({
-                        message: 'Payment timed out. Please check your phone and try again.',
-                        type: 'payment',
-                    });
-                    toast.error('Payment timed out. Please check your phone and try again.');
-                    console.error('Payment processing timed out', { paymentData, paymentError });
-                    resetPayment();
-                }
-            }, 30000);
-
-            while (!paymentData && !paymentError && (paymentLoading || stkQueryLoading)) {
-                await new Promise((resolve) => setTimeout(resolve, 500));
-            }
-
-            clearTimeout(paymentTimeout);
-
-            if (paymentError || !paymentData) {
-                setError({
-                    message: 'Payment confirmation failed. Please try again.',
-                    type: 'payment',
-                });
-                toast.error('Payment confirmation failed. Please try again.');
-                console.error('Payment confirmation failed', { paymentError, paymentData });
-                return;
-            }
-
-            if (paymentData.ResultCode !== '0') {
-                setError({
-                    message: 'Payment was not completed. Please try again.',
-                    type: 'payment',
-                });
-                toast.error('Payment was not completed. Please try again.');
-                console.error('Payment failed', {
-                    resultCode: paymentData.ResultCode,
-                    resultDesc: paymentData.ResultDesc,
-                });
-                return;
-            }
-
-            const reservationResult = await reserveSeats(selectedSeats);
-            if (!reservationResult.success) {
-                setError({
-                    message: 'Unable to reserve seats. Please try again.',
-                    type: 'reservation',
-                });
-                toast.error('Unable to reserve seats. Please try again.');
-                console.error('Reservation failed', { error: reservationResult.error });
-                return;
-            }
-
-            setSeats((prev) => {
-                const updatedSeats = { ...prev };
-                selectedSeats.forEach((id) => {
-                    updatedSeats[id] = { ...updatedSeats[id], status: 'reserved' };
-                });
-                return updatedSeats;
-            });
-
-            setSelectedSeats([]);
-            toast.success(
-                `Payment confirmed! Reserved ${reservationResult.reservedCount} seats. ${paymentData.CustomerMessage}`,
-            );
-            setIsCheckoutModalOpen(false);
-            resetPayment();
-        } catch (err) {
-            const errorMessage = 'An unexpected error occurred. Please try again later.';
+        if (total < MINIMUM_PAYMENT_THRESHOLD) {
             setError({
-                message: errorMessage,
-                type: 'unknown',
-                details: err instanceof Error ? err.stack : String(err),
+                message: `Total amount must be at least ${MINIMUM_PAYMENT_THRESHOLD}`,
+                type: 'validation',
             });
-            toast.error(errorMessage);
-            console.error('Unexpected error in confirmCheckout:', err);
-        }
-    }, [
-        phoneNumber,
-        total,
-        selectedSeats,
-        initiatePayment,
-        paymentData,
-        paymentError,
-        paymentLoading,
-        stkQueryLoading,
-        resetPayment,
-    ]);
-
-    const handleReset = async () => {
-        if (!selectedBusId) {
-            setError({ message: 'No bus selected to reset', type: 'validation' });
-            toast.error('Please select a bus to reset');
+            toast.error(`Total amount must be at least ${MINIMUM_PAYMENT_THRESHOLD}`);
             return;
         }
-        if (!confirm('Are you sure you want to reset all reservations for this bus?')) return;
+        setIsCheckoutModalOpen(true);
+    }, [selectedSeats, selectedBusId, isPhoneValid, total]);
 
+    /**
+     * Confirms checkout with payment and reservation
+     */
+    const confirmCheckout = useCallback(
+        async (clerkId: string) => {
+            try {
+                const normalizedPhone = phoneNumber.trim().replace(/[\s,-]/g, '');
+                const validationResult = validatePhonePrefix(normalizedPhone);
+
+                if (!validationResult.isValid) {
+                    setError({
+                        message: validationResult.errorMessage || 'Invalid phone number format',
+                        type: 'validation',
+                    });
+                    toast.error(validationResult.errorMessage || 'Please enter a valid phone number (e.g., 2547XX...)');
+                    return;
+                }
+
+                if (total < MINIMUM_PAYMENT_THRESHOLD) {
+                    setError({
+                        message: `Total amount must be at least ${MINIMUM_PAYMENT_THRESHOLD}`,
+                        type: 'validation',
+                    });
+                    toast.error(`Total amount must be at least ${MINIMUM_PAYMENT_THRESHOLD}`);
+                    return;
+                }
+
+                if (paymentLoading || stkQueryLoading) {
+                    setError({ message: 'Payment in progress. Please wait.', type: 'payment' });
+                    toast.error('Payment in progress. Please wait.');
+                    return;
+                }
+
+                const paymentResult = await initiatePayment({
+                    phoneNumber: normalizedPhone,
+                    totalAmount: total,
+                    clerkId,
+                });
+
+                if (!paymentResult?.data?.CheckoutRequestID) {
+                    setError({ message: 'Unable to process payment', type: 'payment' });
+                    toast.error('Unable to process payment');
+                    return;
+                }
+
+                toast.info('Payment initiated. Please check your phone.');
+
+                const paymentTimeout = setTimeout(() => {
+                    if (!paymentData && !paymentError) {
+                        setError({ message: 'Payment timed out', type: 'payment' });
+                        toast.error('Payment timed out');
+                        resetPayment();
+                    }
+                }, 30000);
+
+                while (!paymentData && !paymentError && (paymentLoading || stkQueryLoading)) {
+                    await new Promise((resolve) => setTimeout(resolve, 500));
+                }
+
+                clearTimeout(paymentTimeout);
+
+                if (paymentError || !paymentData || paymentData.ResultCode !== '0') {
+                    setError({ message: 'Payment failed', type: 'payment' });
+                    toast.error('Payment failed');
+                    return;
+                }
+
+                const reservationResult = await reserveSeats(selectedSeats);
+                if (!reservationResult.success) {
+                    setError({ message: 'Unable to reserve seats', type: 'reservation' });
+                    toast.error('Unable to reserve seats');
+                    return;
+                }
+
+                setSeats((prev) => {
+                    const updatedSeats = { ...prev };
+                    selectedSeats.forEach((id) => {
+                        updatedSeats[id] = { ...updatedSeats[id], status: 'reserved' };
+                    });
+                    return updatedSeats;
+                });
+
+                setSelectedSeats([]);
+                toast.success(`Reserved ${reservationResult.reservedCount} seats!`);
+                resetPayment();
+            } catch (err) {
+                const message = 'Unexpected error occurred';
+                setError({ message, type: 'unknown', details: err instanceof Error ? err.stack : String(err) });
+                toast.error(message);
+            } finally {
+                setIsCheckoutModalOpen(false);
+            }
+        },
+        [
+            phoneNumber,
+            total,
+            selectedSeats,
+            initiatePayment,
+            paymentData,
+            paymentError,
+            paymentLoading,
+            stkQueryLoading,
+            resetPayment,
+        ],
+    );
+
+    /**
+     * Resets reservations for the selected bus
+     */
+    const handleReset = useCallback(async () => {
+        if (!selectedBusId) {
+            setError({ message: 'No bus selected', type: 'validation' });
+            toast.error('No bus selected');
+            return;
+        }
+        if (!confirm('Reset all reservations for this bus?')) return;
         try {
             const resetResult = await resetReservations(selectedBusId);
             if (!resetResult.success) {
-                toast.error('Unable to reset reservations. Please try again.');
-                throw new Error(resetResult.error || 'Reset failed');
+                throw new Error('Reset failed');
             }
             await loadSeats();
             setSelectedSeats([]);
@@ -477,46 +415,66 @@ const useBusReservation = (): UseBusReservationReturn => {
             setSelectedCapacity('all');
             setLicensePlateFilter('');
             resetPayment();
-            toast.success(`Cleared ${resetResult.deletedCount} reservations successfully`);
+            toast.success(`Cleared ${resetResult.deletedCount} reservations`);
             setError(null);
         } catch (err) {
-            const errorMessage = 'Unable to reset reservations. Please try again.';
-            setError({
-                message: errorMessage,
-                type: 'reservation',
-                details: err instanceof Error ? err.stack : undefined,
-            });
-            toast.error(errorMessage);
-            console.error('handleReset error:', err);
+            const message = 'Unable to reset reservations';
+            setError({ message, type: 'reservation', details: err instanceof Error ? err.stack : undefined });
+            toast.error(message);
         }
-    };
+    }, [selectedBusId, loadSeats, resetPayment]);
 
-    const handleNextPage = () => {
-        if (currentPage * pageSize < totalBuses) {
+    /**
+     * Navigates to the next page
+     */
+    const handleNextPage = useCallback(() => {
+        if (currentPage < totalPages) {
             setCurrentPage((prev) => prev + 1);
         } else {
-            toast.info('No more pages available');
+            toast.info('No more pages');
         }
-    };
+    }, [currentPage, totalPages]);
 
-    const handlePrevPage = () => {
+    /**
+     * Navigates to the previous page
+     */
+    const handlePrevPage = useCallback(() => {
         if (currentPage > 1) {
             setCurrentPage((prev) => prev - 1);
         } else {
-            toast.info('Already on the first page');
+            toast.info('First page');
         }
-    };
+    }, [currentPage]);
 
-    const handleCapacityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value as MatatuCapacity | '' | 'all';
-        setSelectedCapacity(value);
+    /**
+     * Handles capacity filter changes
+     */
+    const handleCapacityChange = useCallback((capacity: MatatuCapacity | '' | 'all') => {
+        setSelectedCapacity(capacity);
         setCurrentPage(1);
-    };
+    }, []);
 
-    const handleLicensePlateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setLicensePlateFilter(e.target.value);
+    /**
+     * Handles license plate filter changes
+     */
+    const handleLicensePlateChange = useCallback((value: string) => {
+        setLicensePlateFilter(value);
         setCurrentPage(1);
-    };
+    }, []);
+
+    // Effects
+    useEffect(() => {
+        validatePhone(phoneNumber);
+        return () => validatePhone.cancel();
+    }, [phoneNumber, validatePhone]);
+
+    useEffect(() => {
+        fetchBuses();
+    }, [fetchBuses]);
+
+    useEffect(() => {
+        loadSeats();
+    }, [loadSeats]);
 
     return {
         buses,
@@ -528,11 +486,6 @@ const useBusReservation = (): UseBusReservationReturn => {
         isPhoneValid,
         isLoading: paymentLoading || stkQueryLoading,
         error,
-        setError,
-        currentPage,
-        totalPages: Math.ceil(totalBuses / pageSize) || 1,
-        isCheckoutModalOpen,
-        setIsCheckoutModalOpen,
         setPhoneNumber: handlePhoneChange,
         handleBusChange,
         handleSeatClick,
@@ -547,7 +500,9 @@ const useBusReservation = (): UseBusReservationReturn => {
         handleCapacityChange,
         licensePlateFilter,
         handleLicensePlateChange,
+        currentPage,
+        totalPages,
+        isCheckoutModalOpen,
+        setIsCheckoutModalOpen,
     };
-};
-
-export default useBusReservation;
+}

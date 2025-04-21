@@ -1,6 +1,6 @@
 // src/lib/vehicleUtils.tsx
 'use server';
-import { getBuses, getServerSideProps } from '@/lib/prisma/dbClient';
+import { getBuses } from '@/lib/prisma/dbClient';
 import { matatuConfigs, MatatuCapacity } from '@/utils/constants/matatuSeats';
 
 export async function getVehiclesByCategory({
@@ -66,3 +66,22 @@ export async function getVehiclesByCategory({
         throw new Error(`Failed to fetch vehicles: ${errorMsg}`);
     }
 }
+export const getServerSideProps: GetServerSideProps = async (context) => {
+    const licensePlate = (context.query.licensePlate as string) || '';
+    const categories = Object.entries(matatuConfigs).map(([key, config]) => ({
+        key: key as MatatuCapacity,
+        title: config.title,
+    }));
+
+    const searchResults = licensePlate.trim()
+        ? await getVehiclesByCategory({ licensePlate: licensePlate.trim() })
+        : null;
+
+    return {
+        props: {
+            categories,
+            searchResults,
+            licensePlate,
+        },
+    };
+};

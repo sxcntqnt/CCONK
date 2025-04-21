@@ -33,7 +33,7 @@ function RealTimeTripUpdates({ tripId }: { tripId: number }) {
                     },
                     body: JSON.stringify({ tripId }),
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('Failed to set up trip webhook');
                 }
@@ -42,7 +42,7 @@ function RealTimeTripUpdates({ tripId }: { tripId: number }) {
                 toast.error('Failed to set up trip updates');
             }
         };
-        
+
         setupWebhook();
 
         // Now set up WebSocket connection

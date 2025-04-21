@@ -166,6 +166,7 @@ async function sendArrivalNotification(
             status: 'sent',
             driverId: driver.prismaDriver.driver?.id,
             sentAt: new Date(),
+            subject: `Driver Arrival at ${destination}`, // Add subject field
         })),
     });
 
