@@ -19,6 +19,14 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import PhoneNumberForm from '@/components/ui/PhonNumberForm';
 import Image from 'next/image';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationPrevious,
+    PaginationNext,
+} from '@/components/ui/pagination';
+import { cn } from '@/utils';
 
 /**
  * Interfaces for type safety
@@ -526,30 +534,35 @@ const BusSelectionCard: React.FC<BusSelectionCardProps> = ({
                         ))}
                     </select>
                 </div>
-                <div className="flex justify-between items-center">
-                    <Button
-                        onClick={handlePrevPage}
-                        disabled={currentPage === 1 || isLoading}
-                        className="bg-gray-700 hover:bg-gray-600"
-                    >
-                        Previous
-                    </Button>
-                    <span className="text-gray-300">
-                        Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                        onClick={handleNextPage}
-                        disabled={currentPage === totalPages || isLoading}
-                        className="bg-gray-700 hover:bg-gray-600"
-                    >
-                        Next
-                    </Button>
-                </div>
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious
+                                onClick={handlePrevPage}
+                                href="#"
+                                className={cn(currentPage === 1 || isLoading ? 'pointer-events-none opacity-50' : '')}
+                            />
+                        </PaginationItem>
+                        <PaginationItem>
+                            <span className="text-gray-300 px-4">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <PaginationNext
+                                onClick={handleNextPage}
+                                href="#"
+                                className={cn(
+                                    currentPage === totalPages || isLoading ? 'pointer-events-none opacity-50' : '',
+                                )}
+                            />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
             </CardContent>
         </Card>
     );
 };
-
 /**
  * ErrorMessage component for displaying error messages
  */

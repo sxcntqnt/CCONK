@@ -1,5 +1,5 @@
 import { AnimationContainer, MaxWidthWrapper, PricingCards } from '@/components';
-import { BentoCard, BentoGrid, CARDS } from '@/components/ui/bento-grid';
+import { BentoCard, BentoGrid, CARDS } from '@/components/ui/bentogrid';
 import { BorderBeam } from '@/components/ui/border-beam';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
