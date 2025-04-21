@@ -78,11 +78,7 @@ const InnerProviders = ({ children }: Props) => {
 
     // Render with KnockProvider for authenticated users
     return (
-        <KnockProvider
-            apiKey={KNOCK_PUBLIC_API_KEY}
-            userId={user.id}
-            userToken={knockToken}
-        >
+        <KnockProvider apiKey={KNOCK_PUBLIC_API_KEY} userId={user.id} userToken={knockToken}>
             {commonProviders}
         </KnockProvider>
     );

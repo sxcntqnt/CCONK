@@ -17,13 +17,29 @@ export const whitelist = [
 
 export type WhitelistIP = (typeof whitelist)[number];
 
-// Type guard to check if a string is a WhitelistIP
+/**
+ * Type guard to check if a string is in the whitelist.
+ */
 export function isWhitelistedIP(ip: string): ip is WhitelistIP {
-    return whitelist.includes(ip as WhitelistIP);
+    try {
+        return whitelist.includes(ip as WhitelistIP);
+    } catch {
+        return false;
+    }
 }
 
-// Simple IP format validation (basic regex for IPv4)
+/**
+ * Validates if a string is a properly formatted IPv4 address.
+ * - Ensures 4 octets
+ * - Each octet must be between 0 and 255
+ */
 export function isValidIPv4(ip: string): boolean {
-    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-    return ipv4Regex.test(ip);
+    try {
+        const regex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+        if (!regex.test(ip)) return false;
+        const parts = ip.split('.').map(Number);
+        return parts.length === 4 && parts.every((part) => part >= 0 && part <= 255);
+    } catch {
+        return false;
+    }
 }
