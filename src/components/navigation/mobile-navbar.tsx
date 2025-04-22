@@ -5,13 +5,14 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn, NAV_LINKS } from '@/utils';
-import { useClerk } from '@clerk/nextjs'; // Switch to useClerk to access signOut
+import { useClerk } from '@clerk/nextjs';
 import { Bell, LucideIcon, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import React, { useState } from 'react';
+import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher'; 
 
 const MobileNavbar = () => {
-    const { isSignedIn, signOut } = useClerk(); // Use useClerk to get signOut
+    const { isSignedIn, signOut } = useClerk();
     const [isOpen, setIsOpen] = useState<boolean>(false);
 
     const handleClose = () => {
@@ -98,8 +99,8 @@ const MobileNavbar = () => {
                                             'w-full max-w-[120px]',
                                         )}
                                         onClick={() => {
-                                            signOut({ redirectUrl: '/' }); // Sign out and redirect to homepage
-                                            handleClose(); // Close the sheet
+                                            signOut({ redirectUrl: '/' });
+                                            handleClose();
                                         }}
                                     >
                                         Logout
@@ -158,6 +159,10 @@ const MobileNavbar = () => {
                                 ))}
                             </Accordion>
                         </ul>
+                        {/* Add ThemeSwitcher below navigation links */}
+                        <div className="mt-6 w-full">
+                            <ThemeSwitcher onThemeChange={handleClose} />
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>

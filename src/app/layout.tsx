@@ -1,4 +1,4 @@
-// src/app/layout.tsx
+import { ClerkProvider } from '@clerk/nextjs';
 import { Providers } from '@/components';
 import { Toaster } from '@/components/ui/sonner';
 import { ErrorBoundary } from '@/components';
@@ -9,21 +9,23 @@ export const metadata = generateMetadata();
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en" className={cn('scrollbar-hide')}>
-            <body
-                className={cn(
-                    'min-h-screen bg-background text-foreground antialiased overflow-x-hidden',
-                    aeonik.variable,
-                    inter.variable,
-                )}
-            >
-                <ErrorBoundary>
-                    <Providers>
-                        <Toaster richColors theme="dark" position="top-right" />
-                        {children}
-                    </Providers>
-                </ErrorBoundary>
-            </body>
-        </html>
+        <ClerkProvider>
+            <html lang="en" className={cn('scrollbar-hide dark')}>
+                <body
+                    className={cn(
+                        'min-h-screen bg-background text-foreground antialiased overflow-x-hidden',
+                        aeonik.variable,
+                        inter.variable,
+                    )}
+                >
+                    <ErrorBoundary>
+                        <Providers>
+                            <Toaster richColors theme="dark" position="top-right" />
+                            {children}
+                        </Providers>
+                    </ErrorBoundary>
+                </body>
+            </html>
+        </ClerkProvider>
     );
 }

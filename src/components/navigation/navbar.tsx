@@ -19,6 +19,7 @@ import React, { useEffect, useState } from 'react';
 import MaxWidthWrapper from '../global/max-width-wrapper';
 import MobileNavbar from './mobile-navbar';
 import AnimationContainer from '../global/animation-container';
+import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher'; // Import ThemeSwitcher
 
 // Define props interface for Navbar
 interface NavbarProps {
@@ -123,7 +124,7 @@ const Navbar: React.FC<NavbarProps> = ({ className }) => {
                         </NavigationMenu>
                     </div>
 
-                    <div className="hidden items-center lg:flex">
+                    <div className="hidden items-center lg:flex space-x-4">
                         {user ? (
                             <div className="flex items-center space-x-4">
                                 <Link href="/profile">
@@ -137,10 +138,11 @@ const Navbar: React.FC<NavbarProps> = ({ className }) => {
                                 </Button>
                             </div>
                         ) : (
-                            <Link href="/auth/sign-in">
+                            <Link href="/auth/Sign-in">
                                 <Button variant="outline">Login</Button>
                             </Link>
                         )}
+                        <ThemeSwitcher /> {/* Add ThemeSwitcher to the rightmost side */}
                     </div>
 
                     <MobileNavbar />
