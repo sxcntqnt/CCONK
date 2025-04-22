@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon --exec \"npx pnpm run dev:concurrent\" --ext ts,tsx,js,mjs",
     "dev:concurrent": "DEBUG=* concurrently -k -r --success=first \"next dev -p 5001\" \"npx ts-node --esm --log-error ./src/lib/server/wsserver.mjs\"",
-    "build": "pnpm next build --loglevel=verbose",
+    "build": "pnpm next build ",
     "start": "next start -p 5001",
     "lint": "npx lint-staged",
     "format": "npm run prettier:check",
