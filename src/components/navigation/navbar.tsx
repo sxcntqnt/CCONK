@@ -49,13 +49,13 @@ const Navbar: React.FC<NavbarProps> = ({ className }) => {
     return (
         <header
             className={cn(
-                'sticky inset-x-0 top-0 z-[99999] h-14 w-full select-none border-b border-transparent',
+                'sticky inset-x-0 top-0 z-[99999] h-20 w-full select-none border-b border-transparent',
                 scroll && 'border-background/80 bg-background/40 backdrop-blur-md',
                 className,
             )}
         >
             <AnimationContainer reverse delay={0.1} className="size-full">
-                <MaxWidthWrapper className="flex items-center justify-between">
+                <MaxWidthWrapper className="flex items-center justify-between h-full">
                     <div className="flex items-center space-x-12">
                         <Link href="/#home">
                             <span className="font-heading text-lg font-bold !leading-none">SXCNTQNT</span>
