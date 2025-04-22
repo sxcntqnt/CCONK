@@ -1,3 +1,4 @@
+// src/app/(marketing)/page.tsx
 import { AnimationContainer, MaxWidthWrapper, PricingCards } from '@/components';
 import { BentoCard, BentoGrid, CARDS } from '@/components/ui/bentogrid';
 import { BorderBeam } from '@/components/ui/border-beam';
@@ -35,7 +36,7 @@ const HomePage = async () => {
                         </button>
                         <h1 className="w-full text-balance py-6 text-center font-heading text-5xl font-medium !leading-[1.15] tracking-normal text-foreground sm:text-6xl md:text-7xl lg:text-8xl">
                             Smart Links with{' '}
-                            <span className="inline-bloc bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">
+                            <span className="inline-block bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">
                                 Precision
                             </span>
                         </h1>
@@ -48,13 +49,11 @@ const HomePage = async () => {
                         </p>
                         <div className="z-50 flex items-center justify-center gap-4 whitespace-nowrap">
                             <Button asChild>
-                                <Link
-                                    href={user ? '/dashboard' : '/auth/sign-in'}
-                                    className="flex items-center"
-                                    legacyBehavior
-                                >
-                                    Start creating for free
-                                    <ArrowRightIcon className="ml-2 h-4 w-4" />
+                                <Link href={user ? '/dashboard' : '/auth/sign-in'}>
+                                    <span className="flex items-center">
+                                        Start creating for free
+                                        <ArrowRightIcon className="ml-2 h-4 w-4" />
+                                    </span>
                                 </Link>
                             </Button>
                         </div>

@@ -63,19 +63,11 @@ const InnerProviders = ({ children }: Props) => {
     );
 
     if (!userLoaded) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                Loading authentication...
-            </div>
-        );
+        return <div className="flex items-center justify-center min-h-screen">Loading authentication...</div>;
     }
 
     if (error) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                Error: {error}
-            </div>
-        );
+        return <div className="flex items-center justify-center min-h-screen">Error: {error}</div>;
     }
 
     if (!isSignedIn || !user?.id || !knockToken) {

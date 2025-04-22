@@ -9,7 +9,7 @@ import { useClerk } from '@clerk/nextjs';
 import { Bell, LucideIcon, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import React, { useState } from 'react';
-import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher'; 
+import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
 
 const MobileNavbar = () => {
     const { isSignedIn, signOut } = useClerk();
