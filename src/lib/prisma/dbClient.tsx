@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib';
-import { MatatuCapacity, matatuConfigs } from '@/utils/constants/matatuSeats';
+import { MatatuCapacity, matatuConfigs, validCapacities, validateCapacity } from '@/utils/constants/matatuSeats';
 import { Prisma } from '@prisma/client';
 
 const DEFAULT_SEAT_PRICE = process.env.DEFAULT_SEAT_PRICE ? Number(process.env.DEFAULT_SEAT_PRICE) : 19;
@@ -27,13 +27,6 @@ interface BusImage {
     src: string;
     blurDataURL?: string | null;
     alt: string;
-}
-
-const validCapacities: MatatuCapacity[] = Object.keys(matatuConfigs) as MatatuCapacity[];
-
-export function validateCapacity(capacity: number | string | null | undefined): MatatuCapacity {
-    const capacityStr = String(capacity);
-    return validCapacities.includes(capacityStr as MatatuCapacity) ? (capacityStr as MatatuCapacity) : '14';
 }
 
 async function fetchBuses({

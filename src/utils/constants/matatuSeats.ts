@@ -229,6 +229,13 @@ export const matatuConfigs: Record<MatatuCapacity, MatatuConfig> = {
     },
 };
 
+export const validCapacities: MatatuCapacity[] = Object.keys(matatuConfigs) as MatatuCapacity[];
+
+export function validateCapacity(capacity: number | string | null | undefined): MatatuCapacity {
+    const capacityStr = String(capacity);
+    return validCapacities.includes(capacityStr as MatatuCapacity) ? (capacityStr as MatatuCapacity) : '14';
+}
+
 // Configuration validation
 Object.entries(matatuConfigs).forEach(([key, config]) => {
     const totalSeatsInLayout = config.layout.flat(2).length;

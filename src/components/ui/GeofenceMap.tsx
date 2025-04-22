@@ -4,7 +4,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import MaplibreDraw, { DrawCustomMode, DrawCustomModeThis, MapMouseEvent } from 'maplibre-gl-draw';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import 'maplibre-gl-draw/dist/maplibre-gl-draw.css';
 import GeofenceControls from './GeofenceControls';
 import { GeoJSON } from 'geojson';
 
