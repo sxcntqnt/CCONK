@@ -38,7 +38,7 @@ Check out the tutorial to see how this fleet management system was built:
 - Magic UI
 - Aceternity UI
 - Prisma
-- MongoDB
+- Postgres(Neon)
 - Clerk
 - React Hook Form
 
@@ -91,4 +91,4 @@ If you have any questions or feedback, feel free to reach out via
 
 ---
 
-Built with ❤️ by [Shreyas](https://shreyas-sihasane.vercel.app/)
+Built with ❤️ by [Scntqnt](https://scntcnqunts.com/)
