@@ -375,7 +375,7 @@ export default function ReservePage() {
                         }
                     }}
                 >
-                    <DialogContent className="bg-gray-900 text-white border-none">
+<DialogContent ref={modalRef} className="bg-gray-900 text-white border-none">
                         <DialogHeader>
                             <DialogTitle>Confirm Your Reservation</DialogTitle>
                         </DialogHeader>
