@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import useBusReservation from '@/hooks/useReservation';
 import { matatuConfigs, MatatuCapacity } from '@/utils/constants/matatuSeats';
