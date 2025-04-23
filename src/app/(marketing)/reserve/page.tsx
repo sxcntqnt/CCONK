@@ -86,6 +86,95 @@ const BusImageDisplay: React.FC<{ imageUrl?: string; category: string; isLoading
     );
 };
 
+const modalRef = useRef<HTMLDivElement>(null);
+    const seatContainerRef = useRef<HTMLDivElement>(null);
+    const [windowWidth, setWindowWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 0);
+
+    // Handle keyboard navigation for seat selection
+    const handleKeyDown = useCallback(
+        (event: KeyboardEvent) => {
+            if (!seatContainerRef.current || isLoading || !selectedBusId) return;
+
+            const seatElements = seatContainerRef.current.querySelectorAll('[data-seat-id]');
+            const currentIndex = Array.from(seatElements).findIndex(
+                (el) => el === document.activeElement,
+            );
+
+            let newIndex = currentIndex;
+            if (event.key === 'ArrowRight') {
+                newIndex = Math.min(currentIndex + 1, seatElements.length - 1);
+            } else if (event.key === 'ArrowLeft') {
+                newIndex = Math.max(currentIndex - 1, 0);
+            } else if (event.key === 'Enter' && currentIndex >= 0) {
+                const seatId = seatElements[currentIndex].getAttribute('data-seat-id');
+                if (seatId) handleSeatClick(seatId);
+            }
+
+            if (newIndex !== currentIndex && seatElements[newIndex]) {
+                (seatElements[newIndex] as HTMLElement).focus();
+            }
+        },
+        [handleSeatClick, isLoading, selectedBusId],
+    );
+
+    // Handle click outside modal to close
+    const handleClickOutside = useCallback(
+        (event: MouseEvent) => {
+            if (
+                modalRef.current &&
+                !modalRef.current.contains(event.target as Node) &&
+                isCheckoutModalOpen &&
+                !isLoading &&
+                !paymentSuccess
+            ) {
+                setIsCheckoutModalOpen(false);
+            }
+        },
+        [isCheckoutModalOpen, isLoading, paymentSuccess, setIsCheckoutModalOpen],
+    );
+
+    // Handle window resize for responsive layout
+    const handleResize = useCallback(() => {
+        setWindowWidth(window.innerWidth);
+        // Optionally adjust seat layout dynamically
+        if (seatContainerRef.current) {
+            // Example: Adjust seat sizes or layout based on window width
+            const scale = window.innerWidth < 768 ? 0.8 : 1;
+            seatContainerRef.current.style.transform = `scale(${scale})`;
+        }
+    }, []);
+
+    // Add and clean up event listeners
+    useEffect(() => {
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('mousedown', handleClickOutside);
+        window.addEventListener('resize', handleResize);
+
+        // Initial resize call
+        handleResize();
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [handleKeyDown, handleClickOutside, handleResize]);
+
+    // Scroll event for sticky headers or animations
+    useEffect(() => {
+        const handleScroll = () => {
+            const header = document.querySelector('.reservation-header');
+            if (header) {
+                const isSticky = window.scrollY > 100;
+                header.classList.toggle('sticky', isSticky);
+                header.classList.toggle('shadow-lg', isSticky);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
 /**
  * Main ReservePage component
  */
