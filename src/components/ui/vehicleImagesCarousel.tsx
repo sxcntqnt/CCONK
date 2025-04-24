@@ -1,7 +1,7 @@
 // src/components/VehicleImagesCarousel.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,21 +19,72 @@ type VehicleImagesCarouselProps = {
 
 export default function VehicleImagesCarousel({ images, licensePlate }: VehicleImagesCarouselProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
+    const carouselRef = useRef<HTMLDivElement>(null);
 
     // Navigate to previous image
-    const goToPrev = () => {
+    const goToPrev = useCallback(() => {
         setCurrentIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length);
-    };
+    }, [images.length]);
 
     // Navigate to next image
-    const goToNext = () => {
+    const goToNext = useCallback(() => {
         setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-    };
+    }, [images.length]);
 
     // Handle direct navigation using dots
-    const goToImage = (index: number) => {
+    const goToImage = useCallback((index: number) => {
         setCurrentIndex(index);
-    };
+    }, []);
+
+    // Handle keyboard navigation
+    const handleKeyDown = useCallback(
+        (event: KeyboardEvent) => {
+            if (carouselRef.current && !carouselRef.current.contains(document.activeElement)) return;
+            if (event.key === 'ArrowLeft') goToPrev();
+            if (event.key === 'ArrowRight') goToNext();
+        },
+        [goToPrev, goToNext],
+    );
+
+    // Handle window resize for responsive layout
+    const handleResize = useCallback(() => {
+        setWindowWidth(window.innerWidth);
+        if (carouselRef.current) {
+            // Example: Adjust image container size or aspect ratio
+            const aspect = window.innerWidth < 640 ? 'square' : '4/3';
+            carouselRef.current.style.setProperty('--aspect-ratio', aspect);
+        }
+    }, []);
+
+    // Add and clean up event listeners
+    useEffect(() => {
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('resize', handleResize);
+
+        // Initial resize call
+        handleResize();
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [handleKeyDown, handleResize]);
+
+    // Optional: Pause animations when out of viewport
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!carouselRef.current) return;
+            const rect = carouselRef.current.getBoundingClientRect();
+            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+            // Could pause auto-play here if implemented
+            carouselRef.current.style.opacity = isVisible ? '1' : '0.8';
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        handleScroll(); // Initial check
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     if (!images || images.length === 0) {
         return (
@@ -58,11 +109,9 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
     }
 
     return (
-        <Card className="bg-gray-800 border-gray-700 overflow-hidden">
+        <Card className="bg-gray-800 border-gray-700 overflow-hidden" ref={carouselRef}>
             <div className="w-full">
-                {/* Instagram-style gallery */}
                 <div className="relative overflow-hidden">
-                    {/* Main image display */}
                     <div className="aspect-square sm:aspect-[4/3] relative">
                         {images.map((image, index) => (
                             <motion.div
@@ -89,7 +138,6 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
                         ))}
                     </div>
 
-                    {/* Navigation arrows - only show if more than one image */}
                     {images.length > 1 && (
                         <>
                             <button
@@ -135,12 +183,10 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
                         </>
                     )}
 
-                    {/* Image counter */}
                     <div className="absolute top-4 right-4 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
                         {currentIndex + 1}/{images.length}
                     </div>
 
-                    {/* Navigation dots */}
                     <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
                         {images.map((_, index) => (
                             <button
@@ -155,7 +201,6 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
                     </div>
                 </div>
 
-                {/* Instagram-like engagement section */}
                 <CardContent className="px-4 py-3">
                     <div className="flex items-center space-x-4 pb-2">
                         <button className="text-white hover:text-gray-300">
