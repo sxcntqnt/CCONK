@@ -279,10 +279,63 @@
     transform-origin: top left;
     transition: transform 0.2s ease;
 }
+
 .overflow-hidden {
     transform-origin: center;
     transition: transform 0.2s ease, opacity 0.3s ease;
 }
+
+.carousel-section {
+    transition: opacity 0.3s ease;
+}
+
+.bg-gray-800 {
+    transition: opacity 0.3s ease, width 0.2s ease;
+    margin: 0 auto;
+}
+
+/* Add search input styles for VehiclesPage */
+.search-input {
+    transition: width 0.2s ease;
+    width: 50%;
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .search-input {
+        width: 100%;
+    }
+}
+
+/* Refine .bg-gray-800 for VehicleDetailsPage card */
+.vehicle-details-card {
+    transition: opacity 0.3s ease, width 0.2s ease;
+    margin: 0 auto;
+    width: 75%;
+}
+
+@media (max-width: 768px) {
+    .vehicle-details-card {
+        width: 90%;
+    }
+}
+
+/* Styles for VehicleImagesCarousel navigation buttons */
+.carousel-nav-button {
+    background-color: hsl(var(--card) / 0.8);
+    color: hsl(var(--card-foreground));
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.carousel-nav-button:hover {
+    background-color: hsl(var(--card) / 1);
+}
+
+.carousel-nav-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 @layer utilities {
     .scrollbar-hide {
         -ms-overflow-style: none;
