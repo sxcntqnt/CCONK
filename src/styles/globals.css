@@ -279,7 +279,10 @@
     transform-origin: top left;
     transition: transform 0.2s ease;
 }
-
+.overflow-hidden {
+    transform-origin: center;
+    transition: transform 0.2s ease, opacity 0.3s ease;
+}
 @layer utilities {
     .scrollbar-hide {
         -ms-overflow-style: none;
