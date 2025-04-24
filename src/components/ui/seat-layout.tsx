@@ -24,8 +24,8 @@ interface SeatLayoutProps {
     onSeatClick?: (id: number) => void;
     isLoading?: boolean;
     className?: string;
-    imageUrl?: string; // New prop for bus image URL
-    category?: string; // New prop for bus category (for alt text and error messages)
+    imageUrl?: string;
+    category?: string;
 }
 
 export const DynamicSeatLayout = React.memo(
@@ -56,7 +56,6 @@ export const DynamicSeatLayout = React.memo(
 
             return (
                 <div className={cn('mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 items-start', className)} ref={ref}>
-                    {/* Seat Layout Section */}
                     <div className={cn(styles.matatuContainer)}>
                         <h2 className={styles.title}>{title}</h2>
                         <div className={styles.seatGrid}>
@@ -70,19 +69,26 @@ export const DynamicSeatLayout = React.memo(
                                                 return (
                                                     <div
                                                         key={seatNumber}
+                                                        data-seat-id={seatId}
                                                         className={cn(
                                                             styles.seat,
                                                             seat?.status ? styles[seat.status] : styles.available,
                                                         )}
-                                                        onClick={() => seatId && handleSeatClick(seatId)}
+                                                        onClick={() =>
+                                                            seatId &&
+                                                            seat?.status !== 'reserved' &&
+                                                            handleSeatClick(seatId)
+                                                        }
                                                         onKeyDown={(e) =>
                                                             seatId &&
+                                                            seat?.status !== 'reserved' &&
                                                             (e.key === 'Enter' || e.key === ' ') &&
                                                             (e.preventDefault(), handleSeatClick(seatId))
                                                         }
                                                         role="button"
-                                                        tabIndex={0}
+                                                        tabIndex={seat?.status === 'reserved' ? -1 : 0}
                                                         aria-label={`Seat ${seat?.seatNumber || seatNumber} - ${seat?.status || 'available'}`}
+                                                        aria-disabled={seat?.status === 'reserved'}
                                                     >
                                                         {seat?.seatNumber || seatNumber}
                                                     </div>
@@ -103,8 +109,6 @@ export const DynamicSeatLayout = React.memo(
                             ))}
                         </div>
                     </div>
-
-                    {/* Bus Image Section */}
                     <div className="flex items-center justify-center">
                         {imageUrl ? (
                             <Image
