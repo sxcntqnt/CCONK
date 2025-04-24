@@ -23,14 +23,14 @@ export const NRCFrame = ({
     decrementCarousel,
     incrementCarousel,
     jumpTo,
-    currentIndex = 0, // Default to 0 if not provided
+    currentIndex = 0,
 }: NRCFrameComponent & {
     priority?: boolean;
     onLoad?: () => void;
     incrementCarousel: () => void;
     decrementCarousel: () => void;
     jumpTo: (i: number) => void;
-    currentIndex?: number; // Add currentIndex
+    currentIndex?: number;
     loadingComponent?: React.ReactNode;
     blurQuality?: number;
     noBlur?: boolean;
@@ -42,13 +42,22 @@ export const NRCFrame = ({
         if (!image?.src || image.blurDataURL || noBlur) {
             return;
         }
-        fetch(image.src + `?w=${image.blurWidth || DEFAULT_BLUR_WIDTH}&q=${blurQuality || DEFAULT_BLUR_QUALITY}`)
+        const controller = new AbortController();
+        fetch(image.src + `?w=${image.blurWidth || DEFAULT_BLUR_WIDTH}&q=${blurQuality || DEFAULT_BLUR_QUALITY}`, {
+            signal: controller.signal,
+        })
             .then((res) => res.arrayBuffer())
             .then((buffer) => {
                 const base64 = Buffer.from(buffer).toString('base64');
                 setBlurUri(`data:image/jpeg;base64,${base64}`);
             })
-            .catch(console.error);
+            .catch((error) => {
+                if (error.name !== 'AbortError') console.error(error);
+            });
+
+        return () => {
+            controller.abort();
+        };
     }, [image, blurQuality, noBlur]);
 
     const imageStyles: React.CSSProperties = {
