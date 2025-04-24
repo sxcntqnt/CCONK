@@ -1,5 +1,7 @@
 // src/app/(marketing)/vehicles/page.tsx
-import { GetServerSideProps } from 'next';
+'use client';
+
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -21,21 +23,94 @@ interface VehiclesPageProps {
 }
 
 export default function VehiclesPage({ categories, searchResults, licensePlate }: VehiclesPageProps) {
+    const [searchValue, setSearchValue] = useState(licensePlate);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const pageRef = useRef<HTMLDivElement>(null);
+
+    // Handle search input change
+    const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchValue(e.target.value);
+    }, []);
+
+    // Handle search submission
+    const handleSearchSubmit = useCallback(() => {
+        if (searchValue.trim()) {
+            window.location.href = `/vehicles?licensePlate=${encodeURIComponent(searchValue)}`;
+        }
+    }, [searchValue]);
+
+    // Keyboard navigation for search input
+    const handleKeyDown = useCallback(
+        (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && document.activeElement === searchInputRef.current) {
+                handleSearchSubmit();
+            }
+            // Optional: Focus search input with Ctrl + /
+            if (event.ctrlKey && event.key === '/') {
+                event.preventDefault();
+                searchInputRef.current?.focus();
+            }
+        },
+        [handleSearchSubmit],
+    );
+
+    // Window resize handling
+    const handleResize = useCallback(() => {
+        if (pageRef.current && searchInputRef.current) {
+            // Adjust search input width or layout
+            const width = window.innerWidth < 640 ? '100%' : '50%';
+            searchInputRef.current.style.width = width;
+        }
+    }, []);
+
+    // Scroll-based visibility
+    const handleScroll = useCallback(() => {
+        if (!pageRef.current) return;
+        const carousels = pageRef.current.querySelectorAll('.carousel-section');
+        carousels.forEach((carousel) => {
+            const rect = carousel.getBoundingClientRect();
+            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+            (carousel as HTMLElement).style.opacity = isVisible ? '1' : '0.8';
+        });
+    }, []);
+
+    // Add and clean up event listeners
+    useEffect(() => {
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('scroll', handleScroll);
+
+        // Initial calls
+        handleResize();
+        handleScroll();
+
+        // Focus search input on mount if search is active
+        if (licensePlate.trim()) {
+            searchInputRef.current?.focus();
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [handleKeyDown, handleResize, handleScroll, licensePlate]);
+
     return (
-        <div className="min-h-screen bg-gray-900 text-white">
+        <div className="min-h-screen bg-gray-900 text-white" ref={pageRef}>
             <div className="container mx-auto px-4 py-12">
                 <div className="mb-8">
                     <Input
-                        value={licensePlate}
-                        onChange={(e) => {
-                            window.location.href = `/vehicles?licensePlate=${encodeURIComponent(e.target.value)}`;
-                        }}
+                        ref={searchInputRef}
+                        value={searchValue}
+                        onChange={handleSearchChange}
                         placeholder="Search by license plate (e.g., KAA 123B)"
                         className="bg-gray-800 text-white border-gray-700 placeholder-gray-500"
+                        aria-label="Search vehicles by license plate"
                     />
                 </div>
-                {licensePlate.trim() && searchResults ? (
-                    <section className="mb-12">
+                {searchValue.trim() && searchResults ? (
+                    <section className="mb-12 carousel-section">
                         <h2 className="text-3xl font-bold mb-6 text-white">
                             Search Results{' '}
                             {searchResults.vehicles.length > 0 ? `(${searchResults.vehicles.length})` : ''}
@@ -47,12 +122,12 @@ export default function VehiclesPage({ categories, searchResults, licensePlate }
                                 total={searchResults.total}
                             />
                         ) : (
-                            <p className="text-gray-400">No vehicles found for license plate "{licensePlate}".</p>
+                            <p className="text-gray-400">No vehicles found for license plate "{searchValue}".</p>
                         )}
                     </section>
                 ) : (
                     categories.map(({ key, title }) => (
-                        <section key={key} className="mb-12">
+                        <section key={key} className="mb-12 carousel-section">
                             <h2 className="text-3xl font-bold mb-6 text-white">{title}</h2>
                             <VehicleCarousel categoryKey={key} />
                         </section>
