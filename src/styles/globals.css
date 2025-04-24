@@ -275,6 +275,11 @@
     transition: all 0.3s ease;
 }
 
+.matatuContainer {
+    transform-origin: top left;
+    transition: transform 0.2s ease;
+}
+
 @layer utilities {
     .scrollbar-hide {
         -ms-overflow-style: none;
