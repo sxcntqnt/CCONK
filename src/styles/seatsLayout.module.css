@@ -1,8 +1,9 @@
+/* src/styles/seatsLayout.module.css */
 .matatuContainer {
     padding: 20px;
     max-width: 600px;
     margin: 0 auto;
-    background-image: linear-gradient(to bottom, #1a1c1e 0%, #330867 100%);
+    background-image: linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
     border-radius: 10px;
 }
 
@@ -34,37 +35,74 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #333;
+    border: 2px solid hsl(var(--border));
     border-radius: 10px;
     cursor: pointer;
     font-weight: bold;
-    color: #e5e3e3;
-    text-shadow: 1px 1px 3px #000;
+    color: hsl(var(--foreground));
+    text-shadow: 1px 1px 3px hsl(var(--background));
     text-transform: uppercase;
-    transition: all 0.5s;
+    transition: all 0.3s ease;
 }
 
 .seat.available {
-    background-image: linear-gradient(to right, #ff4500 0%, #ff8c00 50%, #ff4500 100%); /* Orange gradient */
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--accent)) 0%,
+        hsl(var(--accent) / 0.8) 50%,
+        hsl(var(--accent)) 100%
+    );
     background-size: 200% auto;
 }
 
 .seat.selected {
-    background-image: linear-gradient(to right, #006400 0%, #00ff7f 50%, #228b22 100%); /* Green gradient */
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--primary)) 0%,
+        hsl(var(--primary) / 0.8) 50%,
+        hsl(var(--primary)) 100%
+    );
     background-size: 200% auto;
 }
 
 .seat.reserved {
-    background-image: linear-gradient(to right, #800000 0%, #b22222 50%, #800000 100%); /* Burgundy to red gradient */
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--destructive)) 0%,
+        hsl(var(--destructive) / 0.8) 50%,
+        hsl(var(--destructive)) 100%
+    );
     background-size: 200% auto;
     cursor: not-allowed;
 }
 
+.seat.unavailable {
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--muted)) 0%,
+        hsl(var(--muted) / 0.8) 50%,
+        hsl(var(--muted)) 100%
+    );
+    background-size: 200% auto;
+    cursor: not-allowed;
+    opacity: 0.3;
+}
+
 .seat.available:hover,
 .seat.selected:hover {
-    background-image: linear-gradient(to right, #4b0082 0%, #9400d3 50%, #4b0082 100%); /* Purple hover */
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--tertiary)) 0%,
+        hsl(var(--tertiary) / 0.8) 50%,
+        hsl(var(--tertiary)) 100%
+    );
     background-size: 200% auto;
     background-position: right center;
+}
+
+.seat:focus {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
 }
 
 .aisleSpace {
@@ -83,8 +121,8 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    color: #e5e3e3;
-    text-shadow: 1px 1px 3px #000;
+    color: hsl(var(--foreground));
+    text-shadow: 1px 1px 3px hsl(var(--background));
 }
 
 .legendItem .seat {

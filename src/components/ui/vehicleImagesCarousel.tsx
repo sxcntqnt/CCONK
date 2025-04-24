@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/utils';
 
 type VehicleImage = {
     src: string;
@@ -15,9 +16,10 @@ type VehicleImage = {
 type VehicleImagesCarouselProps = {
     images: VehicleImage[];
     licensePlate: string;
+    className?: string; // Add className prop
 };
 
-export default function VehicleImagesCarousel({ images, licensePlate }: VehicleImagesCarouselProps) {
+export default function VehicleImagesCarousel({ images, licensePlate, className }: VehicleImagesCarouselProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
     const carouselRef = useRef<HTMLDivElement>(null);
@@ -41,8 +43,14 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
     const handleKeyDown = useCallback(
         (event: KeyboardEvent) => {
             if (carouselRef.current && !carouselRef.current.contains(document.activeElement)) return;
-            if (event.key === 'ArrowLeft') goToPrev();
-            if (event.key === 'ArrowRight') goToNext();
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                goToPrev();
+            }
+            if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                goToNext();
+            }
         },
         [goToPrev, goToNext],
     );
@@ -51,7 +59,6 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
     const handleResize = useCallback(() => {
         setWindowWidth(window.innerWidth);
         if (carouselRef.current) {
-            // Example: Adjust image container size or aspect ratio
             const aspect = window.innerWidth < 640 ? 'square' : '4/3';
             carouselRef.current.style.setProperty('--aspect-ratio', aspect);
         }
@@ -62,7 +69,6 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('resize', handleResize);
 
-        // Initial resize call
         handleResize();
 
         return () => {
@@ -77,12 +83,11 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
             if (!carouselRef.current) return;
             const rect = carouselRef.current.getBoundingClientRect();
             const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
-            // Could pause auto-play here if implemented
             carouselRef.current.style.opacity = isVisible ? '1' : '0.8';
         };
 
         window.addEventListener('scroll', handleScroll);
-        handleScroll(); // Initial check
+        handleScroll();
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
@@ -109,7 +114,13 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
     }
 
     return (
-        <Card className="bg-gray-800 border-gray-700 overflow-hidden" ref={carouselRef}>
+        <Card
+            className={cn('bg-gray-800 border-gray-700 overflow-hidden', className)}
+            ref={carouselRef}
+            tabIndex={0}
+            role="region"
+            aria-label={`Image carousel for ${licensePlate}`}
+        >
             <div className="w-full">
                 <div className="relative overflow-hidden">
                     <div className="aspect-square sm:aspect-[4/3] relative">
@@ -142,7 +153,7 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
                         <>
                             <button
                                 onClick={goToPrev}
-                                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 rounded-full p-2 text-white hover:bg-black/50 transition-colors"
+                                className="carousel-nav-button absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 rounded-full p-2 text-white hover:bg-black/50 transition-colors"
                                 aria-label="Previous image"
                             >
                                 <svg
@@ -162,7 +173,8 @@ export default function VehicleImagesCarousel({ images, licensePlate }: VehicleI
                             </button>
                             <button
                                 onClick={goToNext}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 rounded-full p-2 text-white hover:bg-black/50 transition-colors"
+                                className="carousel-nav-button absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 rounded-full p-2 text-white hover:bg-black/50 transition-colors"
+                                disabled={currentIndex === images.length - 1}
                                 aria-label="Next image"
                             >
                                 <svg

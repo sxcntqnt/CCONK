@@ -127,7 +127,7 @@ export default function VehicleDetailsPage({ params }: VehicleDetailsPageProps) 
         <div className="min-h-screen bg-gray-900 text-white">
             <div className="container mx-auto px-4 py-8">
                 <Card
-                    className="bg-gray-800 border-gray-700 rounded-lg"
+                    className="bg-gray-800 border-gray-700 rounded-lg vehicle-details-card"
                     ref={cardRef}
                     aria-label={`Details for ${bus.licensePlate}`}
                 >

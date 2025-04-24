@@ -103,9 +103,12 @@ export default function VehiclesPage({ categories, searchResults, licensePlate }
                     <Input
                         ref={searchInputRef}
                         value={searchValue}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSearchSubmit();
+                        }}
                         onChange={handleSearchChange}
                         placeholder="Search by license plate (e.g., KAA 123B)"
-                        className="bg-gray-800 text-white border-gray-700 placeholder-gray-500"
+                        className="bg-gray-800 text-white border-gray-700 placeholder-gray-500 search-input"
                         aria-label="Search vehicles by license plate"
                     />
                 </div>
@@ -260,7 +263,7 @@ async function VehicleCarousel({
             <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none">
                 <button
                     onClick={decrementCarousel}
-                    className="pointer-events-auto hidden sm:flex bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full -left-6"
+                    className="carousel-nav-button pointer-events-auto hidden sm:flex bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full -left-6"
                     aria-label="Previous vehicle"
                     disabled={currentIndex === 0}
                 >
@@ -270,7 +273,7 @@ async function VehicleCarousel({
                 </button>
                 <button
                     onClick={incrementCarousel}
-                    className="pointer-events-auto hidden sm:flex bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full -right-6"
+                    className="carousel-nav-button pointer-events-auto hidden sm:flex bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full -right-6"
                     aria-label="Next vehicle"
                     disabled={currentIndex >= frames.length - visibleCount}
                 >

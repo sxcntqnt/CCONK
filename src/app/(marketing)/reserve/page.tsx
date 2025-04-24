@@ -86,7 +86,44 @@ const BusImageDisplay: React.FC<{ imageUrl?: string; category: string; isLoading
     );
 };
 
-const modalRef = useRef<HTMLDivElement>(null);
+/**
+ * Main ReservePage component
+ */
+export default function ReservePage() {
+    const { user, isLoaded: userLoaded } = useUser();
+    const clerkId = user?.id ?? null; // Safely handle undefined user
+
+    const {
+        buses,
+        selectedBusId,
+        seats,
+        selectedSeats,
+        total,
+        phoneNumber,
+        isPhoneValid,
+        isLoading,
+        error,
+        paymentSuccess,
+        paymentError,
+        setPhoneNumber,
+        handleBusChange,
+        handleSeatClick,
+        handleCheckout,
+        confirmCheckout,
+        handleReset,
+        handleNextPage,
+        handlePrevPage,
+        selectedCapacity,
+        handleCapacityChange,
+        licensePlateFilter,
+        handleLicensePlateChange,
+        currentPage,
+        totalPages,
+        isCheckoutModalOpen,
+        setIsCheckoutModalOpen,
+    } = useBusReservation();
+
+    const modalRef = useRef<HTMLDivElement>(null);
     const seatContainerRef = useRef<HTMLDivElement>(null);
     const [windowWidth, setWindowWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 0);
 
@@ -96,9 +133,7 @@ const modalRef = useRef<HTMLDivElement>(null);
             if (!seatContainerRef.current || isLoading || !selectedBusId) return;
 
             const seatElements = seatContainerRef.current.querySelectorAll('[data-seat-id]');
-            const currentIndex = Array.from(seatElements).findIndex(
-                (el) => el === document.activeElement,
-            );
+            const currentIndex = Array.from(seatElements).findIndex((el) => el === document.activeElement);
 
             let newIndex = currentIndex;
             if (event.key === 'ArrowRight') {
@@ -174,43 +209,6 @@ const modalRef = useRef<HTMLDivElement>(null);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
-
-/**
- * Main ReservePage component
- */
-export default function ReservePage() {
-    const { user, isLoaded: userLoaded } = useUser();
-    const clerkId = user?.id ?? null; // Safely handle undefined user
-
-    const {
-        buses,
-        selectedBusId,
-        seats,
-        selectedSeats,
-        total,
-        phoneNumber,
-        isPhoneValid,
-        isLoading,
-        error,
-        paymentSuccess,
-        paymentError,
-        setPhoneNumber,
-        handleBusChange,
-        handleSeatClick,
-        handleCheckout,
-        confirmCheckout,
-        handleReset,
-        handleNextPage,
-        handlePrevPage,
-        selectedCapacity,
-        handleCapacityChange,
-        licensePlateFilter,
-        handleLicensePlateChange,
-        currentPage,
-        totalPages,
-        isCheckoutModalOpen,
-        setIsCheckoutModalOpen,
-    } = useBusReservation();
 
     const selectedBus = buses.find((bus) => bus.id === selectedBusId) || {
         id: 0,
@@ -308,6 +306,7 @@ export default function ReservePage() {
                     <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                         <div>
                             <DynamicSeatLayout
+                                ref={seatContainerRef}
                                 title={selectedBus.category}
                                 seats={seatsForLayout}
                                 layout={layout}
@@ -375,7 +374,7 @@ export default function ReservePage() {
                         }
                     }}
                 >
-<DialogContent ref={modalRef} className="bg-gray-900 text-white border-none">
+                    <DialogContent ref={modalRef} className="bg-gray-900 text-white border-none">
                         <DialogHeader>
                             <DialogTitle>Confirm Your Reservation</DialogTitle>
                         </DialogHeader>

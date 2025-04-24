@@ -1,4 +1,5 @@
 // src/components/ui/seat-layout.tsx
+// src/components/ui/seat-layout.tsx
 'use client';
 
 import React, { forwardRef } from 'react';
@@ -65,7 +66,18 @@ export const DynamicSeatLayout = React.memo(
                                         <React.Fragment key={groupIndex}>
                                             {group.map((seatNumber) => {
                                                 const seatId = seatNumberToId.get(seatNumber);
-                                                const seat = seatId !== undefined ? seats[seatId] : undefined;
+                                                if (seatId === undefined) {
+                                                    return (
+                                                        <div
+                                                            key={seatNumber}
+                                                            className={cn(styles.seat, styles.unavailable)}
+                                                            aria-label={`Seat ${seatNumber} - unavailable`}
+                                                        >
+                                                            {seatNumber}
+                                                        </div>
+                                                    );
+                                                }
+                                                const seat = seats[seatId];
                                                 return (
                                                     <div
                                                         key={seatNumber}
@@ -73,14 +85,12 @@ export const DynamicSeatLayout = React.memo(
                                                         className={cn(
                                                             styles.seat,
                                                             seat?.status ? styles[seat.status] : styles.available,
+                                                            seat?.status === 'reserved' && 'pointer-events-none',
                                                         )}
                                                         onClick={() =>
-                                                            seatId &&
-                                                            seat?.status !== 'reserved' &&
-                                                            handleSeatClick(seatId)
+                                                            seat?.status !== 'reserved' && handleSeatClick(seatId)
                                                         }
                                                         onKeyDown={(e) =>
-                                                            seatId &&
                                                             seat?.status !== 'reserved' &&
                                                             (e.key === 'Enter' || e.key === ' ') &&
                                                             (e.preventDefault(), handleSeatClick(seatId))
@@ -89,6 +99,7 @@ export const DynamicSeatLayout = React.memo(
                                                         tabIndex={seat?.status === 'reserved' ? -1 : 0}
                                                         aria-label={`Seat ${seat?.seatNumber || seatNumber} - ${seat?.status || 'available'}`}
                                                         aria-disabled={seat?.status === 'reserved'}
+                                                        aria-selected={seat?.status === 'selected'}
                                                     >
                                                         {seat?.seatNumber || seatNumber}
                                                     </div>

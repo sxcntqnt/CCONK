@@ -275,14 +275,11 @@
     transition: all 0.3s ease;
 }
 
-.matatuContainer {
-    transform-origin: top left;
-    transition: transform 0.2s ease;
-}
-
 .overflow-hidden {
     transform-origin: center;
-    transition: transform 0.2s ease, opacity 0.3s ease;
+    transition:
+        transform 0.2s ease,
+        opacity 0.3s ease;
 }
 
 .carousel-section {
@@ -290,7 +287,9 @@
 }
 
 .bg-gray-800 {
-    transition: opacity 0.3s ease, width 0.2s ease;
+    transition:
+        opacity 0.3s ease,
+        width 0.2s ease;
     margin: 0 auto;
 }
 
@@ -309,7 +308,9 @@
 
 /* Refine .bg-gray-800 for VehicleDetailsPage card */
 .vehicle-details-card {
-    transition: opacity 0.3s ease, width 0.2s ease;
+    transition:
+        opacity 0.3s ease,
+        width 0.2s ease;
     margin: 0 auto;
     width: 75%;
 }
@@ -324,7 +325,9 @@
 .carousel-nav-button {
     background-color: hsl(var(--card) / 0.8);
     color: hsl(var(--card-foreground));
-    transition: background-color 0.2s ease, opacity 0.2s ease;
+    transition:
+        background-color 0.2s ease,
+        opacity 0.2s ease;
 }
 
 .carousel-nav-button:hover {
@@ -334,6 +337,55 @@
 .carousel-nav-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Styles for carousel-container */
+.carousel-container {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin: 0 auto;
+    width: 75%;
+    transition:
+        opacity 0.3s ease,
+        transform 0.2s ease,
+        width 0.2s ease;
+    transform-origin: center;
+}
+
+.carousel-container:focus {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px hsl(var(--ring) / 0.2);
+}
+
+@media (max-width: 768px) {
+    .carousel-container {
+        width: 90%;
+    }
+}
+
+/* Styles for carousel images */
+.carousel-container .carousel-image {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: var(--border-radius-sm);
+    transition: opacity 0.3s ease;
+}
+
+/* Styles for carousel navigation dots */
+.carousel-container .carousel-dot {
+    background-color: hsl(var(--muted));
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.carousel-container .carousel-dot.active {
+    background-color: hsl(var(--primary));
 }
 
 @layer utilities {
