@@ -11,6 +11,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
         <ClerkProvider>
             <html lang="en" className={cn('scrollbar-hide dark')}>
+                <head>
+                    <link rel="stylesheet" href="/_next/static/css/app/layout.css" as="style" />
+                    <link rel="stylesheet" href="/_next/static/css/app/(marketing)/layout.css" as="style" />
+                    <link rel="stylesheet" href="/_next/static/css/app/(marketing)/enterprise/page.css" as="style" />
+                </head>
                 <body
                     className={cn(
                         'min-h-screen bg-background text-foreground antialiased overflow-x-hidden',

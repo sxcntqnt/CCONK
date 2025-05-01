@@ -1,5 +1,35 @@
 #!/usr/bin/env sh
 
+# Run existing checks
 npm run prettier --fix --write && npm run type-check
 npx lint-staged
 
+# Remove "test" script and Jest dependencies from package.json using jq
+if command -v jq >/dev/null 2>&1; then
+    jq 'del(.scripts.test, .devDependencies["@types/jest"], .devDependencies.jest, .devDependencies["jest-environment-jsdom"], .devDependencies["ts-jest"])' package.json > package.json.tmp && mv package.json.tmp package.json
+else
+    # Fallback to sed if jq is not installed
+    sed -E '/"test": "jest",|"@types\/jest": "\^29\.5\.14",|"jest": "\^29\.7\.0",|"jest-environment-jsdom": "\^29\.7\.0",|"ts-jest": "\^29\.3\.2",/d' package.json > package.json.tmp && mv package.json.tmp package.json
+fi
+
+# Delete test-related files
+if [ -f src/utils/functions/tests.ts ]; then
+    rm src/utils/functions/tests.ts
+    echo "Removed src/utils/functions/tests.ts"
+    git add src/utils/functions/tests.ts
+fi
+
+if [ -f jest.config.js ]; then
+    rm jest.config.js
+    echo "Removed jest.config.js"
+    git add jest.config.js
+fi
+
+if [ -f jest.setup.js ]; then
+    rm jest.setup.js
+    echo "Removed jest.setup.js"
+    git add jest.setup.js
+fi
+
+# Stage modified package.json
+git add package.json

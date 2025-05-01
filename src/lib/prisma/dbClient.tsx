@@ -2,7 +2,7 @@
 
 import { db } from '@/lib';
 import { MatatuCapacity, matatuConfigs, validCapacities, validateCapacity } from '@/utils/constants/matatuSeats';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma/client';
 
 const DEFAULT_SEAT_PRICE = process.env.DEFAULT_SEAT_PRICE ? Number(process.env.DEFAULT_SEAT_PRICE) : 19;
 

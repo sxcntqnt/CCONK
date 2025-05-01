@@ -147,16 +147,17 @@ model Reservation {
 }
 
 model Payment {
-  id            Int          @id @default(autoincrement())
-  userId        Int
-  amount        Float
-  transactionId String       @unique
-  phoneNumber   String
-  status        String       @default("pending")
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  user          User         @relation(fields: [userId], references: [id])
-  reservation   Reservation?
+  id              Int          @id @default(autoincrement())
+  userId          Int
+  amount          Float
+  transactionId   String       @unique
+  phoneNumber     String
+  status          String       @default("pending")
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  transactionDate DateTime?    // Optional to handle existing records
+  user            User         @relation(fields: [userId], references: [id])
+  reservation     Reservation?
 
   @@index([userId])
   @@index([transactionId])

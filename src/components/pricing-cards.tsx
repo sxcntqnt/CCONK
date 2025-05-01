@@ -111,7 +111,6 @@ const PricingCards = () => {
                                 className={buttonVariants({
                                     className: plan.name === 'Pro' && 'bg-purple-500 text-white hover:bg-purple-500/80',
                                 })}
-                                legacyBehavior
                             >
                                 {plan.btn.text}
                             </Link>

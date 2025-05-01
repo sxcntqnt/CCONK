@@ -19,17 +19,15 @@ interface Props {
 const InnerProviders = ({ children }: Props) => {
     const { user, isLoaded: userLoaded, isSignedIn } = useUser();
     const { getToken } = useAuth();
-    const { setTheme } = useTheme(); // Add useTheme hook
+    const { setTheme } = useTheme();
     const [knockToken, setKnockToken] = React.useState<string | null>(null);
     const [error, setError] = React.useState<string | null>(null);
 
-    // Load saved theme from localStorage after hydration
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') || 'dark';
         setTheme(savedTheme);
     }, [setTheme]);
 
-    // Fetch Clerk JWT for Knock
     useEffect(() => {
         async function fetchToken() {
             try {
@@ -50,12 +48,7 @@ const InnerProviders = ({ children }: Props) => {
     }, [userLoaded, isSignedIn, user?.id, getToken]);
 
     const commonProviders = (
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="dark" // Set default theme to dark
-            enableSystem={false} // Disable system theme detection
-            disableTransitionOnChange
-        >
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
             <SidebarProvider>
                 <TooltipProvider>{children}</TooltipProvider>
             </SidebarProvider>
@@ -67,7 +60,11 @@ const InnerProviders = ({ children }: Props) => {
     }
 
     if (error) {
-        return <div className="flex items-center justify-center min-h-screen">Error: {error}</div>;
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                Error: {error} <button onClick={() => setError(null)}>Retry</button>
+            </div>
+        );
     }
 
     if (!isSignedIn || !user?.id || !knockToken) {

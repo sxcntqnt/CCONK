@@ -26,7 +26,8 @@
       "@/*": ["./src/*"],
       "@/components/*": ["./src/components/*"],
       "@/lib/*": ["./src/lib/*"],
-      "@/utils/*": ["./src/utils/*"]
+      "@/utils/*": ["./src/utils/*"],
+      "/@jset/*":["src/utils/functions/*"]
     },
     "target": "ES2017"
   },
