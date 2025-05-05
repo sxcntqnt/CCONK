@@ -1,0 +1,4 @@
+{
+  "ignore": ["lib-cjs/**/*", "lib-mjs/**/*"],
+  "ext": "ts,tsx,js"
+}

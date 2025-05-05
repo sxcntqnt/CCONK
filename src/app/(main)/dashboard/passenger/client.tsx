@@ -13,6 +13,7 @@ import MagicCard from '@/components/ui/magic-card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
+import { useDriverStore } from '@/store';
 
 interface UserData {
     id: string;
@@ -39,15 +40,46 @@ interface Props {
 
 export default function PassengerDashboardClient({ userData, passenger, buses, error, role }: Props) {
     const [hasReservations, setHasReservations] = useState<boolean | null>(null);
+    const [reservationCounts, setReservationCounts] = useState<{ [tripId: number]: number }>({});
     const { signOut } = useClerk();
     const { isLoaded, isSignedIn, user } = useUser();
     const router = useRouter();
+    const { setSelectedDriver, clearSelectedDriver } = useDriverStore();
 
     useEffect(() => {
         if (passenger) {
             setHasReservations(passenger.reservations.length > 0);
+            // Set driver for the first reservation (optional, for compatibility with DriverDetails)
+            if (passenger.reservations.length > 0) {
+                const firstReservation = passenger.reservations[0];
+                const driverId = parseInt(firstReservation.trip.bus.id.toString());
+                setSelectedDriver(driverId);
+            } else {
+                clearSelectedDriver();
+            }
+
+            // Fetch reservation counts for each trip
+            const fetchReservationCounts = async () => {
+                const counts = await Promise.all(
+                    passenger.reservations.map(async (reservation) => {
+                        try {
+                            const response = await fetch(`/api/reservations?tripId=${reservation.tripId}`);
+                            if (!response.ok) throw new Error('Failed to fetch reservations');
+                            const data = await response.json();
+                            return { tripId: reservation.tripId, count: data.reservations.length };
+                        } catch (error) {
+                            console.error(`Failed to fetch reservations for trip ${reservation.tripId}:`, error);
+                            return { tripId: reservation.tripId, count: 0 };
+                        }
+                    }),
+                );
+                setReservationCounts(counts.reduce((acc, { tripId, count }) => ({ ...acc, [tripId]: count }), {}));
+            };
+            if (passenger.reservations.length > 0) {
+                fetchReservationCounts();
+            }
         }
-    }, [passenger]);
+    }, [passenger, setSelectedDriver, clearSelectedDriver]);
 
     if (!isLoaded) {
         return (
@@ -187,7 +219,14 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
                                 </CardHeader>
                                 <CardContent className="p-6 pt-0">
                                     <ScrollArea className="h-40">
-                                        <RealTimeTripUpdates tripId={reservation.tripId} />
+                                        <RealTimeTripUpdates
+                                            tripId={reservation.tripId}
+                                            driverId={reservation.trip.bus.id.toString()}
+                                        />
+                                        <p className="text-sm text-gray-300 mt-2">
+                                            Bus Occupancy: {reservationCounts[reservation.tripId] || 0} of{' '}
+                                            {reservation.trip.bus.capacity} seats reserved
+                                        </p>
                                     </ScrollArea>
                                 </CardContent>
                             </Card>

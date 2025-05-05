@@ -1,4 +1,6 @@
 import { StaticImageData } from 'next/image';
+import { MarkerData } from '@/store';
+import { GeoJSON } from 'geojson'; // Import the GeoJSON type
 
 export type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -57,3 +59,186 @@ export type NRCCarouselProps = {
     controlsComponent?: (props: FrameRenderedComponentPropsWithIndex) => React.ReactNode;
     willAutoPlayOutsideViewport?: boolean;
 };
+
+export type Owner = {
+    id: number;
+    userId: number;
+    createdAt: Date;
+    updatedAt: Date;
+    profileImageUrl: string;
+    buses: Bus[];
+    geofences: Geofence[];
+    incomeExpenses: IncomeExpense[];
+    user: User;
+    reports: Report[];
+};
+
+export type User = {
+    id: number;
+    clerkId: string;
+    name: string;
+    email: string;
+    image: string; // Required
+    phoneNumber?: string;
+    role: string;
+};
+
+export interface Driver {
+    id: number;
+    busId?: number;
+    userId: number;
+    licenseNumber: string;
+    status: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    profileImageUrl: string; // Required
+    rating?: number;
+}
+
+export interface Bus {
+    id: number;
+    licensePlate: string;
+    capacity: number;
+    model?: string;
+    latitude?: number;
+    longitude?: number;
+    lastLocationUpdate?: string;
+    category: string;
+    images: { src: string; alt: string }[];
+}
+
+export type Image = {
+    id: number;
+    busId: number;
+    src: string;
+    blurDataURL?: string;
+    alt: string;
+};
+
+export interface Trip {
+    id: number;
+    busId: number;
+    driverId?: number;
+    departureCity: string;
+    arrivalCity: string;
+    departureTime: string;
+    arrivalTime?: string;
+    status: string;
+    isFullyBooked: boolean;
+    originLatitude?: number;
+    originLongitude?: number;
+    destinationLatitude?: number;
+    destinationLongitude?: number;
+    createdAt: string;
+    updatedAt: string;
+    bus?: Bus;
+}
+
+export type Seat = {
+    id: number;
+    busId: number;
+    seatNumber: number;
+    price: number;
+    row: number;
+    column: number;
+    category: string;
+    status: string;
+};
+
+export type Reservation = {
+    id: number;
+    userId: number;
+    tripId: number;
+    seatId: number;
+    status: string;
+    bookedAt: string;
+    updatedAt: string;
+    paymentId?: number;
+};
+
+export type Payment = {
+    id: number;
+    userId: number;
+    amount: number;
+    transactionId: string;
+    phoneNumber: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+    transactionDate?: string;
+};
+
+export type Notification = {
+    id: number;
+    userId: number;
+    tripId?: number;
+    type: string;
+    message: string;
+    status: string;
+    createdAt: string;
+    sentAt?: string;
+    driverId?: number;
+    subject: string;
+};
+
+export interface Geofence {
+    id: number;
+    ownerId?: number | null;
+    userId?: number | null;
+    name: string;
+    h3Index: string;
+    resolution: number;
+    geoJson: GeoJSON; // Updated to use GeoJSON type
+    color: string;
+    createdAt: Date;
+    updatedAt: Date;
+    owner?: Owner | null;
+    user?: User | null;
+}
+
+export interface IncomeExpense {
+    id: number;
+    ownerId: number;
+    type: string;
+    amount: number;
+    description?: string;
+    recordedAt: Date;
+    updatedAt: Date;
+    owner: Owner;
+}
+
+export interface Report {
+    id: number;
+    ownerId: number;
+    title: string;
+    description?: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface DriverCardProps {
+    item: MarkerData;
+    selected: number;
+    setSelected: () => void;
+}
+
+export interface ApiResponse<T> {
+    data?: T;
+    error?: string;
+    status: number;
+}
+
+export interface DriverData {
+    driver: Driver;
+    trip: Trip | null;
+}
+
+export interface Message {
+    id: number;
+    reservationId: number;
+    senderId: number;
+    receiverId: number;
+    content: string;
+    timestamp: string;
+}

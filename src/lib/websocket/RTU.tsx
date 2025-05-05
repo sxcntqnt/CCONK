@@ -1,28 +1,76 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { WebSocketManager } from './index';
+import { WebSocketManager } from '@/lib/websocket';
+import { useDriverStore, useTripStore, useReservationStore } from '@/store';
+import { Socket } from 'socket.io-client';
 
-interface TripUpdate {
+interface RealTimeTripUpdatesProps {
     tripId: number;
-    status: string;
-    timestamp: number;
+    driverId: string;
 }
 
-function RealTimeTripUpdates({ tripId }: { tripId: number }) {
+function RealTimeTripUpdates({ tripId, driverId }: RealTimeTripUpdatesProps) {
     const [tripStatus, setTripStatus] = useState<string>('Loading...');
-    const [isConnected, setIsConnected] = useState(false);
+    const [isConnected, setIsConnected] = useState<boolean>(false);
+    const { setReservationCount } = useReservationStore();
+    const { setActiveStatus } = useDriverStore();
+    const { setSelectedTrip } = useTripStore();
+
+    const handleTripUpdate = useCallback(
+        (update: { tripId: number; status: string; timestamp: number }) => {
+            if (update.tripId === tripId) {
+                setTripStatus(update.status);
+                setSelectedTrip(tripId);
+
+                switch (update.status.toLowerCase()) {
+                    case 'completed':
+                        toast.success('Trip completed!');
+                        setActiveStatus('inactive');
+                        break;
+                    case 'cancelled':
+                        toast.error('Trip cancelled');
+                        setActiveStatus('inactive');
+                        break;
+                    default:
+                        toast.info(`Trip status updated: ${update.status}`);
+                        setActiveStatus('active');
+                }
+            }
+        },
+        [tripId, setSelectedTrip, setActiveStatus],
+    );
+
+    const handleReservationUpdate = useCallback(
+        (update: { driverId: string; reservationCount: number; timestamp: number }) => {
+            if (update.driverId === driverId) {
+                setReservationCount(update.reservationCount);
+                toast.info(`Bus reservations updated: ${update.reservationCount} seats reserved`);
+            }
+        },
+        [driverId, setReservationCount],
+    );
+
+    const handleLocationUpdate = useCallback(
+        (update: { driverId: string; latitude: number; longitude: number; timestamp: number }) => {
+            if (update.driverId === driverId) {
+                toast.info('Driver location updated');
+                // Could update useLocationStore here if needed
+            }
+        },
+        [driverId],
+    );
 
     useEffect(() => {
-        // Use environment variable for WebSocket URL
-        const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:1738'; // Fallback to localhost if not set
+        const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:1738';
         if (!wsUrl) {
             console.error('NEXT_PUBLIC_WEBSOCKET_URL is not defined in .env');
+            toast.error('WebSocket configuration error');
+            return;
         }
 
-        // First, ensure the server has a webhook set up for this trip
         const setupWebhook = async () => {
             try {
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1738';
@@ -35,7 +83,7 @@ function RealTimeTripUpdates({ tripId }: { tripId: number }) {
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to set up trip webhook');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
             } catch (error) {
                 console.error('Error setting up webhook:', error);
@@ -45,7 +93,6 @@ function RealTimeTripUpdates({ tripId }: { tripId: number }) {
 
         setupWebhook();
 
-        // Now set up WebSocket connection
         const wsManager = WebSocketManager.getInstance({
             url: wsUrl,
             reconnectInterval: 3000,
@@ -55,59 +102,83 @@ function RealTimeTripUpdates({ tripId }: { tripId: number }) {
         wsManager.initialize();
         const messageHandler = wsManager.getMessageHandler();
         const connection = messageHandler.getConnection();
+        const ws: Socket | null = connection.getWebSocket();
 
-        // Connection status listener
-        const ws = connection.getWebSocket();
-        const updateConnectionStatus = () => setIsConnected(connection.isConnected());
+        const updateConnectionStatus = () => {
+            setIsConnected(connection.isConnected());
+            if (!connection.isConnected()) {
+                toast.warning('WebSocket disconnected, attempting to reconnect...');
+            }
+        };
 
         if (ws) {
-            ws.onopen = () => {
+            ws.on('connect', () => {
                 updateConnectionStatus();
                 messageHandler.send({
                     type: 'subscribe_trip',
                     payload: { tripId },
                 });
-            };
-            ws.onclose = updateConnectionStatus;
-            ws.onerror = updateConnectionStatus;
-        }
+                messageHandler.send({
+                    type: 'subscribe_reservations',
+                    payload: { driverId },
+                });
+                messageHandler.send({
+                    type: 'subscribe_location',
+                    payload: { driverId },
+                });
+            });
 
-        // Initial subscription request if already connected
-        if (connection.isConnected()) {
-            messageHandler.send({
-                type: 'subscribe_trip',
-                payload: { tripId },
+            ws.on('disconnect', () => {
+                updateConnectionStatus();
+                toast.warning('WebSocket connection lost');
+            });
+
+            ws.on('connect_error', (error) => {
+                updateConnectionStatus();
+                console.error('WebSocket connection error:', error);
+                toast.error('Failed to connect to real-time updates');
             });
         }
 
         // Subscribe to updates
-        const unsubscribe = messageHandler.subscribe('trip_update', (message) => {
-            const update: TripUpdate = message.payload;
-            if (update.tripId === tripId) {
-                setTripStatus(update.status);
-                if (update.status === 'completed') {
-                    toast.success('Trip completed!');
-                } else if (update.status === 'cancelled') {
-                    toast.error('Trip cancelled');
-                } else {
-                    toast.info(`Trip status updated: ${update.status}`);
-                }
-            }
+        const unsubscribeTrip = messageHandler.subscribe('trip_update', (message) => {
+            handleTripUpdate(message.payload);
         });
 
-        // Poll connection status
+        const unsubscribeReservations = messageHandler.subscribe('reservation_update', (message) => {
+            handleReservationUpdate(message.payload);
+        });
+
+        const unsubscribeLocation = messageHandler.subscribe('location_update', (message) => {
+            handleLocationUpdate(message.payload);
+        });
+
+        // Periodic connection status check
         const interval = setInterval(updateConnectionStatus, 1000);
 
+        // Cleanup
         return () => {
-            unsubscribe();
+            unsubscribeTrip();
+            unsubscribeReservations();
+            unsubscribeLocation();
+
             messageHandler.send({
                 type: 'unsubscribe_trip',
                 payload: { tripId },
             });
+            messageHandler.send({
+                type: 'unsubscribe_reservations',
+                payload: { driverId },
+            });
+            messageHandler.send({
+                type: 'unsubscribe_location',
+                payload: { driverId },
+            });
+
             clearInterval(interval);
             wsManager.disconnect();
         };
-    }, [tripId]);
+    }, [tripId, driverId, handleTripUpdate, handleReservationUpdate, handleLocationUpdate]);
 
     return (
         <Card className="w-full">
