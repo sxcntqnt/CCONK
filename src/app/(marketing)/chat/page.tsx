@@ -55,12 +55,15 @@ const ChatPage = () => {
             const driverTrips = trips.filter((t: Trip) => t.driverId === driver.id && t.status !== 'completed');
             if (driverTrips.length > 0) {
                 trip = driverTrips[0]; // Select first active trip
-                availableReservations = getReservationsByTripId(trip.id);
-                const selectedOrFirstReservation =
-                    selectedReservation || (availableReservations.length > 0 ? availableReservations[0] : undefined);
-                if (selectedOrFirstReservation?.userId) {
-                    reservation = selectedOrFirstReservation;
-                    chatPartner = users.find((u: User) => u.id === selectedOrFirstReservation.userId);
+                if (trip) {
+                    availableReservations = getReservationsByTripId(trip.id);
+                    const selectedOrFirstReservation =
+                        selectedReservation ||
+                        (availableReservations.length > 0 ? availableReservations[0] : undefined);
+                    if (selectedOrFirstReservation?.userId) {
+                        reservation = selectedOrFirstReservation;
+                        chatPartner = users.find((u: User) => u.id === selectedOrFirstReservation.userId);
+                    }
                 }
             }
         }

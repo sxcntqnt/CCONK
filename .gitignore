@@ -23,7 +23,8 @@
 prisma/migrations/
 prisma/app
 src/lib/prisma/client/*
-
+lib-mjs
+lib-cjs
 # misc
 .DS_Store
 *.pem
