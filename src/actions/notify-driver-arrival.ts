@@ -85,7 +85,7 @@ async function fetchDriverTrip(driverId: number) {
     const trip = await db.trip.findFirst({
         where: {
             driverId,
-            status: { in: ['scheduled', 'in_progress'] },
+            status: { in: ['SCHEDULED', 'IN_PROGRESS'] },
             arrivalTime: null,
         },
         include: { bus: true },
@@ -99,7 +99,7 @@ async function fetchDriverTrip(driverId: number) {
 // Helper: Fetch passengers from reservations
 async function fetchPassengers(tripId: number): Promise<Recipient[]> {
     const reservations = await db.reservation.findMany({
-        where: { tripId, status: 'confirmed' },
+        where: { tripId, status: 'CONFIRMED' },
         include: { user: { select: { clerkId: true, name: true, email: true } } },
     });
 
@@ -108,7 +108,13 @@ async function fetchPassengers(tripId: number): Promise<Recipient[]> {
     return reservations.map(
         (reservation: {
             id: number;
+            tripId: number;
+            userId: number;
+            status: string;
+            bookedAt: Date;
+            updatedAt: Date;
             seatId: number;
+            paymentId: number | null;
             user: { clerkId: string; name: string | null; email: string | null } | null;
         }) => {
             const user = reservation.user;
@@ -166,14 +172,14 @@ async function sendArrivalNotification(
             status: 'sent',
             driverId: driver.prismaDriver.driver?.id,
             sentAt: new Date(),
-            subject: `Driver Arrival at ${destination}`, // Add subject field
+            subject: `Driver Arrival at ${destination}`,
         })),
     });
 
     // Update trip status
     await db.trip.update({
         where: { id: trip.id },
-        data: { status: 'completed', arrivalTime: new Date() },
+        data: { status: 'COMPLETED', arrivalTime: new Date() },
     });
 }
 

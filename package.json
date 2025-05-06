@@ -3,10 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "nodemon --exec \"npx pnpm run dev:concurrent\" --ext ts,tsx,js,mjs",
-    "dev:concurrent": "DEBUG=* concurrently -k -r --success=first \"next dev -p 5000\" \"npx ts-node --esm --log-error ./src/lib/server/wsserver.mjs\"",
-    "build": "pnpm next build",
-    "start": "next start -p 5000",
+    "dev": "nodemon --config nodemon.json --exec \"pnpm run dev:concurrent\" --ext ts,tsx,js,cjs",
+    "dev:concurrent": "DEBUG=* concurrently -k -r --success=first \"next dev -p 5001\" \"pnpm run ws:dev\"",
+    "ws:dev": "npm run ws:build:cjs && node lib-cjs/lib/server/wsserver.cjs",
+    "build": "pnpm next build && npm run ws:build",
+    "ws:build": "npm run ws:build:mjs && npm run ws:build:cjs",
+    "ws:build:mjs": "tsc -p tsconfig.mjs.json && mjscjs -p tsconfig.mjs.json",
+    "ws:build:cjs": "tsc -p tsconfig.cjs.json && mjscjs -p tsconfig.cjs.json",
+    "start": "next start -p 5001",
+    "ws:start": "node lib-cjs/lib/server/wsserver.cjs",
     "lint": "npx lint-staged",
     "format": "npm run prettier:check",
     "prettier:check": "prettier --config .prettierrc --check \"src/**/*.{ts,tsx,css,html}\"",
@@ -19,10 +24,8 @@
     "prisma:deploy": "prisma generate && prisma migrate deploy"
   },
   "husky": {
-    "hooks": {
-      "pre-commit": "npx lint-staged",
-      "pre-push": "npm run test"
-    }
+    "pre-commit": "npx lint-staged",
+    "pre-push": "npm run test"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx,css,html}": [
@@ -96,6 +99,9 @@
     "@radix-ui/react-switch": "^1.2.2",
     "@radix-ui/react-toggle-group": "^1.1.7",
     "@tailwindcss/postcss": "^4.1.4",
+    "@types/body-parser": "^1.19.5",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
     "@types/geojson": "^7946.0.16",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.14.1",
@@ -115,6 +121,7 @@
     "lru-cache": "^10.4.3",
     "maplibre-gl": "^5.4.0",
     "minimatch": "^9.0.5",
+    "mjscjs": "^1.1.0",
     "next": "^15.3.1",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
@@ -128,6 +135,7 @@
     "tailwindcss": "^4.1.4",
     "ts-node": "^10.9.2",
     "type-check": "^0.4.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "zustand": "^5.0.4"
   }
 }

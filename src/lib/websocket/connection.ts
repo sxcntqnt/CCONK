@@ -1,6 +1,7 @@
-// connection.ts
+import { io, Socket } from 'socket.io-client';
+
 export class WebSocketConnection {
-    private ws: WebSocket | null = null;
+    private socket: Socket | null = null;
     private url: string;
     private reconnectInterval: number;
     private maxReconnectAttempts: number;
@@ -14,44 +15,48 @@ export class WebSocketConnection {
     }
 
     public connect(): void {
-        if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
+        if (this.socket && this.socket.connected) {
             return; // Prevent multiple connections
         }
 
         try {
-            this.ws = new WebSocket(this.url);
+            this.socket = io(this.url, {
+                transports: ['websocket'],
+                reconnection: false, // We'll handle reconnection manually
+            });
 
-            this.ws.onopen = () => {
-                console.log('WebSocket connection established');
+            this.socket.on('connect', () => {
+                console.log('Socket.IO connection established');
                 this.reconnectAttempts = 0;
                 if (this.reconnectTimeout) {
                     clearTimeout(this.reconnectTimeout);
                     this.reconnectTimeout = null;
                 }
-            };
+            });
 
-            this.ws.onclose = () => {
-                console.log('WebSocket connection closed');
-                this.ws = null;
+            this.socket.on('disconnect', () => {
+                console.log('Socket.IO connection closed');
+                this.socket = null;
                 this.handleReconnect();
-            };
+            });
 
-            this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                this.ws?.close(); // Ensure cleanup on error
-            };
+            this.socket.on('connect_error', (error) => {
+                console.error('Socket.IO connection error:', error);
+                this.socket?.disconnect();
+                this.handleReconnect();
+            });
 
-            // onmessage will be set by MessageHandler
+            // Message handling will be set by MessageHandler
         } catch (error) {
-            console.error('Failed to establish WebSocket connection:', error);
+            console.error('Failed to establish Socket.IO connection:', error);
             this.handleReconnect();
         }
     }
 
     public disconnect(): void {
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
+        if (this.socket) {
+            this.socket.disconnect();
+            this.socket = null;
         }
         if (this.reconnectTimeout) {
             clearTimeout(this.reconnectTimeout);
@@ -60,11 +65,11 @@ export class WebSocketConnection {
     }
 
     public isConnected(): boolean {
-        return this.ws?.readyState === WebSocket.OPEN;
+        return this.socket?.connected || false;
     }
 
-    public getWebSocket(): WebSocket | null {
-        return this.ws;
+    public getWebSocket(): Socket | null {
+        return this.socket;
     }
 
     private handleReconnect(): void {

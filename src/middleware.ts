@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
     '/auth/sign-in',
     '/auth/sign-up',
     '/enterprise',
+    '/drivers',
     '/api/webhooks/stk-callback',
     '/not-found',
 ]);

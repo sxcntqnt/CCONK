@@ -2,26 +2,28 @@
 import { currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getDriverData, handleArrival } from './driverUtils';
 import { Suspense } from 'react';
 import RealTimeTripUpdates from '@/lib/websocket/RTU';
 import { ROLES, Role } from '@/utils/constants/roles';
+import { getDriverData, getReservationCount } from '@/utils/functions/driverUtils';
 
 export default async function DriverDashboard() {
     const user = await currentUser();
 
+    // Redirect if user is not authenticated
     if (!user) {
         redirect('/auth/sign-in');
     }
 
-    // Extract and normalize role with debugging
-    const rawRole = user.unsafeMetadata.role as string | undefined; // Changed from publicMetadata
+    // Normalize and validate role
+    const rawRole = user.unsafeMetadata.role as string | undefined;
     const role = rawRole?.toUpperCase().trim() as Role | undefined;
 
     if (!role) {
         redirect('/');
     }
 
+    // Redirect based on role
     switch (role) {
         case ROLES.PASSENGER:
             redirect('/dashboard/passenger');
@@ -33,13 +35,10 @@ export default async function DriverDashboard() {
             redirect('/');
     }
 
-    // At this point, role is DRIVER
+    // Fetch driver data
     let driverData;
     try {
         driverData = await getDriverData(user.id);
-        if (!driverData) {
-            throw new Error('No driver data returned');
-        }
     } catch (error) {
         console.error('Error fetching driver data:', error);
         return (
@@ -49,9 +48,20 @@ export default async function DriverDashboard() {
         );
     }
 
-    const { driver, trip } = driverData;
+    // Check if driverData.data exists
+    if (!driverData.data) {
+        return (
+            <div className="container mx-auto py-8">
+                <p>No driver data available</p>
+            </div>
+        );
+    }
 
-    if (!driver || typeof driver !== 'object') {
+    // Destructure driver and trip from driverData.data
+    const { driver, trip } = driverData.data;
+
+    // Handle invalid driver data
+    if (!driver) {
         return (
             <div className="container mx-auto py-8">
                 <p>Invalid driver data</p>
@@ -59,7 +69,8 @@ export default async function DriverDashboard() {
         );
     }
 
-    if (!trip || typeof trip !== 'object') {
+    // Handle no active trip
+    if (!trip) {
         return (
             <div className="container mx-auto py-8">
                 <h1 className="text-3xl font-bold mb-6">Driver Dashboard</h1>
@@ -74,6 +85,9 @@ export default async function DriverDashboard() {
             </div>
         );
     }
+
+    // Fetch reservation count
+    const reservationCount = await getReservationCount(trip.id);
 
     return (
         <div className="flex">
@@ -103,6 +117,12 @@ export default async function DriverDashboard() {
                                     {trip.departureTime ? new Date(trip.departureTime).toLocaleString() : 'N/A'}
                                 </p>
                             </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Bus Occupancy</p>
+                                <p className="text-lg">
+                                    {reservationCount.data ?? 0} of {trip.bus?.capacity ?? 'N/A'} seats reserved
+                                </p>
+                            </div>
                         </CardContent>
                     </Card>
                     <Suspense
@@ -112,7 +132,7 @@ export default async function DriverDashboard() {
                             </Card>
                         }
                     >
-                        <RealTimeTripUpdates tripId={trip.id} />
+                        <RealTimeTripUpdates tripId={trip.id} driverId={trip.bus?.id.toString() ?? '0'} />
                     </Suspense>
                 </div>
             </div>

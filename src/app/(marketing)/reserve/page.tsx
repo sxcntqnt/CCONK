@@ -171,9 +171,7 @@ export default function ReservePage() {
     // Handle window resize for responsive layout
     const handleResize = useCallback(() => {
         setWindowWidth(window.innerWidth);
-        // Optionally adjust seat layout dynamically
         if (seatContainerRef.current) {
-            // Example: Adjust seat sizes or layout based on window width
             const scale = window.innerWidth < 768 ? 0.8 : 1;
             seatContainerRef.current.style.transform = `scale(${scale})`;
         }
@@ -515,7 +513,7 @@ const BookingSummaryCard: React.FC<BookingSummaryCardProps> = ({
 };
 
 /**
- * BusSelectionCard component for selecting a bus
+ * BusSelectionCard:icon component for selecting a bus
  */
 interface BusSelectionCardProps {
     buses: Bus[];

@@ -6,22 +6,15 @@ import MaplibreDraw, { DrawCustomMode, DrawCustomModeThis, MapMouseEvent } from 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import GeofenceControls from './GeofenceControls';
 import { GeoJSON } from 'geojson';
-
-interface Geofence {
-    id: string;
-    name: string;
-    description?: string;
-    geoJson: any;
-    color: string;
-    createdAt: Date;
-}
+import { MapComponent } from './MapComponent';
+import { Owner, User, Geofence } from '@/utils/constants/types';
 
 // Custom Rectangle Mode
 interface RectangleModeState {
     startPoint: maplibregl.LngLat | null;
 }
 
-const RectangleMode: DrawCustomMode<RectangleModeState, any> = {
+export const RectangleMode: DrawCustomMode<RectangleModeState, any> = {
     onSetup(this: DrawCustomModeThis, options: any): RectangleModeState {
         this.clearSelectedFeatures();
         this.setActionableState({ trash: true, combineFeatures: false, uncombineFeatures: false });
@@ -40,14 +33,14 @@ const RectangleMode: DrawCustomMode<RectangleModeState, any> = {
             [endPoint.lng, state.startPoint.lat],
             [state.startPoint.lng, state.startPoint.lat],
         ];
-        const feature = {
-            id: `geofence-${Date.now()}`,
+        const feature: GeoJSON = {
             type: 'Feature',
             geometry: {
                 type: 'Polygon',
                 coordinates: [coordinates],
             },
             properties: {},
+            id: Date.now(),
         };
         this.map.fire('draw.create', { features: [feature] });
         this.changeMode('simple_select');
@@ -64,118 +57,79 @@ const RectangleMode: DrawCustomMode<RectangleModeState, any> = {
 
 const GeofenceMap = () => {
     const [geofences, setGeofences] = useState<Geofence[]>([]);
-    const [activeGeofence, setActiveGeofence] = useState<string | null>(null);
+    const [activeGeofence, setActiveGeofence] = useState<number | null>(null);
     const [editMode, setEditMode] = useState<boolean>(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
-    const mapContainer = useRef<HTMLDivElement>(null);
-    const map = useRef<maplibregl.Map | null>(null);
+    const mapRef = useRef<maplibregl.Map | null>(null);
     const draw = useRef<MaplibreDraw | null>(null);
 
     const colorPalette = ['#FF5F6D', '#47B881', '#4299E1', '#FFC107', '#9F7AEA', '#ED64A6'];
     const getRandomColor = () => colorPalette[Math.floor(Math.random() * colorPalette.length)];
 
-    useEffect(() => {
-        if (!mapContainer.current) return;
+    const handleMapLoad = () => {
+        setIsLoading(false);
+    };
 
-        map.current = new maplibregl.Map({
-            container: mapContainer.current,
-            style: {
-                version: 8,
-                sources: {
-                    'osm-tiles': {
-                        type: 'raster',
-                        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                        tileSize: 256,
-                        attribution:
-                            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    },
-                },
-                layers: [
-                    {
-                        id: 'osm-tiles',
-                        type: 'raster',
-                        source: 'osm-tiles',
-                    },
-                ],
-            },
-            center: [-1.36876, 36.33421],
-            zoom: 13,
-        });
-
-        map.current.addControl(new maplibregl.NavigationControl(), 'bottom-right');
-
-        draw.current = new MaplibreDraw({
-            displayControlsDefault: false,
-            controls: {
-                polygon: false,
-                trash: false,
-            },
-            modes: {
-                ...MaplibreDraw.modes,
-                draw_rectangle: RectangleMode,
-            },
-        });
-
-        map.current.addControl(draw.current as any, 'top-right');
-
-        map.current.on('load', () => {
-            setIsLoading(false);
-        });
-
-        map.current.on('draw.create', (e) => {
-            const id = `geofence-${Date.now()}`;
-            const color = getRandomColor();
-            const newGeofence: Geofence = {
-                id,
-                name: `Geofence ${geofences.length + 1}`,
-                geoJson: e.features[0],
-                color,
-                createdAt: new Date(),
-            };
-            setGeofences((prev) => [...prev, newGeofence]);
-            setActiveGeofence(id);
-            draw.current?.changeMode('simple_select');
-        });
-
-        map.current.on('draw.update', (e) => {
-            const updatedFeature = e.features[0];
-            setGeofences((prev) =>
-                prev.map((g) => (g.id === updatedFeature.id ? { ...g, geoJson: updatedFeature } : g)),
-            );
-        });
-
-        map.current.on('draw.delete', (e) => {
-            const deletedIds = e.features.map((f: any) => f.id);
-            setGeofences((prev) => prev.filter((g) => !deletedIds.includes(g.id)));
-            if (deletedIds.includes(activeGeofence)) setActiveGeofence(null);
-        });
-
-        return () => {
-            map.current?.remove();
+    const handleDrawCreate = (e: any) => {
+        const id = Date.now();
+        const color = getRandomColor();
+        const newGeofence: Geofence = {
+            id,
+            name: `Geofence ${geofences.length + 1}`,
+            h3Index: '',
+            resolution: 8,
+            geoJson: e.features[0],
+            color,
+            createdAt: new Date(),
+            updatedAt: new Date(),
         };
-    }, []);
+        setGeofences((prev) => [...prev, newGeofence]);
+        setActiveGeofence(id);
+        draw.current?.changeMode('simple_select');
+    };
+
+    const handleDrawUpdate = (e: any) => {
+        const updatedFeature = e.features[0];
+        setGeofences((prev) =>
+            prev.map((geofence) =>
+                geofence.id === updatedFeature.id
+                    ? { ...geofence, geoJson: updatedFeature, updatedAt: new Date() }
+                    : geofence,
+            ),
+        );
+    };
+
+    const handleDrawDelete = (e: any) => {
+        const deletedIds = e.features.map((f: any) => f.id);
+        setGeofences((prev) => prev.filter((geofence) => !deletedIds.includes(geofence.id)));
+        if (deletedIds.includes(activeGeofence)) setActiveGeofence(null);
+    };
 
     useEffect(() => {
-        if (!map.current || isLoading) return;
+        if (isLoading || !mapRef.current) return;
+
+        const map = mapRef.current;
 
         // Remove old geofences
-        geofences.forEach((g) => {
-            if (map.current?.getLayer(g.id)) map.current.removeLayer(g.id);
-            if (map.current?.getSource(g.id)) map.current.removeSource(g.id);
+        geofences.forEach((geofence) => {
+            const layerId = geofence.id.toString();
+            if (map.getLayer(layerId)) map.removeLayer(layerId);
+            if (map.getSource(layerId)) map.removeSource(layerId);
         });
 
         // Add updated geofences
         geofences.forEach((geofence) => {
-            map.current?.addSource(geofence.id, {
+            const layerId = geofence.id.toString();
+            map.addSource(layerId, {
                 type: 'geojson',
                 data: geofence.geoJson,
             });
 
-            map.current?.addLayer({
-                id: geofence.id,
+            map.addLayer({
+                id: layerId,
                 type: 'fill',
-                source: geofence.id,
+                source: layerId,
                 paint: {
                     'fill-color': geofence.color,
                     'fill-opacity': activeGeofence === geofence.id ? 0.5 : 0.3,
@@ -183,10 +137,18 @@ const GeofenceMap = () => {
                 },
             });
 
-            map.current?.on('click', geofence.id, () => {
+            map.on('click', layerId, () => {
                 setActiveGeofence(geofence.id);
             });
         });
+
+        return () => {
+            geofences.forEach((geofence) => {
+                const layerId = geofence.id.toString();
+                if (map.getLayer(layerId)) map.removeLayer(layerId);
+                if (map.getSource(layerId)) map.removeSource(layerId);
+            });
+        };
     }, [geofences, activeGeofence, isLoading]);
 
     const startDrawing = (mode: 'draw_rectangle' | 'draw_polygon') => {
@@ -195,15 +157,18 @@ const GeofenceMap = () => {
         }
     };
 
-    const handleNameChange = (id: string, name: string) => {
-        setGeofences((prev) => prev.map((geofence) => (geofence.id === id ? { ...geofence, name } : geofence)));
+    const handleNameChange = (id: number, name: string) => {
+        setGeofences((prev) =>
+            prev.map((geofence) => (geofence.id === id ? { ...geofence, name, updatedAt: new Date() } : geofence)),
+        );
     };
 
-    const handleDeleteGeofence = (id: string) => {
-        setGeofences((prev) => prev.filter((g) => g.id !== id));
+    const handleDeleteGeofence = (id: number) => {
+        setGeofences((prev) => prev.filter((geofence) => geofence.id !== id));
         if (activeGeofence === id) setActiveGeofence(null);
-        if (map.current?.getLayer(id)) map.current.removeLayer(id);
-        if (map.current?.getSource(id)) map.current.removeSource(id);
+        const layerId = id.toString();
+        if (mapRef.current?.getLayer(layerId)) mapRef.current.removeLayer(layerId);
+        if (mapRef.current?.getSource(layerId)) mapRef.current.removeSource(layerId);
     };
 
     const filteredGeofences = geofences.filter((geofence) =>
@@ -223,9 +188,14 @@ const GeofenceMap = () => {
 
     return (
         <div className="flex flex-col md:flex-row h-full bg-background">
-            <div className="w-full md:w-3/4 h-3/4 md:h-full relative">
-                <div ref={mapContainer} className="h-full w-full" />
-            </div>
+            <MapComponent
+                onMapLoad={handleMapLoad}
+                onDrawCreate={handleDrawCreate}
+                onDrawUpdate={handleDrawUpdate}
+                onDrawDelete={handleDrawDelete}
+                mapRef={mapRef}
+                drawRef={draw}
+            />
             <GeofenceControls
                 geofences={filteredGeofences}
                 activeGeofence={activeGeofence}

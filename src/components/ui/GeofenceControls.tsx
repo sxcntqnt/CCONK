@@ -2,24 +2,16 @@ import React, { useState } from 'react';
 import { PencilIcon, TrashIcon, PlusIcon, MapIcon, SearchIcon } from 'lucide-react';
 import { Button } from './button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog';
-
-interface Geofence {
-    id: string;
-    name: string;
-    description?: string;
-    geoJson: any;
-    color: string;
-    createdAt: Date;
-}
+import { Geofence } from '@/utils/constants/types';
 
 interface GeofenceControlsProps {
     geofences: Geofence[];
-    activeGeofence: string | null;
-    setActiveGeofence: (id: string | null) => void;
+    activeGeofence: number | null;
+    setActiveGeofence: (id: number | null) => void;
     editMode: boolean;
     setEditMode: (mode: boolean) => void;
-    onNameChange: (id: string, name: string) => void;
-    onDelete: (id: string) => void;
+    onNameChange: (id: number, name: string) => void;
+    onDelete: (id: number) => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
     startDrawing: (mode: 'draw_rectangle' | 'draw_polygon') => void;
@@ -37,16 +29,16 @@ const GeofenceControls: React.FC<GeofenceControlsProps> = ({
     setSearchQuery,
     startDrawing,
 }) => {
-    const [editingName, setEditingName] = useState<string | null>(null);
+    const [editingName, setEditingName] = useState<number | null>(null);
     const [nameInput, setNameInput] = useState<string>('');
-    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
     const handleEditName = (geofence: Geofence) => {
         setEditingName(geofence.id);
         setNameInput(geofence.name);
     };
 
-    const handleSaveName = (id: string) => {
+    const handleSaveName = (id: number) => {
         if (nameInput.trim()) {
             onNameChange(id, nameInput);
             setEditingName(null);
@@ -57,7 +49,7 @@ const GeofenceControls: React.FC<GeofenceControlsProps> = ({
         setEditingName(null);
     };
 
-    const handleDeleteClick = (id: string) => {
+    const handleDeleteClick = (id: number) => {
         setDeleteConfirmId(id);
     };
 

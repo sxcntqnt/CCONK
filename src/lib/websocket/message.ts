@@ -1,5 +1,5 @@
-// message.ts
 import { WebSocketConnection } from './connection';
+import { Socket } from 'socket.io-client';
 
 interface Message {
     type: string;
@@ -17,16 +17,31 @@ export class MessageHandler {
     }
 
     private ensureMessageListener(): void {
-        const ws = this.connection.getWebSocket();
-        if (ws && !ws.onmessage) {
-            ws.onmessage = (event) => {
-                try {
-                    const message: Message = JSON.parse(event.data);
-                    this.dispatchMessage(message);
-                } catch (error) {
-                    console.error('Failed to parse message:', error);
+        const socket = this.connection.getWebSocket() as Socket | null;
+        if (socket) {
+            // Handle standard Socket.IO events
+            socket.on('success', (data) => {
+                this.dispatchMessage({ type: 'success', payload: data });
+            });
+
+            socket.on('error', (data) => {
+                this.dispatchMessage({ type: 'error', payload: data });
+            });
+
+            socket.on('trip_update', (data) => {
+                this.dispatchMessage({ type: 'trip_update', payload: data.payload });
+            });
+
+            // Handle custom message types
+            socket.onAny((event, data) => {
+                if (!['success', 'error', 'trip_update'].includes(event)) {
+                    try {
+                        this.dispatchMessage({ type: event, payload: data });
+                    } catch (error) {
+                        console.error('Failed to parse custom message:', error);
+                    }
                 }
-            };
+            });
         }
     }
 
@@ -48,10 +63,10 @@ export class MessageHandler {
     public send(message: Message): void {
         this.ensureMessageListener();
         if (this.connection.isConnected()) {
-            const ws = this.connection.getWebSocket();
-            ws?.send(JSON.stringify(message));
+            const socket = this.connection.getWebSocket() as Socket | null;
+            socket?.emit(message.type, message.payload);
         } else {
-            console.warn('Cannot send message: WebSocket not connected');
+            console.warn('Cannot send message: Socket.IO not connected');
         }
     }
 
@@ -59,6 +74,14 @@ export class MessageHandler {
         const subscribers = this.subscribers.get(message.type);
         if (subscribers) {
             subscribers.forEach((callback) => callback(message));
+        }
+        // Log for debugging
+        if (message.type === 'success') {
+            console.log(`Server confirmed ${message.payload.status} status update`);
+        } else if (message.type === 'error') {
+            console.error(`Server error: ${message.payload.error}`);
+        } else if (message.type === 'trip_update') {
+            console.log('Received trip update:', message.payload);
         }
     }
 
