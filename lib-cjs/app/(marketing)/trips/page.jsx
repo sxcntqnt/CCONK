@@ -1,5 +1,5 @@
 "use strict";
-"use client";
+'use client';
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -34,16 +34,16 @@ const TripsPage = () => {
         fetchTrips();
     }, [user?.id]);
     return (<RideLayout_1.default title="All Trips">
-      <div className="px-5 pb-10">
-        {loading ? (<div className="flex justify-center">
-            <div className="animate-spin h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full"/>
-          </div>) : error ? (<p className="text-red-500 text-center">{error}</p>) : trips.length === 0 ? (<div className="flex flex-col items-center justify-center">
-            <image_1.default src={icons_1.images.noResult} alt="No recent trips found" width={160} height={160} className="w-40 h-40 object-contain"/>
-            <p className="text-sm text-gray-600">No recent trips found</p>
-          </div>) : (<div className="space-y-4">
-            {trips.map((trip) => (<TripCard_1.default key={trip.id} trip={trip}/>))}
-          </div>)}
-      </div>
-    </RideLayout_1.default>);
+            <div className="px-5 pb-10">
+                {loading ? (<div className="flex justify-center">
+                        <div className="animate-spin h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full"/>
+                    </div>) : error ? (<p className="text-red-500 text-center">{error}</p>) : trips.length === 0 ? (<div className="flex flex-col items-center justify-center">
+                        <image_1.default src={icons_1.images.noResult} alt="No recent trips found" width={160} height={160} className="w-40 h-40 object-contain"/>
+                        <p className="text-sm text-gray-600">No recent trips found</p>
+                    </div>) : (<div className="space-y-4">
+                        {trips.map((trip) => (<TripCard_1.default key={trip.id} trip={trip}/>))}
+                    </div>)}
+            </div>
+        </RideLayout_1.default>);
 };
 exports.default = TripsPage;

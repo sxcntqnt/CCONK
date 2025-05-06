@@ -116,9 +116,7 @@ function ReservePage() {
     // Handle window resize for responsive layout
     const handleResize = (0, react_1.useCallback)(() => {
         setWindowWidth(window.innerWidth);
-        // Optionally adjust seat layout dynamically
         if (seatContainerRef.current) {
-            // Example: Adjust seat sizes or layout based on window width
             const scale = window.innerWidth < 768 ? 0.8 : 1;
             seatContainerRef.current.style.transform = `scale(${scale})`;
         }

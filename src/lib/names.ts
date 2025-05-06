@@ -1,3 +1,4 @@
+'use client';
 import { Config, colors, animals, starWars, uniqueNamesGenerator } from 'unique-names-generator';
 import { Trip } from '@/utils/constants/types';
 import { useState, useEffect, useCallback } from 'react';

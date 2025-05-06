@@ -1,5 +1,5 @@
 "use strict";
-"use client";
+'use client';
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -31,7 +31,7 @@ const DriversPage = () => {
                 setIsLoading(false);
             }
             catch (error) {
-                console.error("Error fetching marker data:", error);
+                console.error('Error fetching marker data:', error);
                 setIsLoading(false);
             }
         };
@@ -39,21 +39,21 @@ const DriversPage = () => {
     }, [drivers]);
     if (isLoading) {
         return (<RideLayout_1.default title="Choose a Driver">
-        <p className="text-gray-500">Loading drivers...</p>
-      </RideLayout_1.default>);
+                <p className="text-gray-500">Loading drivers...</p>
+            </RideLayout_1.default>);
     }
     if (markerData.length === 0) {
         return (<RideLayout_1.default title="Choose a Driver">
-        <p className="text-red-500">No drivers available at the moment.</p>
-      </RideLayout_1.default>);
+                <p className="text-red-500">No drivers available at the moment.</p>
+            </RideLayout_1.default>);
     }
     return (<RideLayout_1.default title="Choose a Driver">
-      <div className="space-y-4">
-        {markerData.map((marker) => (<DriverCard_1.default key={marker.id} item={marker} selected={selectedDriver ?? 0} setSelected={() => {
+            <div className="space-y-4">
+                {markerData.map((marker) => (<DriverCard_1.default key={marker.id} item={marker} selected={selectedDriver ?? 0} setSelected={() => {
                 setSelectedDriver(marker.id);
                 router.push(`/drivers/${marker.id}`);
             }}/>))}
-      </div>
-    </RideLayout_1.default>);
+            </div>
+        </RideLayout_1.default>);
 };
 exports.default = DriversPage;

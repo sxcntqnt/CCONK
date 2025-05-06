@@ -7,7 +7,7 @@ exports.getNotifications = getNotifications;
 exports.updateTripStatusAction = updateTripStatusAction;
 exports.ensureDriverHasTrip = ensureDriverHasTrip;
 const lib_1 = require("@/lib");
-const driverUtils_1 = require("@/utils/functions/driverUtils");
+const utils_1 = require("@/utils");
 // Fetch a driver by ID (for Dashboard, Vehicle)
 async function getDriver(driverId) {
     try {
@@ -56,7 +56,7 @@ async function getActiveTrips({ driverId, page = 1, pageSize = 10, filters = {},
         const trips = await lib_1.db.trip.findMany({
             where: {
                 driverId,
-                status: { not: 'completed' },
+                status: { not: 'COMPLETED' },
                 ...(departureCity && { departureCity }),
                 ...(arrivalCity && { arrivalCity }),
             },
@@ -70,7 +70,7 @@ async function getActiveTrips({ driverId, page = 1, pageSize = 10, filters = {},
         const total = await lib_1.db.trip.count({
             where: {
                 driverId,
-                status: { not: 'completed' },
+                status: { not: 'COMPLETED' },
                 ...(departureCity && { departureCity }),
                 ...(arrivalCity && { arrivalCity }),
             },
@@ -111,7 +111,7 @@ async function getNotifications({ driverId, page = 1, pageSize = 10, filters = {
         const notifications = await lib_1.db.notification.findMany({
             where: {
                 driverId,
-                trip: { status: { not: 'completed' } },
+                trip: { status: { not: 'COMPLETED' } },
                 ...(type && { type }),
                 ...(status && { status }),
             },
@@ -125,7 +125,7 @@ async function getNotifications({ driverId, page = 1, pageSize = 10, filters = {
         const total = await lib_1.db.notification.count({
             where: {
                 driverId,
-                trip: { status: { not: 'completed' } },
+                trip: { status: { not: 'COMPLETED' } },
                 ...(type && { type }),
                 ...(status && { status }),
             },
@@ -155,15 +155,26 @@ async function getNotifications({ driverId, page = 1, pageSize = 10, filters = {
 // Update a trip's status and send notifications (for Dashboard)
 async function updateTripStatusAction({ tripId, driverId, status, destination, }) {
     try {
-        const tripResponse = await (0, driverUtils_1.getTripIdForDriver)(driverId);
+        const tripResponse = await (0, utils_1.getTripIdForDriver)(driverId);
         if (tripResponse.error || tripResponse.data !== tripId) {
             throw new Error('No active trip found for driver or trip ID mismatch');
         }
-        const message = status === 'completed' && destination
+        // Map lowercase status to TripStatus
+        const statusMap = {
+            scheduled: utils_1.TripStatus.SCHEDULED,
+            in_progress: utils_1.TripStatus.IN_PROGRESS,
+            completed: utils_1.TripStatus.COMPLETED,
+            cancelled: utils_1.TripStatus.CANCELLED,
+        };
+        const prismaStatus = statusMap[status.toLowerCase()];
+        if (!prismaStatus) {
+            throw new Error(`Invalid trip status: ${status}`);
+        }
+        const message = status === 'COMPLETED' && destination
             ? `Driver has arrived at ${destination}.`
             : `Trip status updated to ${status}.`;
-        // Update trip status (assuming updateTripStatus accepts only tripId and status)
-        const updateResponse = await (0, driverUtils_1.updateTripStatus)(tripId, status);
+        // Update trip status with mapped TripStatus
+        const updateResponse = await (0, utils_1.updateTripStatus)(tripId, prismaStatus);
         if (updateResponse.error) {
             throw new Error(updateResponse.error);
         }
@@ -178,7 +189,7 @@ async function updateTripStatusAction({ tripId, driverId, status, destination, }
 // Ensure a driver has an active trip (for testing)
 async function ensureDriverHasTrip(driverId) {
     try {
-        const tripResponse = await (0, driverUtils_1.getTripIdForDriver)(driverId);
+        const tripResponse = await (0, utils_1.getTripIdForDriver)(driverId);
         if (tripResponse.data) {
             return; // Driver already has an active trip
         }
@@ -196,7 +207,7 @@ async function ensureDriverHasTrip(driverId) {
                 departureCity: 'Nairobi',
                 arrivalCity: 'Mombasa',
                 departureTime: new Date(),
-                status: 'scheduled',
+                status: 'SCHEDULED',
                 isFullyBooked: false,
             },
         });

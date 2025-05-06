@@ -109,7 +109,9 @@ const GeofenceMap = () => {
     };
     const handleDrawUpdate = (e) => {
         const updatedFeature = e.features[0];
-        setGeofences((prev) => prev.map((geofence) => geofence.id === updatedFeature.id ? { ...geofence, geoJson: updatedFeature, updatedAt: new Date() } : geofence));
+        setGeofences((prev) => prev.map((geofence) => geofence.id === updatedFeature.id
+            ? { ...geofence, geoJson: updatedFeature, updatedAt: new Date() }
+            : geofence));
     };
     const handleDrawDelete = (e) => {
         const deletedIds = e.features.map((f) => f.id);
@@ -166,7 +168,7 @@ const GeofenceMap = () => {
         }
     };
     const handleNameChange = (id, name) => {
-        setGeofences((prev) => prev.map((geofence) => geofence.id === id ? { ...geofence, name, updatedAt: new Date() } : geofence));
+        setGeofences((prev) => prev.map((geofence) => (geofence.id === id ? { ...geofence, name, updatedAt: new Date() } : geofence)));
     };
     const handleDeleteGeofence = (id) => {
         setGeofences((prev) => prev.filter((geofence) => geofence.id !== id));
@@ -181,15 +183,15 @@ const GeofenceMap = () => {
     const filteredGeofences = geofences.filter((geofence) => geofence.name.toLowerCase().includes(searchQuery.toLowerCase()));
     if (isLoading) {
         return (<div className="flex items-center justify-center h-full bg-background">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading map...</p>
-        </div>
-      </div>);
+                <div className="flex flex-col items-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <p className="text-muted-foreground">Loading map...</p>
+                </div>
+            </div>);
     }
     return (<div className="flex flex-col md:flex-row h-full bg-background">
-      <MapComponent_1.MapComponent onMapLoad={handleMapLoad} onDrawCreate={handleDrawCreate} onDrawUpdate={handleDrawUpdate} onDrawDelete={handleDrawDelete} mapRef={mapRef} drawRef={draw}/>
-      <GeofenceControls_1.default geofences={filteredGeofences} activeGeofence={activeGeofence} setActiveGeofence={setActiveGeofence} editMode={editMode} setEditMode={setEditMode} onNameChange={handleNameChange} onDelete={handleDeleteGeofence} searchQuery={searchQuery} setSearchQuery={setSearchQuery} startDrawing={startDrawing}/>
-    </div>);
+            <MapComponent_1.MapComponent onMapLoad={handleMapLoad} onDrawCreate={handleDrawCreate} onDrawUpdate={handleDrawUpdate} onDrawDelete={handleDrawDelete} mapRef={mapRef} drawRef={draw}/>
+            <GeofenceControls_1.default geofences={filteredGeofences} activeGeofence={activeGeofence} setActiveGeofence={setActiveGeofence} editMode={editMode} setEditMode={setEditMode} onNameChange={handleNameChange} onDelete={handleDeleteGeofence} searchQuery={searchQuery} setSearchQuery={setSearchQuery} startDrawing={startDrawing}/>
+        </div>);
 };
 exports.default = GeofenceMap;

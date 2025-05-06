@@ -17,6 +17,10 @@ const separator_1 = require("@/components/ui/separator");
 const scroll_area_1 = require("@/components/ui/scroll-area");
 const navigation_1 = require("next/navigation");
 const store_1 = require("@/store");
+// Helper function to format status for display
+const formatStatus = (status) => {
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
 function PassengerDashboardClient({ userData, passenger, buses, error, role }) {
     const [hasReservations, setHasReservations] = (0, react_1.useState)(null);
     const [reservationCounts, setReservationCounts] = (0, react_1.useState)({});
@@ -115,7 +119,11 @@ function PassengerDashboardClient({ userData, passenger, buses, error, role }) {
                                                     <strong>Seat:</strong> {reservation.seatId}
                                                 </p>
                                                 <p className="text-base">
-                                                    <strong>Status:</strong> {reservation.trip.status}
+                                                    <strong>Status:</strong> {formatStatus(reservation.trip.status)}
+                                                </p>
+                                                <p className="text-base">
+                                                    <strong>Reservation Status:</strong>{' '}
+                                                    {formatStatus(reservation.status)}
                                                 </p>
                                                 <separator_1.Separator className="my-3 bg-gray-700"/>
                                             </div>))) : (<p className="text-gray-400 text-base">No reservations yet.</p>)}
@@ -165,7 +173,8 @@ function PassengerDashboardClient({ userData, passenger, buses, error, role }) {
                                     <scroll_area_1.ScrollArea className="h-40">
                                         <RTU_1.default tripId={reservation.tripId} driverId={reservation.trip.bus.id.toString()}/>
                                         <p className="text-sm text-gray-300 mt-2">
-                                            Bus Occupancy: {reservationCounts[reservation.tripId] || 0} of {reservation.trip.bus.capacity} seats reserved
+                                            Bus Occupancy: {reservationCounts[reservation.tripId] || 0} of{' '}
+                                            {reservation.trip.bus.capacity} seats reserved
                                         </p>
                                     </scroll_area_1.ScrollArea>
                                 </card_1.CardContent>

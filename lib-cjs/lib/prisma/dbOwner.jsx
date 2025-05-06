@@ -8,11 +8,11 @@ exports.getTrips = getTrips;
 exports.getReservations = getReservations;
 exports.getNotifications = getNotifications;
 exports.ensureBusHasTrip = ensureBusHasTrip;
-const lib_1 = require("@/lib");
+const prisma_1 = require("@/lib/prisma");
 // Fetch an owner by ID (for Dashboard)
 async function getOwner(ownerId) {
     try {
-        const owner = await lib_1.db.owner.findUnique({
+        const owner = await prisma_1.db.owner.findUnique({
             where: { id: ownerId },
             include: {
                 user: {
@@ -21,7 +21,7 @@ async function getOwner(ownerId) {
                         clerkId: true,
                         name: true,
                         email: true,
-                        image: true, // Fetch image for profileImageUrl
+                        image: true,
                         role: true,
                     },
                 },
@@ -35,7 +35,7 @@ async function getOwner(ownerId) {
             userId: owner.userId,
             createdAt: owner.createdAt,
             updatedAt: owner.updatedAt,
-            profileImageUrl: owner.user.image, // Map user.image to profileImageUrl
+            profileImageUrl: owner.user.image,
             user: {
                 id: owner.user.id,
                 clerkId: owner.user.clerkId,
@@ -64,7 +64,7 @@ async function getBuses({ ownerId, page = 1, pageSize = 10, filters = {}, }) {
         if (!Number.isFinite(skip) || skip < 0) {
             throw new Error(`Invalid pagination: page=${page}, pageSize=${pageSize}, skip=${skip}`);
         }
-        const buses = await lib_1.db.bus.findMany({
+        const buses = await prisma_1.db.bus.findMany({
             where: {
                 ownerId,
                 ...(licensePlate && { licensePlate }),
@@ -77,7 +77,7 @@ async function getBuses({ ownerId, page = 1, pageSize = 10, filters = {}, }) {
             take: pageSize,
             orderBy: { id: 'asc' },
         });
-        const total = await lib_1.db.bus.count({
+        const total = await prisma_1.db.bus.count({
             where: {
                 ownerId,
                 ...(licensePlate && { licensePlate }),
@@ -117,7 +117,7 @@ async function getDrivers({ ownerId, page = 1, pageSize = 10, filters = {}, }) {
         if (!Number.isFinite(skip) || skip < 0) {
             throw new Error(`Invalid pagination: page=${page}, pageSize=${pageSize}, skip=${skip}`);
         }
-        const drivers = await lib_1.db.driver.findMany({
+        const drivers = await prisma_1.db.driver.findMany({
             where: {
                 bus: { ownerId },
                 ...(licenseNumber && { licenseNumber }),
@@ -141,7 +141,7 @@ async function getDrivers({ ownerId, page = 1, pageSize = 10, filters = {}, }) {
             take: pageSize,
             orderBy: { id: 'asc' },
         });
-        const total = await lib_1.db.driver.count({
+        const total = await prisma_1.db.driver.count({
             where: {
                 bus: { ownerId },
                 ...(licenseNumber && { licenseNumber }),
@@ -152,11 +152,11 @@ async function getDrivers({ ownerId, page = 1, pageSize = 10, filters = {}, }) {
             busId: driver.busId ?? undefined,
             userId: driver.userId,
             licenseNumber: driver.licenseNumber,
-            status: driver.status,
+            status: driver.status.toLowerCase(),
             firstName: driver.user.name.split(' ')[0],
             lastName: driver.user.name.split(' ')[1] || '',
             email: driver.user.email,
-            profileImageUrl: driver.profileImageUrl, // Required, no ?? undefined
+            profileImageUrl: driver.profileImageUrl,
             rating: driver.rating ?? undefined,
         }));
         return { drivers: formattedDrivers, total };
@@ -175,12 +175,22 @@ async function getTrips({ ownerId, page = 1, pageSize = 10, filters = {}, }) {
         if (!Number.isFinite(skip) || skip < 0) {
             throw new Error(`Invalid pagination: page=${page}, pageSize=${pageSize}, skip=${skip}`);
         }
-        const trips = await lib_1.db.trip.findMany({
+        const statusMap = {
+            scheduled: 'SCHEDULED',
+            in_progress: 'IN_PROGRESS',
+            completed: 'COMPLETED',
+            cancelled: 'CANCELLED',
+        };
+        const prismaStatus = status ? statusMap[status.toLowerCase()] : undefined;
+        if (status && !prismaStatus) {
+            throw new Error(`Invalid trip status: ${status}`);
+        }
+        const trips = await prisma_1.db.trip.findMany({
             where: {
                 bus: { ownerId },
                 ...(departureCity && { departureCity }),
                 ...(arrivalCity && { arrivalCity }),
-                ...(status && { status }),
+                ...(prismaStatus && { status: prismaStatus }),
             },
             include: {
                 driver: {
@@ -192,12 +202,12 @@ async function getTrips({ ownerId, page = 1, pageSize = 10, filters = {}, }) {
             take: pageSize,
             orderBy: { departureTime: 'asc' },
         });
-        const total = await lib_1.db.trip.count({
+        const total = await prisma_1.db.trip.count({
             where: {
                 bus: { ownerId },
                 ...(departureCity && { departureCity }),
                 ...(arrivalCity && { arrivalCity }),
-                ...(status && { status }),
+                ...(prismaStatus && { status: prismaStatus }),
             },
         });
         const formattedTrips = trips.map((trip) => ({
@@ -208,7 +218,7 @@ async function getTrips({ ownerId, page = 1, pageSize = 10, filters = {}, }) {
             arrivalCity: trip.arrivalCity,
             departureTime: trip.departureTime.toISOString(),
             arrivalTime: trip.arrivalTime?.toISOString(),
-            status: trip.status,
+            status: trip.status.toLowerCase(),
             isFullyBooked: trip.isFullyBooked,
             originLatitude: trip.originLatitude ?? undefined,
             originLongitude: trip.originLongitude ?? undefined,
@@ -240,11 +250,20 @@ async function getReservations({ ownerId, page = 1, pageSize = 10, filters = {},
         if (!Number.isFinite(skip) || skip < 0) {
             throw new Error(`Invalid pagination: page=${page}, pageSize=${pageSize}, skip=${skip}`);
         }
-        const reservations = await lib_1.db.reservation.findMany({
+        const statusMap = {
+            pending: 'PENDING',
+            confirmed: 'CONFIRMED',
+            cancelled: 'CANCELLED',
+        };
+        const prismaStatus = status ? statusMap[status.toLowerCase()] : undefined;
+        if (status && !prismaStatus) {
+            throw new Error(`Invalid reservation status: ${status}`);
+        }
+        const reservations = await prisma_1.db.reservation.findMany({
             where: {
                 trip: { bus: { ownerId } },
                 ...(tripId && { tripId }),
-                ...(status && { status }),
+                ...(prismaStatus && { status: prismaStatus }),
             },
             include: {
                 user: { select: { id: true, name: true, email: true } },
@@ -253,11 +272,11 @@ async function getReservations({ ownerId, page = 1, pageSize = 10, filters = {},
             take: pageSize,
             orderBy: { bookedAt: 'desc' },
         });
-        const total = await lib_1.db.reservation.count({
+        const total = await prisma_1.db.reservation.count({
             where: {
                 trip: { bus: { ownerId } },
                 ...(tripId && { tripId }),
-                ...(status && { status }),
+                ...(prismaStatus && { status: prismaStatus }),
             },
         });
         const formattedReservations = reservations.map((reservation) => ({
@@ -265,7 +284,7 @@ async function getReservations({ ownerId, page = 1, pageSize = 10, filters = {},
             userId: reservation.userId,
             tripId: reservation.tripId,
             seatId: reservation.seatId,
-            status: reservation.status,
+            status: reservation.status.toLowerCase(),
             bookedAt: reservation.bookedAt.toISOString(),
             updatedAt: reservation.updatedAt.toISOString(),
             paymentId: reservation.paymentId ?? undefined,
@@ -291,7 +310,7 @@ async function getNotifications({ ownerId, page = 1, pageSize = 10, filters = {}
         if (!Number.isFinite(skip) || skip < 0) {
             throw new Error(`Invalid pagination: page=${page}, pageSize=${pageSize}, skip=${skip}`);
         }
-        const notifications = await lib_1.db.notification.findMany({
+        const notifications = await prisma_1.db.notification.findMany({
             where: {
                 trip: { bus: { ownerId } },
                 ...(type && { type }),
@@ -304,7 +323,7 @@ async function getNotifications({ ownerId, page = 1, pageSize = 10, filters = {}
             take: pageSize,
             orderBy: { createdAt: 'desc' },
         });
-        const total = await lib_1.db.notification.count({
+        const total = await prisma_1.db.notification.count({
             where: {
                 trip: { bus: { ownerId } },
                 ...(type && { type }),
@@ -334,27 +353,27 @@ async function getNotifications({ ownerId, page = 1, pageSize = 10, filters = {}
 // Ensure a bus has an active trip (for testing)
 async function ensureBusHasTrip(busId) {
     try {
-        const trip = await lib_1.db.trip.findFirst({
-            where: { busId, status: { not: 'completed' } },
+        const trip = await prisma_1.db.trip.findFirst({
+            where: { busId, status: { not: 'COMPLETED' } },
         });
         if (trip) {
             return; // Bus already has an active trip
         }
-        const bus = await lib_1.db.bus.findUnique({
+        const bus = await prisma_1.db.bus.findUnique({
             where: { id: busId },
             include: { drivers: { take: 1 } },
         });
         if (!bus || !bus.drivers.length) {
             throw new Error('Bus or driver not found');
         }
-        await lib_1.db.trip.create({
+        await prisma_1.db.trip.create({
             data: {
                 busId,
                 driverId: bus.drivers[0].id,
                 departureCity: 'Nairobi',
                 arrivalCity: 'Mombasa',
                 departureTime: new Date(),
-                status: 'scheduled',
+                status: 'SCHEDULED',
                 isFullyBooked: false,
             },
         });

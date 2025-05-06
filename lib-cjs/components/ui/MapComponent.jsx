@@ -93,7 +93,7 @@ const MapComponent = ({ onMapLoad, onDrawCreate, onDrawUpdate, onDrawDelete, map
         };
     }, [onMapLoad, onDrawCreate, onDrawUpdate, onDrawDelete, mapRef, drawRef]);
     return (<div className="w-full h-full relative">
-      <div ref={mapContainer} className="h-full w-full"/>
-    </div>);
+            <div ref={mapContainer} className="h-full w-full"/>
+        </div>);
 };
 exports.MapComponent = MapComponent;

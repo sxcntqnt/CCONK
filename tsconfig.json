@@ -16,6 +16,7 @@
     "noImplicitAny": true,
     "paths": {
       "@/*": ["./src/*"],
+      "@/assets/*": ["./assets/*"], 
       "@/components/*": ["./src/components/*"],
       "@/lib/*": ["./src/lib/*"],
       "@/lib/prisma": ["./src/lib/prisma/index.ts"],
