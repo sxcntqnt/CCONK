@@ -1,6 +1,6 @@
 import { StaticImageData } from 'next/image';
 import { MarkerData } from '@/store';
-import { GeoJSON } from 'geojson'; // Import the GeoJSON type
+import { GeoJSON } from 'geojson';
 
 export type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -78,7 +78,7 @@ export type User = {
     clerkId: string;
     name: string;
     email: string;
-    image: string; // Required
+    image: string;
     phoneNumber?: string;
     role: string;
 };
@@ -88,11 +88,11 @@ export interface Driver {
     busId?: number;
     userId: number;
     licenseNumber: string;
-    status: string;
+    status: 'ACTIVE' | 'OFFLINE';
     firstName: string;
     lastName: string;
     email: string;
-    profileImageUrl: string; // Required
+    profileImageUrl: string;
     rating?: number;
 }
 
@@ -124,7 +124,7 @@ export interface Trip {
     arrivalCity: string;
     departureTime: string;
     arrivalTime?: string;
-    status: string;
+    status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
     isFullyBooked: boolean;
     originLatitude?: number;
     originLongitude?: number;
@@ -151,7 +151,7 @@ export type Reservation = {
     userId: number;
     tripId: number;
     seatId: number;
-    status: string;
+    status: 'pending' | 'confirmed' | 'cancelled';
     bookedAt: string;
     updatedAt: string;
     paymentId?: number;
@@ -189,7 +189,7 @@ export interface Geofence {
     name: string;
     h3Index: string;
     resolution: number;
-    geoJson: GeoJSON; // Updated to use GeoJSON type
+    geoJson: GeoJSON;
     color: string;
     createdAt: Date;
     updatedAt: Date;
@@ -241,4 +241,21 @@ export interface Message {
     receiverId: number;
     content: string;
     timestamp: string;
+}
+export enum TripStatus {
+    SCHEDULED = 'SCHEDULED',
+    IN_PROGRESS = 'IN_PROGRESS',
+    COMPLETED = 'COMPLETED',
+    CANCELLED = 'CANCELLED',
+}
+
+export enum ReservationStatus {
+    PENDING = 'PENDING',
+    CONFIRMED = 'CONFIRMED',
+    CANCELLED = 'CANCELLED',
+}
+
+export enum DriverStatus {
+    ACTIVE = 'ACTIVE',
+    OFFLINE = 'OFFLINE',
 }

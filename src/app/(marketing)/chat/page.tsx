@@ -5,8 +5,8 @@ import { useUser } from '@clerk/nextjs';
 import { useUserStore, useReservationStore, useTripStore, useDriverStore, useMessageStore } from '@/store';
 import { images } from '@/utils/constants/icons';
 import { useState, useEffect, useCallback } from 'react';
-import { Reservation, Trip, Driver, User } from '@/utils/constants/types'; // Import from types
-import { Message } from '@/store'; // Import Message from store
+import { Reservation, Trip, Driver, User } from '@/utils/constants/types';
+import { Message } from '@/store';
 import { WebSocketManager } from '@/lib/websocket';
 import { toast } from 'sonner';
 
@@ -40,11 +40,13 @@ const ChatPage = () => {
     let availableReservations: Reservation[] = [];
 
     if (role === 'passenger' && userId !== undefined) {
-        reservation = getUserReservation(userId);
-        if (reservation?.tripId) {
-            trip = trips.find((t: Trip) => t.id === reservation.tripId);
-            if (trip?.driverId) {
-                chatPartner = drivers.find((d: Driver) => d.id === trip.driverId);
+        const userReservation = getUserReservation(userId);
+        if (userReservation?.tripId) {
+            reservation = userReservation;
+            const foundTrip = trips.find((t: Trip) => t.id === userReservation.tripId);
+            if (foundTrip?.driverId) {
+                trip = foundTrip;
+                chatPartner = drivers.find((d: Driver) => d.id === foundTrip.driverId);
             }
         }
     } else if (role === 'driver' && userId !== undefined) {
@@ -54,10 +56,11 @@ const ChatPage = () => {
             if (driverTrips.length > 0) {
                 trip = driverTrips[0]; // Select first active trip
                 availableReservations = getReservationsByTripId(trip.id);
-                reservation =
+                const selectedOrFirstReservation =
                     selectedReservation || (availableReservations.length > 0 ? availableReservations[0] : undefined);
-                if (reservation?.userId) {
-                    chatPartner = users.find((u: User) => u.id === reservation.userId);
+                if (selectedOrFirstReservation?.userId) {
+                    reservation = selectedOrFirstReservation;
+                    chatPartner = users.find((u: User) => u.id === selectedOrFirstReservation.userId);
                 }
             }
         }

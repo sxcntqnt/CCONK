@@ -52,8 +52,12 @@ import {
     DriverData,
     Report,
     Message,
+    TripStatus,
+    ReservationStatus,
+    DriverStatus,
 } from './constants/types';
 
+// Export constants and functions
 export {
     // constants
     LIST_ITEM_VARIANTS,
@@ -89,9 +93,14 @@ export {
     getDriverData,
     getReservationCount,
     handleArrival,
+
+    // enums (values)
+    TripStatus,
+    ReservationStatus,
+    DriverStatus,
 };
 
-// type exports
+// Export types
 export type {
     Breakpoint,
     DesktopMobile,
@@ -119,4 +128,7 @@ export type {
     DriverData,
     Report,
     Message,
+    TripStatus as TripStatusType,
+    ReservationStatus as ReservationStatusType,
+    DriverStatus as DriverStatusType,
 };

@@ -1,15 +1,10 @@
 'use server';
 
 import { db } from '@/lib';
-import {
-    getTripIdForDriver,
-    getUsersWithReservations,
-    updateTripStatus,
-    TripStatus,
-    DriverStatus,
-    ReservationStatus,
-} from '@/utils';
+import { getTripIdForDriver, getUsersWithReservations, updateTripStatus } from '@/utils/functions/driverUtils';
 import { Prisma } from '@/lib/prisma/client';
+import { TripStatus, DriverStatus, ReservationStatus } from '@/utils/types';
+
 
 interface DriverData {
     id: number;
@@ -252,26 +247,13 @@ export async function updateTripStatusAction({
             throw new Error('No active trip found for driver or trip ID mismatch');
         }
 
-        // Map lowercase status to TripStatus
-        const statusMap: { [key: string]: TripStatus } = {
-            scheduled: TripStatus.SCHEDULED,
-            in_progress: TripStatus.IN_PROGRESS,
-            completed: TripStatus.COMPLETED,
-            cancelled: TripStatus.CANCELLED,
-        };
-
-        const prismaStatus = statusMap[status.toLowerCase()];
-        if (!prismaStatus) {
-            throw new Error(`Invalid trip status: ${status}`);
-        }
-
         const message =
             status === 'COMPLETED' && destination
                 ? `Driver has arrived at ${destination}.`
                 : `Trip status updated to ${status}.`;
 
-        // Update trip status with mapped TripStatus
-        const updateResponse = await updateTripStatus(tripId, prismaStatus);
+        // Update trip status (assuming updateTripStatus accepts only tripId and status)
+        const updateResponse = await updateTripStatus(tripId, status);
         if (updateResponse.error) {
             throw new Error(updateResponse.error);
         }

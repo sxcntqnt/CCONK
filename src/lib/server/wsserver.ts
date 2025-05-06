@@ -1,12 +1,12 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma/client';
 import { Svix, Webhook } from 'svix';
-import express, { Request, Response } from 'express';
+import express, { Request, Response, RequestHandler } from 'express';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { getTripIdForDriver, updateTripStatus, getDriverById } from '@/utils/index';
+import { getTripIdForDriver, updateTripStatus, getDriverById, TripStatus, DriverStatus } from '@/utils/index';
 
 // Load environment variables
 dotenv.config({ path: './.env' });
@@ -76,8 +76,8 @@ setInterval(
                     },
                 },
             });
-            if (deletedCount > 0) {
-                console.log(`Deleted ${deletedCount} expired messages`);
+            if (deletedCount.count > 0) {
+                console.log(`Deleted ${deletedCount.count} expired messages`);
             }
         } catch (error) {
             console.error('Error in message cleanup:', error);
@@ -87,7 +87,7 @@ setInterval(
 ); // Run every hour
 
 // Prisma middleware to broadcast reservation updates
-db.$use(async (params: Prisma.MiddlewareParams, next: (params: Prisma.MiddlewareParams) => Promise<any>) => {
+db.$use(async (params, next) => {
     if (params.model === 'Reservation' && params.action === 'create') {
         const reservation = await next(params);
         const driverId = reservation.trip?.driverId?.toString();
@@ -139,7 +139,7 @@ io.on('connection', (socket) => {
             console.log(`Client subscribed to trip ${tripId}`);
 
             // Send initial status
-            const lastStatus = tripSubscriptions.get(tripId)?.lastStatus || trip.status || 'scheduled';
+            const lastStatus = tripSubscriptions.get(tripId)?.lastStatus || trip.status || TripStatus.SCHEDULED;
             socket.emit('trip_update', {
                 type: 'trip_update',
                 payload: { tripId, status: lastStatus, timestamp: Date.now() },
@@ -276,7 +276,7 @@ io.on('connection', (socket) => {
             }
 
             // Check if trip is completed and messages are expired
-            if (reservation.trip.status === 'completed' && reservation.trip.updatedAt) {
+            if (reservation.trip.status === TripStatus.COMPLETED && reservation.trip.updatedAt) {
                 const twentyFourHours = 24 * 60 * 60 * 1000;
                 if (new Date().getTime() - new Date(reservation.trip.updatedAt).getTime() > twentyFourHours) {
                     socket.emit('error', { error: 'Chat messages have expired' });
@@ -305,15 +305,25 @@ io.on('connection', (socket) => {
 
             socket.emit('chat_message', {
                 type: 'chat_message',
-                payload: messages.map((msg) => ({
-                    id: msg.id,
-                    reservationId: msg.reservationId,
-                    tripId: msg.tripId,
-                    senderId: msg.senderId,
-                    receiverId: msg.receiverId,
-                    content: msg.content,
-                    timestamp: msg.timestamp.toISOString(),
-                })),
+                payload: messages.map(
+                    (msg: {
+                        id: number;
+                        reservationId: number;
+                        tripId: number;
+                        senderId: number;
+                        receiverId: number;
+                        content: string;
+                        timestamp: Date;
+                    }) => ({
+                        id: msg.id,
+                        reservationId: msg.reservationId,
+                        tripId: msg.tripId,
+                        senderId: msg.senderId,
+                        receiverId: msg.receiverId,
+                        content: msg.content,
+                        timestamp: msg.timestamp.toISOString(),
+                    }),
+                ),
             });
         } catch (error) {
             console.error('Error processing subscribe_chat message:', error);
@@ -369,7 +379,7 @@ io.on('connection', (socket) => {
                 }
 
                 // Check if trip is completed and messages are expired
-                if (reservation.trip.status === 'completed' && reservation.trip.updatedAt) {
+                if (reservation.trip.status === TripStatus.COMPLETED && reservation.trip.updatedAt) {
                     const twentyFourHours = 24 * 60 * 60 * 1000;
                     if (new Date().getTime() - new Date(reservation.trip.updatedAt).getTime() > twentyFourHours) {
                         socket.emit('error', { error: 'Chat messages have expired' });
@@ -425,6 +435,7 @@ io.on('connection', (socket) => {
     );
 
     // Handle status updates
+    // Handle status updates
     socket.on('status_update', async (data: { status: string; driverId: string; destination?: string }) => {
         try {
             const { status, driverId, destination } = data;
@@ -440,28 +451,50 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            // Map client status to server status
-            const statusMap: { [key: string]: string } = {
-                'in-transit': 'in_progress',
-                arrived: 'completed',
+            // Define valid client statuses
+            type ClientStatus =
+                | 'in-transit'
+                | 'arrived'
+                | 'scheduled'
+                | 'in_progress'
+                | 'completed'
+                | 'cancelled'
+                | 'offline';
+
+            const clientStatus = status as ClientStatus;
+
+            // Map client status to TripStatus or DriverStatus
+            const tripStatusMap: { [key: string]: TripStatus } = {
+                'in-transit': TripStatus.IN_PROGRESS,
+                arrived: TripStatus.COMPLETED,
+                scheduled: TripStatus.SCHEDULED,
+                in_progress: TripStatus.IN_PROGRESS,
+                completed: TripStatus.COMPLETED,
+                cancelled: TripStatus.CANCELLED,
             };
 
-            const serverStatus = statusMap[status] || status;
-            const validStatuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
-            if (!validStatuses.includes(serverStatus) && serverStatus !== 'offline') {
+            const driverStatusMap: { [key: string]: DriverStatus } = {
+                offline: DriverStatus.OFFLINE,
+            };
+
+            const tripStatus = tripStatusMap[clientStatus];
+            const driverStatus = driverStatusMap[clientStatus];
+
+            // Validate status
+            if (!tripStatus && !driverStatus) {
                 socket.emit('error', { error: `Invalid status: ${status}` });
                 return;
             }
 
             let tripId: string | null = null;
-            if (serverStatus === 'offline') {
+            if (driverStatus === DriverStatus.OFFLINE) {
                 // Update driver status to offline
                 await db.driver.update({
                     where: { id: Number(driverId) },
-                    data: { status: 'offline' },
+                    data: { status: DriverStatus.OFFLINE },
                 });
                 console.log(`Driver ${driverId} set to offline`);
-            } else {
+            } else if (tripStatus) {
                 // Get active trip for driver
                 const tripResponse = await getTripIdForDriver(Number(driverId));
                 if (tripResponse.error || !tripResponse.data) {
@@ -470,51 +503,45 @@ io.on('connection', (socket) => {
                 }
                 tripId = tripResponse.data.toString();
 
-                // Update trip status and send notifications
-                const updateResponse = await updateTripStatus(
-                    Number(tripId),
-                    serverStatus,
-                    Number(driverId),
-                    `Driver with ID ${driverId} is now ${serverStatus}.`,
-                    serverStatus === 'completed' ? destination : undefined,
-                );
+                // Update trip status
+                const updateResponse = await updateTripStatus(Number(tripId), tripStatus);
                 if (updateResponse.error) {
                     socket.emit('error', { error: updateResponse.error });
                     return;
                 }
 
                 // Schedule message cleanup if trip is completed
-                if (serverStatus === 'completed') {
+                if (tripStatus === TripStatus.COMPLETED) {
                     await scheduleMessageCleanup(Number(tripId));
                 }
             }
 
             // Broadcast status update via Svix if tripId is available
-            if (tripId && tripSubscriptions.has(tripId)) {
+            if (tripId && tripStatus && tripSubscriptions.has(tripId)) {
                 const subscription = tripSubscriptions.get(tripId)!;
-                subscription.lastStatus = serverStatus;
+                subscription.lastStatus = tripStatus;
 
                 await svix.message.create(subscription.appId, {
                     eventType: 'trip_update',
                     payload: {
                         tripId,
-                        status: serverStatus,
+                        status: tripStatus,
                         driverId,
-                        destination: serverStatus === 'completed' ? destination : undefined,
+                        message: `Driver with ID ${driverId} is now ${tripStatus}.`,
+                        destination: tripStatus === TripStatus.COMPLETED ? destination : undefined,
                         timestamp: Date.now(),
                     },
                 });
 
-                console.log(`Broadcasted ${serverStatus} update for trip ${tripId}`);
+                console.log(`Broadcasted ${tripStatus} update for trip ${tripId}`);
             }
 
-            socket.emit('success', { status: serverStatus, driverId, destination });
+            socket.emit('success', { status: tripStatus || driverStatus, driverId, destination });
         } catch (error) {
             console.error('Error processing status_update:', error);
             socket.emit('error', { error: 'Failed to process status update' });
         }
     });
-
     // Handle client disconnection
     socket.on('disconnect', () => {
         for (const [key, clients] of wsClients.entries()) {
@@ -549,11 +576,12 @@ async function getOrCreateAppForTrip(tripId: string) {
 }
 
 // Endpoint to create Svix webhook endpoint for a trip
-app.post('/api/setup-trip-webhook', async (req: Request, res: Response) => {
+const setupTripWebhook: RequestHandler = async (req, res): Promise<void> => {
     try {
         const { tripId } = req.body;
         if (!tripId || isNaN(Number(tripId))) {
-            return res.status(400).json({ error: 'Invalid or missing tripId' });
+            res.status(400).json({ error: 'Invalid or missing tripId' });
+            return;
         }
 
         // Verify trip exists
@@ -561,7 +589,8 @@ app.post('/api/setup-trip-webhook', async (req: Request, res: Response) => {
             where: { id: Number(tripId) },
         });
         if (!trip) {
-            return res.status(404).json({ error: 'Trip not found' });
+            res.status(404).json({ error: 'Trip not found' });
+            return;
         }
 
         // Get or create app for this trip
@@ -581,7 +610,7 @@ app.post('/api/setup-trip-webhook', async (req: Request, res: Response) => {
         tripSubscriptions.set(tripId, {
             appId: app.id,
             endpointId: endpoint.id,
-            lastStatus: trip.status || 'scheduled',
+            lastStatus: trip.status || TripStatus.SCHEDULED,
         });
 
         // Send initial status
@@ -589,7 +618,7 @@ app.post('/api/setup-trip-webhook', async (req: Request, res: Response) => {
             eventType: 'trip_update',
             payload: {
                 tripId,
-                status: trip.status || 'scheduled',
+                status: trip.status || TripStatus.SCHEDULED,
                 timestamp: Date.now(),
             },
         });
@@ -603,7 +632,7 @@ app.post('/api/setup-trip-webhook', async (req: Request, res: Response) => {
         console.error('Error setting up trip webhook:', error);
         res.status(500).json({ error: 'Failed to set up trip webhook' });
     }
-});
+};
 
 // Webhook endpoint to receive trip updates from Svix
 interface SvixWebhookEvent {
@@ -612,19 +641,21 @@ interface SvixWebhookEvent {
         tripId: string;
         status: string;
         driverId?: string;
+        message?: string;
         destination?: string;
         timestamp: number | undefined;
     };
 }
 
-app.post('/api/webhooks/trip-updates', async (req: Request, res: Response) => {
+const tripUpdatesWebhook: RequestHandler = async (req, res): Promise<void> => {
     try {
         const svixId = req.headers['svix-id'] as string;
         const svixTimestamp = req.headers['svix-timestamp'] as string;
         const svixSignature = req.headers['svix-signature'] as string;
 
         if (!svixId || !svixTimestamp || !svixSignature) {
-            return res.status(400).json({ error: 'Missing Svix headers' });
+            res.status(400).json({ error: 'Missing Svix headers' });
+            return;
         }
 
         // Verify the webhook signature
@@ -646,7 +677,7 @@ app.post('/api/webhooks/trip-updates', async (req: Request, res: Response) => {
             }
 
             // Schedule message cleanup if trip is completed
-            if (status === 'completed') {
+            if (status === TripStatus.COMPLETED) {
                 await scheduleMessageCleanup(Number(tripId));
             }
 
@@ -670,7 +701,11 @@ app.post('/api/webhooks/trip-updates', async (req: Request, res: Response) => {
         console.error('Error processing webhook:', error);
         res.status(500).json({ error: 'Error processing webhook' });
     }
-});
+};
+
+// Register webhook endpoints
+app.post('/api/setup-trip-webhook', setupTripWebhook);
+app.post('/api/webhooks/trip-updates', tripUpdatesWebhook);
 
 // Start the server
 const port = process.env.PORT || 1738;

@@ -8,6 +8,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum TripStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum DriverStatus {
+  ACTIVE
+  OFFLINE
+}
+
 model Owner {
   id             Int             @id @default(autoincrement())
   userId         Int             @unique
@@ -23,39 +41,41 @@ model Owner {
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
-  clerkId       String         @unique
-  name          String
-  email         String         @unique
-  image         String         // Changed from String? to String (required)
-  phoneNumber   String?
-  role          String         @default("passenger")
-  driver        Driver?
-  geofences     Geofence[]
-  notifications Notification[]
-  owner         Owner?
-  payments      Payment[]
-  reservations  Reservation[]
+  id              Int            @id @default(autoincrement())
+  clerkId         String         @unique
+  name            String
+  email           String         @unique
+  image           String
+  phoneNumber     String?
+  role            String         @default("passenger")
+  driver          Driver?
+  geofences       Geofence[]
+  notifications   Notification[]
+  owner           Owner?
+  payments        Payment[]
+  reservations    Reservation[]
+  sentMessages    Message[]      @relation("Sender") // Added for sender relation
+  receivedMessages Message[]     @relation("Receiver") // Added for receiver relation
 
   @@index([email])
   @@index([clerkId])
 }
 
 model Driver {
-  id              Int            @id @default(autoincrement())
-  userId         Int            @unique
-  busId          Int?
-  licenseNumber  String         @unique
-  status         String         @default("active")
-  hireDate       DateTime?
-  rating         Float?
-  profileImageUrl String        // Required (non-nullable)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  bus            Bus?           @relation(fields: [busId], references: [id])
-  user           User           @relation(fields: [userId], references: [id])
-  notifications  Notification[]
-  trips          Trip[]
+  id              Int           @id @default(autoincrement())
+  userId          Int           @unique
+  busId           Int?
+  licenseNumber   String        @unique
+  status          DriverStatus  @default(ACTIVE)
+  hireDate        DateTime?
+  rating          Float?
+  profileImageUrl String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  bus             Bus?          @relation(fields: [busId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
+  notifications   Notification[]
+  trips           Trip[]
 
   @@index([userId])
   @@index([busId])
@@ -63,18 +83,18 @@ model Driver {
 }
 
 model Bus {
-  id                Int      @id @default(autoincrement())
-  licensePlate      String   @unique
+  id                Int       @id @default(autoincrement())
+  licensePlate      String    @unique
   capacity          Int
-  model             String?  // Added
-  latitude          Float?   // Added
-  longitude         Float?   // Added
-  lastLocationUpdate DateTime? // Added
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  model             String?
+  latitude          Float?
+  longitude         Float?
+  lastLocationUpdate DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
   category          String
   ownerId           Int?
-  owner             Owner?   @relation(fields: [ownerId], references: [id])
+  owner             Owner?    @relation(fields: [ownerId], references: [id])
   drivers           Driver[]
   images            Image[]
   seats             Seat[]
@@ -96,25 +116,26 @@ model Image {
 }
 
 model Trip {
-  id                Int            @id @default(autoincrement())
-  busId             Int
-  driverId          Int?
-  departureCity     String
-  arrivalCity       String
-  departureTime     DateTime
-  arrivalTime       DateTime?
-  status            String         @default("scheduled")
-  isFullyBooked     Boolean        @default(false)
-  originLatitude    Float?
-  originLongitude   Float?
-  destinationLatitude Float?
+  id                  Int           @id @default(autoincrement())
+  busId               Int
+  driverId            Int?
+  departureCity       String
+  arrivalCity         String
+  departureTime       DateTime
+  arrivalTime         DateTime?
+  status              TripStatus    @default(SCHEDULED)
+  isFullyBooked       Boolean       @default(false)
+  originLatitude      Float?
+  originLongitude     Float?
+  destinationLatitude  Float?
   destinationLongitude Float?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  notifications     Notification[]
-  reservations      Reservation[]
-  bus               Bus            @relation(fields: [busId], references: [id])
-  driver            Driver?        @relation(fields: [driverId], references: [id])
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  notifications       Notification[]
+  reservations        Reservation[]
+  bus                 Bus           @relation(fields: [busId], references: [id])
+  driver              Driver?       @relation(fields: [driverId], references: [id])
+  messages            Message[]     // Added for trip relation
 
   @@index([busId])
   @@index([driverId])
@@ -128,8 +149,8 @@ model Seat {
   price        Float
   row          Int
   column       Int
-  category     String       // 'window' | 'middle' | 'single' | 'aisle'
-  status       String       @default("available") // 'reserved' | 'available'
+  category     String
+  status       String       @default("available")
   bus          Bus          @relation(fields: [busId], references: [id])
   reservations Reservation[]
 
@@ -139,18 +160,19 @@ model Seat {
 }
 
 model Reservation {
-  id        Int      @id @default(autoincrement())
+  id        Int               @id @default(autoincrement())
   userId    Int
   tripId    Int
   seatId    Int
-  status    String   @default("pending")
-  bookedAt  DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  paymentId Int?     @unique
-  payment   Payment? @relation(fields: [paymentId], references: [id])
-  seat      Seat     @relation(fields: [seatId], references: [id])
-  trip      Trip     @relation(fields: [tripId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  status    ReservationStatus @default(PENDING)
+  bookedAt  DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  paymentId Int?              @unique
+  payment   Payment?          @relation(fields: [paymentId], references: [id])
+  seat      Seat              @relation(fields: [seatId], references: [id])
+  trip      Trip              @relation(fields: [tripId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
+  messages  Message[]         // Added for reservation relation
 
   @@unique([tripId, seatId])
   @@index([userId])
@@ -244,18 +266,18 @@ model IncomeExpense {
 }
 
 model Message {
-  id           Int      @id @default(autoincrement())
+  id            Int         @id @default(autoincrement())
   reservationId Int
-  tripId       Int
-  senderId     Int
-  receiverId   Int
-  content      String
-  timestamp    DateTime
-  deletedAt    DateTime?
+  tripId        Int
+  senderId      Int
+  receiverId    Int
+  content       String
+  timestamp     DateTime
+  deletedAt     DateTime?
+  reservation   Reservation @relation(fields: [reservationId], references: [id])
+  trip          Trip        @relation(fields: [tripId], references: [id])
+  sender        User        @relation("Sender", fields: [senderId], references: [id])
+  receiver      User        @relation("Receiver", fields: [receiverId], references: [id])
 
-  reservation  Reservation @relation(fields: [reservationId], references: [id])
-  trip         Trip        @relation(fields: [tripId], references: [id])
-  sender       User        @relation("Sender", fields: [senderId], references: [id])
-  receiver     User        @relation("Receiver", fields: [receiverId], references: [id])
+  @@index([reservationId, tripId])
 }
-

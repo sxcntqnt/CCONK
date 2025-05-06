@@ -65,7 +65,7 @@ async function fetchDriverTrip(driverId: number) {
     const trip = await db.trip.findFirst({
         where: {
             driverId,
-            status: { in: ['scheduled', 'in_progress'] },
+            status: { in: ['SCHEDULED', 'IN_PROGRESS'] },
         },
         include: { bus: true },
         orderBy: { departureTime: 'desc' },
@@ -77,14 +77,20 @@ async function fetchDriverTrip(driverId: number) {
 // Helper: Fetch passengers from reservations (for In-Transit)
 async function fetchPassengers(tripId: number): Promise<Recipient[]> {
     const reservations = await db.reservation.findMany({
-        where: { tripId, status: 'confirmed' },
+        where: { tripId, status: 'CONFIRMED' },
         include: { user: { select: { clerkId: true, name: true, email: true } } },
     });
 
     return reservations.map(
         (reservation: {
             id: number;
+            tripId: number;
+            userId: number;
+            status: string;
+            bookedAt: Date;
+            updatedAt: Date;
             seatId: number;
+            paymentId: number | null;
             user: { clerkId: string; name: string | null; email: string | null } | null;
         }) => {
             const user = reservation.user;
@@ -163,7 +169,7 @@ async function sendStatusNotification(
     if (status === 'in-transit' && trip) {
         await db.trip.update({
             where: { id: trip.id },
-            data: { status: 'in_progress' },
+            data: { status: 'IN_PROGRESS' },
         });
     }
 }
@@ -175,7 +181,7 @@ export async function notifyDriverOffline(formData: FormData): Promise<void> {
     try {
         const driver = await getAuthenticatedDriver();
         const { message } = validateFormData(formData);
-        const recipients = await fetchowners(); // Notify owners for offline status
+        const recipients = await fetchowners();
 
         await sendStatusNotification(driver, 'offline', null, message, recipients);
         revalidatePath('/drivers');

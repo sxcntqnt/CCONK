@@ -1,9 +1,20 @@
 'use server';
 
-import { db } from '@/lib';
-import { getUsersWithReservations } from '@/utils/functions/driverUtils';
-import { Prisma } from '@/lib/prisma/client';
+import { db } from '@/lib/prisma';
+import { Prisma, TripStatus, ReservationStatus } from '@prisma/client';
 import { Owner, Bus, Driver, Reservation, Notification, Trip } from '@/utils/constants/types';
+
+// Define types for Prisma query results
+type TripWithBus = Prisma.TripGetPayload<{
+    include: {
+        driver: { include: { user: { select: { name: true; email: true } } } };
+        bus: { select: { id: true; licensePlate: true; capacity: true; category: true } };
+    };
+}>;
+
+type ReservationWithUser = Prisma.ReservationGetPayload<{
+    include: { user: { select: { id: true; name: true; email: true } } };
+}>;
 
 // Fetch an owner by ID (for Dashboard)
 export async function getOwner(ownerId: number): Promise<Owner | null> {
@@ -17,7 +28,7 @@ export async function getOwner(ownerId: number): Promise<Owner | null> {
                         clerkId: true,
                         name: true,
                         email: true,
-                        image: true, // Fetch image for profileImageUrl
+                        image: true,
                         role: true,
                     },
                 },
@@ -33,7 +44,7 @@ export async function getOwner(ownerId: number): Promise<Owner | null> {
             userId: owner.userId,
             createdAt: owner.createdAt,
             updatedAt: owner.updatedAt,
-            profileImageUrl: owner.user.image, // Map user.image to profileImageUrl
+            profileImageUrl: owner.user.image,
             user: {
                 id: owner.user.id,
                 clerkId: owner.user.clerkId,
@@ -178,11 +189,11 @@ export async function getDrivers({
             busId: driver.busId ?? undefined,
             userId: driver.userId,
             licenseNumber: driver.licenseNumber,
-            status: driver.status,
+            status: driver.status.toLowerCase() as 'ACTIVE' | 'OFFLINE',
             firstName: driver.user.name.split(' ')[0],
             lastName: driver.user.name.split(' ')[1] || '',
             email: driver.user.email,
-            profileImageUrl: driver.profileImageUrl, // Required, no ?? undefined
+            profileImageUrl: driver.profileImageUrl,
             rating: driver.rating ?? undefined,
         }));
 
@@ -193,6 +204,7 @@ export async function getDrivers({
         throw new Error(`Failed to fetch drivers: ${errorMsg}`);
     }
 }
+
 // Fetch trips for the owner's buses (for Dashboard, Reservations)
 export async function getTrips({
     ownerId,
@@ -212,12 +224,24 @@ export async function getTrips({
             throw new Error(`Invalid pagination: page=${page}, pageSize=${pageSize}, skip=${skip}`);
         }
 
-        const trips = await db.trip.findMany({
+        const statusMap: { [key: string]: TripStatus } = {
+            scheduled: 'SCHEDULED',
+            in_progress: 'IN_PROGRESS',
+            completed: 'COMPLETED',
+            cancelled: 'CANCELLED',
+        };
+
+        const prismaStatus = status ? statusMap[status.toLowerCase()] : undefined;
+        if (status && !prismaStatus) {
+            throw new Error(`Invalid trip status: ${status}`);
+        }
+
+        const trips: TripWithBus[] = await db.trip.findMany({
             where: {
                 bus: { ownerId },
                 ...(departureCity && { departureCity }),
                 ...(arrivalCity && { arrivalCity }),
-                ...(status && { status }),
+                ...(prismaStatus && { status: prismaStatus }),
             },
             include: {
                 driver: {
@@ -235,7 +259,7 @@ export async function getTrips({
                 bus: { ownerId },
                 ...(departureCity && { departureCity }),
                 ...(arrivalCity && { arrivalCity }),
-                ...(status && { status }),
+                ...(prismaStatus && { status: prismaStatus }),
             },
         });
 
@@ -247,7 +271,7 @@ export async function getTrips({
             arrivalCity: trip.arrivalCity,
             departureTime: trip.departureTime.toISOString(),
             arrivalTime: trip.arrivalTime?.toISOString(),
-            status: trip.status,
+            status: trip.status.toLowerCase() as 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
             isFullyBooked: trip.isFullyBooked,
             originLatitude: trip.originLatitude ?? undefined,
             originLongitude: trip.originLongitude ?? undefined,
@@ -291,11 +315,22 @@ export async function getReservations({
             throw new Error(`Invalid pagination: page=${page}, pageSize=${pageSize}, skip=${skip}`);
         }
 
-        const reservations = await db.reservation.findMany({
+        const statusMap: { [key: string]: ReservationStatus } = {
+            pending: 'PENDING',
+            confirmed: 'CONFIRMED',
+            cancelled: 'CANCELLED',
+        };
+
+        const prismaStatus = status ? statusMap[status.toLowerCase()] : undefined;
+        if (status && !prismaStatus) {
+            throw new Error(`Invalid reservation status: ${status}`);
+        }
+
+        const reservations: ReservationWithUser[] = await db.reservation.findMany({
             where: {
                 trip: { bus: { ownerId } },
                 ...(tripId && { tripId }),
-                ...(status && { status }),
+                ...(prismaStatus && { status: prismaStatus }),
             },
             include: {
                 user: { select: { id: true, name: true, email: true } },
@@ -309,7 +344,7 @@ export async function getReservations({
             where: {
                 trip: { bus: { ownerId } },
                 ...(tripId && { tripId }),
-                ...(status && { status }),
+                ...(prismaStatus && { status: prismaStatus }),
             },
         });
 
@@ -319,7 +354,7 @@ export async function getReservations({
                 userId: reservation.userId,
                 tripId: reservation.tripId,
                 seatId: reservation.seatId,
-                status: reservation.status,
+                status: reservation.status.toLowerCase() as 'pending' | 'confirmed' | 'cancelled',
                 bookedAt: reservation.bookedAt.toISOString(),
                 updatedAt: reservation.updatedAt.toISOString(),
                 paymentId: reservation.paymentId ?? undefined,
@@ -404,7 +439,7 @@ export async function getNotifications({
 export async function ensureBusHasTrip(busId: number): Promise<void> {
     try {
         const trip = await db.trip.findFirst({
-            where: { busId, status: { not: 'completed' } },
+            where: { busId, status: { not: 'COMPLETED' } },
         });
 
         if (trip) {
@@ -426,7 +461,7 @@ export async function ensureBusHasTrip(busId: number): Promise<void> {
                 departureCity: 'Nairobi',
                 arrivalCity: 'Mombasa',
                 departureTime: new Date(),
-                status: 'scheduled',
+                status: 'SCHEDULED',
                 isFullyBooked: false,
             },
         });

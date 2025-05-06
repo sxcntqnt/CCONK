@@ -1,5 +1,15 @@
 import { db } from '@/lib/prisma';
-import { Driver, Bus, Trip, Reservation, User, ApiResponse, DriverData } from '@/utils/constants/types';
+import {
+    Driver,
+    Bus,
+    Trip,
+    Reservation,
+    User,
+    ApiResponse,
+    DriverData,
+    DriverStatus,
+    TripStatus,
+} from '@/utils/constants/types';
 import { MarkerData, mapDriverAndBusToMarkerData } from '@/store';
 import { notifyDriverArrival } from '@/actions/notify-driver-arrival';
 import { ROLES } from '@/utils/constants/roles';
@@ -21,7 +31,7 @@ export const getDriverById = async (driverId: number): Promise<ApiResponse<Drive
             id: driver.id,
             userId: driver.userId,
             licenseNumber: driver.licenseNumber,
-            status: driver.status,
+            status: driver.status, // No .toLowerCase(), matches 'ACTIVE' | 'OFFLINE'
             firstName: driver.user.name.split(' ')[0],
             lastName: driver.user.name.split(' ')[1] || '',
             email: driver.user.email,
@@ -93,7 +103,7 @@ export const getActiveTripsForDriver = async (driverId: number): Promise<ApiResp
         const trips = await db.trip.findMany({
             where: {
                 driverId,
-                status: 'active',
+                status: 'IN_PROGRESS',
             },
             select: {
                 id: true,
@@ -139,7 +149,7 @@ export const getActiveTripsForDriver = async (driverId: number): Promise<ApiResp
                 arrivalCity: trip.arrivalCity,
                 departureTime: trip.departureTime.toISOString(),
                 arrivalTime: trip.arrivalTime?.toISOString(),
-                status: trip.status,
+                status: trip.status.toLowerCase() as 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
                 isFullyBooked: trip.isFullyBooked,
                 originLatitude: trip.originLatitude || undefined,
                 originLongitude: trip.originLongitude || undefined,
@@ -176,7 +186,7 @@ export const createTripReservation = async (
             return { error: 'Trip is fully booked', status: 400 };
         }
 
-        if (trip.status !== 'active') {
+        if (trip.status !== 'IN_PROGRESS' && trip.status !== 'SCHEDULED') {
             return { error: 'Trip is not active', status: 400 };
         }
 
@@ -197,7 +207,6 @@ export const createTripReservation = async (
             return { error: "Seat does not belong to the trip's bus", status: 400 };
         }
 
-        // Check if the seat is already reserved for this trip
         const existingReservation = await db.reservation.findFirst({
             where: { tripId, seatId },
         });
@@ -211,7 +220,7 @@ export const createTripReservation = async (
                 userId,
                 tripId,
                 seatId,
-                status: 'confirmed',
+                status: 'CONFIRMED',
                 bookedAt: new Date(),
                 updatedAt: new Date(),
             },
@@ -238,7 +247,7 @@ export const createTripReservation = async (
             userId: reservation.userId,
             tripId: reservation.tripId,
             seatId: reservation.seatId,
-            status: reservation.status,
+            status: reservation.status.toLowerCase() as 'pending' | 'confirmed' | 'cancelled',
             bookedAt: reservation.bookedAt.toISOString(),
             updatedAt: reservation.updatedAt.toISOString(),
             paymentId: reservation.paymentId || undefined,
@@ -256,7 +265,7 @@ export const getTripIdForDriver = async (driverId: number): Promise<ApiResponse<
         const trip = await db.trip.findFirst({
             where: {
                 driverId,
-                status: 'active',
+                status: 'IN_PROGRESS',
             },
             select: { id: true },
         });
@@ -272,13 +281,8 @@ export const getTripIdForDriver = async (driverId: number): Promise<ApiResponse<
     }
 };
 
-export const updateTripStatus = async (tripId: number, status: string): Promise<ApiResponse<Trip>> => {
+export const updateTripStatus = async (tripId: number, status: TripStatus): Promise<ApiResponse<Trip>> => {
     try {
-        const validStatuses = ['active', 'completed', 'cancelled'];
-        if (!validStatuses.includes(status)) {
-            return { error: 'Invalid status', status: 400 };
-        }
-
         const trip = await db.trip.findUnique({
             where: { id: tripId },
         });
@@ -317,7 +321,7 @@ export const updateTripStatus = async (tripId: number, status: string): Promise<
             arrivalCity: updatedTrip.arrivalCity,
             departureTime: updatedTrip.departureTime.toISOString(),
             arrivalTime: updatedTrip.arrivalTime?.toISOString(),
-            status: updatedTrip.status,
+            status: updatedTrip.status.toLowerCase() as 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
             isFullyBooked: updatedTrip.isFullyBooked,
             originLatitude: updatedTrip.originLatitude || undefined,
             originLongitude: updatedTrip.originLongitude || undefined,
@@ -390,7 +394,7 @@ export const getDriverData = async (clerkId: string): Promise<ApiResponse<Driver
                 driver: {
                     include: {
                         trips: {
-                            where: { status: { in: ['scheduled', 'in_progress'] }, arrivalTime: null },
+                            where: { status: { in: ['SCHEDULED', 'IN_PROGRESS'] }, arrivalTime: null },
                             include: { bus: { include: { images: { select: { src: true, alt: true } } } } },
                             orderBy: { departureTime: 'desc' },
                             take: 1,
@@ -409,7 +413,7 @@ export const getDriverData = async (clerkId: string): Promise<ApiResponse<Driver
             busId: driverRecord.driver.busId || undefined,
             userId: driverRecord.driver.userId,
             licenseNumber: driverRecord.driver.licenseNumber,
-            status: driverRecord.driver.status,
+            status: driverRecord.driver.status, // No .toLowerCase(), matches 'ACTIVE' | 'OFFLINE'
             firstName: driverRecord.name.split(' ')[0],
             lastName: driverRecord.name.split(' ')[1] || '',
             email: driverRecord.email,
@@ -428,7 +432,7 @@ export const getDriverData = async (clerkId: string): Promise<ApiResponse<Driver
                 arrivalCity: tripRecord.arrivalCity,
                 departureTime: tripRecord.departureTime.toISOString(),
                 arrivalTime: tripRecord.arrivalTime?.toISOString(),
-                status: tripRecord.status,
+                status: tripRecord.status.toLowerCase() as 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
                 isFullyBooked: tripRecord.isFullyBooked,
                 originLatitude: tripRecord.originLatitude || undefined,
                 originLongitude: tripRecord.originLongitude || undefined,
@@ -462,7 +466,7 @@ export const getDriverData = async (clerkId: string): Promise<ApiResponse<Driver
 export const getReservationCount = async (tripId: number): Promise<ApiResponse<number>> => {
     try {
         const count = await db.reservation.count({
-            where: { tripId, status: 'confirmed' },
+            where: { tripId, status: 'CONFIRMED' },
         });
         return { data: count, status: 200 };
     } catch (error) {
@@ -481,14 +485,14 @@ export const handleArrival = async (tripId: number): Promise<ApiResponse<Trip>> 
             return { error: 'Trip not found', status: 404 };
         }
 
-        if (trip.status !== 'in_progress' && trip.status !== 'scheduled') {
+        if (trip.status !== 'IN_PROGRESS' && trip.status !== 'SCHEDULED') {
             return { error: 'Trip is not active', status: 400 };
         }
 
         const updatedTrip = await db.trip.update({
             where: { id: tripId },
             data: {
-                status: 'completed',
+                status: 'COMPLETED',
                 arrivalTime: new Date(),
                 updatedAt: new Date(),
             },
@@ -519,7 +523,7 @@ export const handleArrival = async (tripId: number): Promise<ApiResponse<Trip>> 
             arrivalCity: updatedTrip.arrivalCity,
             departureTime: updatedTrip.departureTime.toISOString(),
             arrivalTime: updatedTrip.arrivalTime?.toISOString(),
-            status: updatedTrip.status,
+            status: updatedTrip.status.toLowerCase() as 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
             isFullyBooked: updatedTrip.isFullyBooked,
             originLatitude: updatedTrip.originLatitude || undefined,
             originLongitude: updatedTrip.originLongitude || undefined,

@@ -15,6 +15,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
 import { useDriverStore } from '@/store';
 
+// Helper function to format status for display
+const formatStatus = (status: string): string => {
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
+
 interface UserData {
     id: string;
     firstName: string | null;
@@ -156,7 +161,11 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
                                                     <strong>Seat:</strong> {reservation.seatId}
                                                 </p>
                                                 <p className="text-base">
-                                                    <strong>Status:</strong> {reservation.trip.status}
+                                                    <strong>Status:</strong> {formatStatus(reservation.trip.status)}
+                                                </p>
+                                                <p className="text-base">
+                                                    <strong>Reservation Status:</strong>{' '}
+                                                    {formatStatus(reservation.status)}
                                                 </p>
                                                 <Separator className="my-3 bg-gray-700" />
                                             </div>
