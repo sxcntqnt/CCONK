@@ -19,11 +19,11 @@ type BreakpointClassesShape = {
 };
 
 const breakpointClasses: BreakpointClassesShape = {
-    xs: { desktop: 'hidden xs:flex', mobile: 'flex xs:hidden' },
     sm: { desktop: 'hidden sm:flex', mobile: 'flex sm:hidden' },
     md: { desktop: 'hidden md:flex', mobile: 'flex md:hidden' },
     lg: { desktop: 'hidden lg:flex', mobile: 'flex lg:hidden' },
     xl: { desktop: 'hidden xl:flex', mobile: 'flex xl:hidden' },
+    '2xl': { desktop: 'hidden 2xl:flex', mobile: 'flex 2xl:hidden' },
 };
 
 const NRCCarousel = ({
@@ -51,11 +51,11 @@ const NRCCarousel = ({
     const lessThanTwoFrames = frames.length < 2;
 
     const visibleFrames = {
-        xs: 1,
-        sm: 2,
-        md: 3,
-        lg: 4,
-        xl: 5,
+        sm: 1,
+        md: 2,
+        lg: 3,
+        xl: 4,
+        '2xl': 5,
     };
     const currentVisibleCount = isMobile ? 1 : visibleFrames[breakpoint];
 

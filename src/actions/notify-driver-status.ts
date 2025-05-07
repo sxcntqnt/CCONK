@@ -5,12 +5,14 @@ import { currentUser } from '@clerk/nextjs/server';
 import { Knock } from '@knocklabs/node';
 import { db } from '@/lib';
 import { ROLES } from '@/utils/constants/roles';
+import { Notification } from '@/utils/constants/types';
 
 // Types
 interface Recipient {
     id: string;
     name: string;
     email: string;
+    userId?: number; // Add numeric userId
 }
 
 interface NotificationData {
@@ -78,46 +80,36 @@ async function fetchDriverTrip(driverId: number) {
 async function fetchPassengers(tripId: number): Promise<Recipient[]> {
     const reservations = await db.reservation.findMany({
         where: { tripId, status: 'CONFIRMED' },
-        include: { user: { select: { clerkId: true, name: true, email: true } } },
+        include: { user: { select: { id: true, clerkId: true, name: true, email: true } } },
     });
 
-    return reservations.map(
-        (reservation: {
-            id: number;
-            tripId: number;
-            userId: number;
-            status: string;
-            bookedAt: Date;
-            updatedAt: Date;
-            seatId: number;
-            paymentId: number | null;
-            user: { clerkId: string; name: string | null; email: string | null } | null;
-        }) => {
-            const user = reservation.user;
-            const fallbackId = `passenger_${reservation.id}`;
-            const fallbackName = `Passenger ${reservation.seatId}`;
-            const fallbackEmail = 'passenger@example.com';
+    return reservations.map((reservation) => {
+        const user = reservation.user;
+        const fallbackId = `passenger_${reservation.id}`;
+        const fallbackName = `Passenger ${reservation.seatId}`;
+        const fallbackEmail = 'passenger@example.com';
 
-            return {
-                id: user?.clerkId || fallbackId,
-                name: user?.name || fallbackName,
-                email: user?.email || fallbackEmail,
-            };
-        },
-    );
+        return {
+            id: user?.clerkId || fallbackId,
+            name: user?.name || fallbackName,
+            email: user?.email || fallbackEmail,
+            userId: user?.id || 0,
+        };
+    });
 }
 
 // Helper: Fetch owner recipients (for Offline)
-async function fetchowners(): Promise<Recipient[]> {
+async function fetchOwners(): Promise<Recipient[]> {
     const owners = await db.user.findMany({
         where: { role: ROLES.OWNER },
-        select: { clerkId: true, name: true, email: true },
+        select: { id: true, clerkId: true, name: true, email: true },
     });
 
     return owners.map((owner) => ({
         id: owner.clerkId,
-        name: owner.name || 'owner',
+        name: owner.name || 'Owner',
         email: owner.email || 'owner@example.com',
+        userId: owner.id,
     }));
 }
 
@@ -128,7 +120,7 @@ async function sendStatusNotification(
     trip: any,
     message: string | undefined,
     recipients: Recipient[],
-): Promise<void> {
+): Promise<Notification> {
     const notificationData: NotificationData = {
         busId: trip?.busId?.toString(),
         tripId: trip?.id?.toString(),
@@ -143,6 +135,7 @@ async function sendStatusNotification(
         email:
             driver.clerkUser.emailAddresses.find((email: any) => email.id === driver.clerkUser.primaryEmailAddressId)
                 ?.emailAddress || 'driver@example.com',
+        userId: driver.prismaDriver.id,
     };
 
     // Send via Knock
@@ -151,19 +144,33 @@ async function sendStatusNotification(
         recipients: [...recipients, driverRecipient],
     });
 
-    // Persist notification in Prisma
-    await db.notification.createMany({
-        data: recipients.map((recipient) => ({
-            userId: parseInt(recipient.id) || 0,
+    // Persist notification in Prisma and return the first created notification
+    const notifications = await db.notification.createMany({
+        data: [...recipients, driverRecipient].map((recipient) => ({
+            userId: recipient.userId || 0,
             tripId: trip?.id,
             type: `DRIVER_${status.toUpperCase()}`,
             message: message || `${notificationData.driverName} is now ${status}.`,
             status: 'sent',
             driverId: driver.prismaDriver.driver?.id,
             sentAt: new Date(),
+            createdAt: new Date(),
             subject: `Driver ${status.charAt(0).toUpperCase() + status.slice(1)} Notification`,
         })),
     });
+
+    // Fetch the first created notification (for the driver)
+    const createdNotification = await db.notification.findFirst({
+        where: {
+            userId: driverRecipient.userId,
+            type: `DRIVER_${status.toUpperCase()}`,
+            sentAt: { gte: new Date(Date.now() - 1000) },
+        },
+    });
+
+    if (!createdNotification) {
+        throw new Error('Failed to retrieve created notification');
+    }
 
     // Update trip status for In-Transit
     if (status === 'in-transit' && trip) {
@@ -172,19 +179,33 @@ async function sendStatusNotification(
             data: { status: 'IN_PROGRESS' },
         });
     }
+
+    return {
+        id: createdNotification.id,
+        userId: createdNotification.userId,
+        tripId: createdNotification.tripId,
+        type: createdNotification.type,
+        message: createdNotification.message,
+        status: createdNotification.status,
+        createdAt: createdNotification.createdAt,
+        sentAt: createdNotification.sentAt,
+        driverId: createdNotification.driverId,
+        subject: createdNotification.subject,
+    };
 }
 
 /**
  * Notify relevant users when the driver goes offline
  */
-export async function notifyDriverOffline(formData: FormData): Promise<void> {
+export async function notifyDriverOffline(formData: FormData): Promise<Notification> {
     try {
         const driver = await getAuthenticatedDriver();
         const { message } = validateFormData(formData);
-        const recipients = await fetchowners();
+        const recipients = await fetchOwners();
 
-        await sendStatusNotification(driver, 'offline', null, message, recipients);
+        const notification = await sendStatusNotification(driver, 'offline', null, message, recipients);
         revalidatePath('/drivers');
+        return notification;
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         throw new Error(`Failed to notify offline status: ${message}`);
@@ -194,7 +215,7 @@ export async function notifyDriverOffline(formData: FormData): Promise<void> {
 /**
  * Notify passengers when the driver is in-transit
  */
-export async function notifyDriverInTransit(formData: FormData): Promise<void> {
+export async function notifyDriverInTransit(formData: FormData): Promise<Notification> {
     try {
         const driver = await getAuthenticatedDriver();
         const { message } = validateFormData(formData);
@@ -202,8 +223,9 @@ export async function notifyDriverInTransit(formData: FormData): Promise<void> {
         if (!trip) throw new Error('No active trip found for this driver');
         const recipients = await fetchPassengers(trip.id);
 
-        await sendStatusNotification(driver, 'in-transit', trip, message, recipients);
+        const notification = await sendStatusNotification(driver, 'in-transit', trip, message, recipients);
         revalidatePath('/drivers');
+        return notification;
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         throw new Error(`Failed to notify in-transit status: ${message}`);

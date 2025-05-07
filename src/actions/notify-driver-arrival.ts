@@ -5,12 +5,14 @@ import { currentUser } from '@clerk/nextjs/server';
 import { Knock } from '@knocklabs/node';
 import { db } from '@/lib';
 import { ROLES } from '@/utils/constants/roles';
+import { Notification } from '@/utils/constants/types';
 
 // Types
 interface Recipient {
     id: string;
     name: string;
     email: string;
+    userId?: number; // Add numeric userId
 }
 
 interface NotificationData {
@@ -100,35 +102,24 @@ async function fetchDriverTrip(driverId: number) {
 async function fetchPassengers(tripId: number): Promise<Recipient[]> {
     const reservations = await db.reservation.findMany({
         where: { tripId, status: 'CONFIRMED' },
-        include: { user: { select: { clerkId: true, name: true, email: true } } },
+        include: { user: { select: { id: true, clerkId: true, name: true, email: true } } },
     });
 
     if (!reservations.length) throw new Error('No confirmed passengers found for this trip');
 
-    return reservations.map(
-        (reservation: {
-            id: number;
-            tripId: number;
-            userId: number;
-            status: string;
-            bookedAt: Date;
-            updatedAt: Date;
-            seatId: number;
-            paymentId: number | null;
-            user: { clerkId: string; name: string | null; email: string | null } | null;
-        }) => {
-            const user = reservation.user;
-            const fallbackId = `passenger_${reservation.id}`;
-            const fallbackName = `Passenger ${reservation.seatId}`;
-            const fallbackEmail = 'passenger@example.com';
+    return reservations.map((reservation) => {
+        const user = reservation.user;
+        const fallbackId = `passenger_${reservation.id}`;
+        const fallbackName = `Passenger ${reservation.seatId}`;
+        const fallbackEmail = 'passenger@example.com';
 
-            return {
-                id: user?.clerkId || fallbackId,
-                name: user?.name || fallbackName,
-                email: user?.email || fallbackEmail,
-            };
-        },
-    );
+        return {
+            id: user?.clerkId || fallbackId,
+            name: user?.name || fallbackName,
+            email: user?.email || fallbackEmail,
+            userId: user?.id || 0,
+        };
+    });
 }
 
 // Helper: Send and persist notification
@@ -138,7 +129,7 @@ async function sendArrivalNotification(
     destination: string,
     message: string | undefined,
     recipients: Recipient[],
-): Promise<void> {
+): Promise<Notification> {
     const notificationData: NotificationData = {
         busId: trip.busId.toString(),
         tripId: trip.id.toString(),
@@ -154,46 +145,76 @@ async function sendArrivalNotification(
         email:
             driver.clerkUser.emailAddresses.find((email: any) => email.id === driver.clerkUser.primaryEmailAddressId)
                 ?.emailAddress || 'driver@example.com',
+        userId: driver.prismaDriver.id,
     };
 
     // Send via Knock
     await knock.workflows.trigger('driver-arrived', {
         data: notificationData,
-        recipients: recipients,
+        recipients: [...recipients, driverRecipient],
     });
 
     // Persist notification in Prisma
-    await db.notification.createMany({
-        data: recipients.map((recipient) => ({
-            userId: parseInt(recipient.id) || 0,
+    const notifications = await db.notification.createMany({
+        data: [...recipients, driverRecipient].map((recipient) => ({
+            userId: recipient.userId || 0,
             tripId: trip.id,
             type: 'DRIVER_ARRIVAL',
             message: message || `${notificationData.driverName} has arrived at ${destination} with bus ${trip.busId}.`,
             status: 'sent',
             driverId: driver.prismaDriver.driver?.id,
             sentAt: new Date(),
+            createdAt: new Date(),
             subject: `Driver Arrival at ${destination}`,
         })),
     });
+
+    // Fetch the first created notification (for the driver)
+    const createdNotification = await db.notification.findFirst({
+        where: {
+            userId: driverRecipient.userId,
+            type: 'DRIVER_ARRIVAL',
+            sentAt: { gte: new Date(Date.now() - 1000) },
+        },
+    });
+
+    if (!createdNotification) {
+        throw new Error('Failed to retrieve created notification');
+    }
 
     // Update trip status
     await db.trip.update({
         where: { id: trip.id },
         data: { status: 'COMPLETED', arrivalTime: new Date() },
     });
+
+    return {
+        id: createdNotification.id,
+        userId: createdNotification.userId,
+        tripId: createdNotification.tripId,
+        type: createdNotification.type,
+        message: createdNotification.message,
+        status: createdNotification.status,
+        createdAt: createdNotification.createdAt,
+        sentAt: createdNotification.sentAt,
+        driverId: createdNotification.driverId,
+        subject: createdNotification.subject,
+    };
 }
 
 /**
  * Notify passengers when the driver arrives at the destination
  */
-export async function notifyDriverArrival(formData: FormData): Promise<void> {
+export async function notifyDriverArrival(formData: FormData): Promise<Notification> {
     try {
         const driver = await getAuthenticatedDriver();
         const { destination, message } = validateFormData(formData);
         const trip = await fetchDriverTrip(driver.prismaDriver.driver!.id);
         const recipients = await fetchPassengers(trip.id);
 
-        await sendArrivalNotification(driver, trip, destination, message, recipients);
+        const notification = await sendArrivalNotification(driver, trip, destination, message, recipients);
+        revalidatePath('/trips');
+        return notification;
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         throw new Error(`Failed to notify arrival: ${message}`);

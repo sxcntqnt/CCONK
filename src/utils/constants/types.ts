@@ -1,8 +1,9 @@
 import { StaticImageData } from 'next/image';
 import { MarkerData } from '@/store';
 import { GeoJSON } from 'geojson';
+import { Recipient, ContentBlock } from '@knocklabs/client';
 
-export type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+export type Breakpoint = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 export type DesktopMobile<T extends string | number> = {
     desktop?: T;
@@ -172,13 +173,13 @@ export type Payment = {
 export type Notification = {
     id: number;
     userId: number;
-    tripId?: number;
+    tripId: number | null;
     type: string;
     message: string;
     status: string;
-    createdAt: string;
-    sentAt?: string;
-    driverId?: number;
+    createdAt: Date;
+    sentAt: Date | null;
+    driverId: number | null;
     subject: string;
 };
 
@@ -259,3 +260,13 @@ export enum DriverStatus {
     ACTIVE = 'ACTIVE',
     OFFLINE = 'OFFLINE',
 }
+// Custom type for Knock Recipient to match workflow data
+export type KnockRecipient = Recipient & {
+    name: string;
+};
+
+// Custom type for body content block
+export type BodyContentBlock = ContentBlock & {
+    name: 'body';
+    rendered: string;
+};

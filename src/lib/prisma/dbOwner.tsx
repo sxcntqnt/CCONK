@@ -417,13 +417,13 @@ export async function getNotifications({
         const formattedNotifications: Notification[] = notifications.map((notification) => ({
             id: notification.id,
             userId: notification.userId,
-            tripId: notification.tripId ?? undefined,
+            tripId: notification.tripId,
             type: notification.type,
             message: notification.message,
             status: notification.status,
-            createdAt: notification.createdAt.toISOString(),
-            sentAt: notification.sentAt?.toISOString(),
-            driverId: notification.driverId ?? undefined,
+            createdAt: notification.createdAt,
+            sentAt: notification.sentAt,
+            driverId: notification.driverId,
             subject: notification.subject,
         }));
 
@@ -434,7 +434,6 @@ export async function getNotifications({
         throw new Error(`Failed to fetch notifications: ${errorMsg}`);
     }
 }
-
 // Ensure a bus has an active trip (for testing)
 export async function ensureBusHasTrip(busId: number): Promise<void> {
     try {

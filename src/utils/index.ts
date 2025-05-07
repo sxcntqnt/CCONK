@@ -5,6 +5,7 @@ import { DEFAULT_AVATAR_URL, PAGINATION_LIMIT, COMPANIES, PROCESS } from './cons
 import { PLANS, PRICING_FEATURES, WORKSPACE_LIMIT } from './constants/pricing';
 import { NAV_LINKS } from './constants/nav-links';
 import { aeonik, inter } from './constants/fonts';
+import { ROLES, ROLE_ORDER, Role } from './constants/roles';
 
 // functions
 import { cn } from './functions/cn';
@@ -55,6 +56,8 @@ import {
     TripStatus,
     ReservationStatus,
     DriverStatus,
+    KnockRecipient,
+    BodyContentBlock,
 } from './constants/types';
 
 // Export constants and functions
@@ -77,6 +80,8 @@ export {
     NAV_LINKS,
     aeonik,
     inter,
+    ROLES,
+    ROLE_ORDER,
 
     // functions
     cn,
@@ -131,4 +136,7 @@ export type {
     TripStatus as TripStatusType,
     ReservationStatus as ReservationStatusType,
     DriverStatus as DriverStatusType,
+    KnockRecipient,
+    BodyContentBlock,
+    Role,
 };

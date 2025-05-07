@@ -1,168 +1,270 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
-import {
-    KnockProvider,
-    KnockFeedProvider,
-    NotificationIconButton,
-    NotificationFeedPopover,
-    NotificationFeedContainer,
-    NotificationCell,
-    useKnockFeed,
-} from '@knocklabs/react';
+import Knock, { FeedItem, FeedStoreState, NotificationSource } from '@knocklabs/client';
 import '@knocklabs/react/dist/index.css';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/utils';
-import { formatDistanceToNow } from 'date-fns';
-import { ROLES, Role } from '@/utils/constants/roles';
-import Link from 'next/link';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import MagicBadge from '@/components/ui/magic-badge';
+import { Badge } from '@/components/ui/badge';
+import { Inbox } from 'lucide-react';
+import { Toaster } from './sonner';
+import { ToastProvider, ToastViewport, Toast, ToastTitle, ToastDescription, ToastClose } from './toast';
+import { FeedItemCard } from './FeedItemCard';
+import { ROLES, Role } from '@/utils';
+import PreferenceCenter from './PreferenceCenter';
+import { cn } from '@/utils';
 
-// Custom wrapper for NotificationIconButton
-const CustomNotificationIconButton = ({
-    badgeCountVisible = true,
-    ...props
-}: {
-    badgeCountVisible?: boolean;
-    ref: React.RefObject<HTMLButtonElement | null>;
-    onClick: () => void;
-}) => {
-    const { useFeedStore } = useKnockFeed();
-    const { metadata } = useFeedStore();
-    const unreadCount = metadata?.unread_count || 0;
-
-    return (
-        <div className="relative">
-            <NotificationIconButton {...props} />
-            {badgeCountVisible && unreadCount > 0 && (
-                <MagicBadge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 text-xs rounded-full font-bold"
-                >
-                    {unreadCount}
-                </MagicBadge>
-            )}
-        </div>
-    );
+type ExternalNotification = {
+    id: string;
+    type: string;
+    message: string;
+    sentAt: string;
+    tripId?: string;
+    busId?: string;
+    destination?: string;
+    driverName?: string;
+    source: 'prisma';
 };
 
-// Define props to make the component more flexible
 type NotificationFeedProps = {
     badgeCountVisible?: boolean;
-    customRenderer?: boolean;
-    userRole: Role; // Add userRole prop
+    userRole: Role;
+    externalNotifications?: ExternalNotification[];
 };
 
-const NotificationFeed = ({ badgeCountVisible = true, customRenderer = false, userRole }: NotificationFeedProps) => {
-    const [isVisible, setIsVisible] = useState(false);
-    const notifButtonRef = useRef<HTMLButtonElement>(null);
+const NotificationFeed = ({
+    badgeCountVisible = true,
+    userRole,
+    externalNotifications = [],
+}: NotificationFeedProps) => {
     const { user } = useUser();
+    const [feed, setFeed] = useState<FeedStoreState>({} as FeedStoreState);
+    const [isWelcomeToastOpen, setIsWelcomeToastOpen] = useState(false);
+    const [isNotificationToastOpen, setIsNotificationToastOpen] = useState(false);
+    const [latestNotification, setLatestNotification] = useState<FeedItem | null>(null);
 
     if (!user) return null;
 
-    const handleClick = () => {
-        setIsVisible(!isVisible);
-    };
+    const knockClient = new Knock(process.env.NEXT_PUBLIC_KNOCK_PUBLIC_API_KEY as string);
+    knockClient.authenticate(user.id);
+    const knockFeed = knockClient.feeds.initialize(process.env.NEXT_PUBLIC_KNOCK_FEED_CHANNEL_ID as string, {
+        page_size: 20,
+        archived: 'include',
+    });
 
-    const KNOCK_API_KEY = process.env.NEXT_PUBLIC_KNOCK_API_KEY || '';
-    const KNOCK_FEED_ID = process.env.NEXT_PUBLIC_KNOCK_FEED_ID || '';
+    useEffect(() => {
+        knockFeed.listenForUpdates();
+        const fetchFeed = async () => {
+            await knockFeed.fetch();
+            const feedState = knockFeed.getState();
+            setFeed(feedState);
+            // Show welcome toast when feed is loaded
+            setIsWelcomeToastOpen(true);
+        };
+        fetchFeed();
 
-    if (!KNOCK_API_KEY || !KNOCK_FEED_ID) {
-        console.warn('Knock API key or feed ID is missing');
-        return null;
+        knockFeed.on('items.received.realtime', ({ items }: { items: FeedItem[] }) => {
+            items.forEach((item) => {
+                if (item.data && item.data.showToast) {
+                    // Store the latest notification and open the toast
+                    setLatestNotification(item);
+                    setIsNotificationToastOpen(true);
+                }
+            });
+            setFeed(knockFeed.getState());
+        });
+
+        knockFeed.on('items.*', () => {
+            console.log('calling items.*');
+            setFeed(knockFeed.getState());
+        });
+
+        return () => {
+            knockFeed.teardown();
+        };
+    }, []);
+
+    const [feedItems, archivedItems] = useMemo(() => {
+        // Combine Knock feed items with external notifications
+        const knockItems = feed?.items || [];
+        const externalFeedItems: FeedItem[] = externalNotifications.map((notif) => ({
+            id: notif.id,
+            data: { showToast: true },
+            inserted_at: notif.sentAt,
+            updated_at: notif.sentAt,
+            archived_at: null, // Treat external notifications as non-archived by default
+            read_at: null,
+            seen_at: null,
+            clicked_at: null,
+            interacted_at: null,
+            link_clicked_at: null,
+            actors: [],
+            activities: [],
+            block_ids: [],
+            blocks: [],
+            tenant: null,
+            recipient: { id: user.id },
+            __cursor: notif.id,
+            source: 'in_app_feed' as unknown as NotificationSource, // Cast to unknown first to satisfy type
+            total_activities: 0,
+            total_actors: 0,
+        }));
+
+        const allItems = [...knockItems, ...externalFeedItems];
+        const feedItems = allItems.filter((item) => !item.archived_at);
+        const archivedItems = allItems.filter((item) => item.archived_at);
+        return [feedItems, archivedItems];
+    }, [feed, externalNotifications, user.id]);
+
+    async function markAllAsRead() {
+        await knockFeed.markAllAsRead();
+        setFeed(knockFeed.getState());
+    }
+
+    async function markAllAsArchived() {
+        await knockFeed.markAllAsArchived();
+        setFeed(knockFeed.getState());
     }
 
     return (
-        <KnockProvider apiKey={KNOCK_API_KEY} userId={user.id}>
-            <KnockFeedProvider feedId={KNOCK_FEED_ID}>
-                <>
-                    <CustomNotificationIconButton
-                        ref={notifButtonRef}
-                        onClick={handleClick}
-                        badgeCountVisible={badgeCountVisible}
-                    />
-                    <NotificationFeedContainer>
-                        <NotificationFeedPopover
-                            buttonRef={notifButtonRef as React.RefObject<HTMLElement>}
-                            isVisible={isVisible}
-                            onClose={() => setIsVisible(false)}
-                            renderItem={
-                                customRenderer
-                                    ? ({ item }) => (
-                                          <NotificationCell item={item}>
-                                              <Card
-                                                  className={cn(
-                                                      'transition-all duration-200',
-                                                      userRole === ROLES.PASSENGER &&
-                                                          'border-blue-500 bg-gradient-to-r from-blue-500/10 to-teal-500/10 hover:shadow-blue-500/20',
-                                                      userRole === ROLES.DRIVER &&
-                                                          'border-purple-500 bg-gradient-to-r from-purple-500/10 to-red-500/10 hover:shadow-purple-500/20',
-                                                      userRole === ROLES.OWNER &&
-                                                          'border-yellow-500 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 hover:shadow-yellow-500/20',
-                                                  )}
-                                              >
-                                                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                                      <CardTitle className="text-sm font-medium">
-                                                          {item.data?.type === 'DRIVER_ARRIVAL'
-                                                              ? 'Driver Arrival'
-                                                              : item.data?.type || 'Notification'}
-                                                      </CardTitle>
-                                                      <div className="flex items-center gap-2">
-                                                          {(userRole === ROLES.DRIVER || userRole === ROLES.OWNER) && (
-                                                              <MagicBadge
-                                                                  variant={item.seen_at ? 'secondary' : 'default'}
-                                                                  className={cn(
-                                                                      item.seen_at
-                                                                          ? 'bg-gray-500'
-                                                                          : userRole === ROLES.DRIVER
-                                                                            ? 'bg-purple-500 hover:bg-purple-600'
-                                                                            : 'bg-yellow-500 hover:bg-yellow-600',
-                                                                  )}
-                                                              >
-                                                                  {item.seen_at ? 'Read' : 'Unread'}
-                                                              </MagicBadge>
-                                                          )}
-                                                          <MagicBadge variant="outline">
-                                                              {item.inserted_at
-                                                                  ? formatDistanceToNow(new Date(item.inserted_at), {
-                                                                        addSuffix: true,
-                                                                    })
-                                                                  : 'Unknown time'}
-                                                          </MagicBadge>
-                                                      </div>
-                                                  </CardHeader>
-                                                  <CardContent>
-                                                      <p className="text-sm">
-                                                          {item.data?.message ||
-                                                              `${item.data?.driverName || 'Driver'} has arrived at ${
-                                                                  item.data?.destination || 'destination'
-                                                              } with bus ${item.data?.busId || 'unknown'}.`}
-                                                      </p>
-                                                      {item.data?.tripId && (
-                                                          <p className="text-xs text-muted-foreground mt-1">
-                                                              Trip ID: {item.data.tripId}
-                                                          </p>
-                                                      )}
-                                                      {userRole === ROLES.PASSENGER && item.data?.tripId && (
-                                                          <Button variant="outline" size="sm" className="mt-2" asChild>
-                                                              <Link href={`/dashboard/trips/${item.data.tripId}`}>
-                                                                  View Trip
-                                                              </Link>
-                                                          </Button>
-                                                      )}
-                                                  </CardContent>
-                                              </Card>
-                                          </NotificationCell>
-                                      )
-                                    : undefined
-                            }
-                        />
-                    </NotificationFeedContainer>
-                </>
-            </KnockFeedProvider>
-        </KnockProvider>
+        <ToastProvider>
+            <Tabs defaultValue="inbox" className="w-[600px]">
+                <TabsList>
+                    <TabsTrigger value="inbox">
+                        Inbox{' '}
+                        {feed.loading ? null : (
+                            <Badge className="ml-2" variant="secondary">
+                                {feed?.metadata?.unread_count || 0}
+                            </Badge>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger value="archived">Archived</TabsTrigger>
+                    <TabsTrigger value="all">All</TabsTrigger>
+                    <Separator orientation="vertical" />
+                    <Dialog>
+                        <DialogTrigger className="mx-6 text-xl">⚙️</DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Notification Preferences</DialogTitle>
+                                <DialogDescription>
+                                    <PreferenceCenter />
+                                </DialogDescription>
+                            </DialogHeader>
+                        </DialogContent>
+                    </Dialog>
+                </TabsList>
+                <TabsContent value="inbox">
+                    <div className="my-6 flex">
+                        <Button variant="outline" onClick={markAllAsRead} className="w-full mr-2">
+                            Mark all as read
+                        </Button>
+                        <Button variant="outline" className="w-full ml-2" onClick={markAllAsArchived}>
+                            Archive all
+                        </Button>
+                    </div>
+                    {feedItems?.length > 0 ? (
+                        feedItems?.map((item: FeedItem) => {
+                            // Find matching external notification for additional data
+                            const externalNotif = externalNotifications.find((notif) => notif.id === item.id);
+                            return (
+                                <FeedItemCard
+                                    key={item.id}
+                                    item={{
+                                        ...item,
+                                        data: {
+                                            ...item.data,
+                                            message: externalNotif?.message,
+                                            type: externalNotif?.type,
+                                            destination: externalNotif?.destination,
+                                            driverName: externalNotif?.driverName,
+                                        },
+                                    }}
+                                    knockFeed={knockFeed}
+                                    userRole={userRole}
+                                />
+                            );
+                        })
+                    ) : (
+                        <div className="flex flex-col items-center my-12 py-12 bg-slate-50 rounded-md">
+                            <Inbox className="w-16 h-16" />
+                            <p className="mt-6">You're all caught up</p>
+                        </div>
+                    )}
+                </TabsContent>
+                <TabsContent value="archived">
+                    {archivedItems?.map((item: FeedItem) => {
+                        const externalNotif = externalNotifications.find((notif) => notif.id === item.id);
+                        return (
+                            <FeedItemCard
+                                key={item.id}
+                                item={{
+                                    ...item,
+                                    data: {
+                                        ...item.data,
+                                        message: externalNotif?.message,
+                                        type: externalNotif?.type,
+                                        destination: externalNotif?.destination,
+                                        driverName: externalNotif?.driverName,
+                                    },
+                                }}
+                                knockFeed={knockFeed}
+                                userRole={userRole}
+                            />
+                        );
+                    })}
+                </TabsContent>
+                <TabsContent value="all">
+                    {[...feedItems, ...archivedItems].map((item: FeedItem) => {
+                        const externalNotif = externalNotifications.find((notif) => notif.id === item.id);
+                        return (
+                            <FeedItemCard
+                                key={item.id}
+                                item={{
+                                    ...item,
+                                    data: {
+                                        ...item.data,
+                                        message: externalNotif?.message,
+                                        type: externalNotif?.type,
+                                        destination: externalNotif?.destination,
+                                        driverName: externalNotif?.driverName,
+                                    },
+                                }}
+                                knockFeed={knockFeed}
+                                userRole={userRole}
+                            />
+                        );
+                    })}
+                </TabsContent>
+                <Toaster />
+                <ToastViewport />
+                <Toast open={isWelcomeToastOpen} onOpenChange={setIsWelcomeToastOpen}>
+                    <ToastTitle>Welcome to Notifications</ToastTitle>
+                    <ToastDescription>
+                        Your notification feed is ready at {new Date().toLocaleString()}
+                    </ToastDescription>
+                    <ToastClose />
+                </Toast>
+                {latestNotification && (
+                    <Toast open={isNotificationToastOpen} onOpenChange={setIsNotificationToastOpen}>
+                        <ToastTitle>
+                            📨 New notification at {new Date(latestNotification.inserted_at).toLocaleString()}
+                        </ToastTitle>
+                        <ToastDescription>Snap! This real-time feed is mind-blowing 🤯</ToastDescription>
+                        <ToastClose />
+                    </Toast>
+                )}
+            </Tabs>
+        </ToastProvider>
     );
 };
 
