@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/lib/prisma/client';
+import { PrismaClient } from './client';
 
 declare global {
     var cachedPrisma: PrismaClient;

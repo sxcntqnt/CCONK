@@ -21,7 +21,7 @@
   "include": [
     "src/lib/server/wsserver.ts",
     "src/lib/prisma",
-    "src/utils/functions/driverUtils.ts",
+    "src/lib/server/driverUtils.ts",
     "src/utils/constants/types.ts"
   ],
   "exclude": [
@@ -40,6 +40,7 @@
     "src/middleware.ts",
     "src/store",
     "src/styles",
-    "src/utils"
+    "src/utils",
+    "src/utils/constants/fonts.ts",
   ]
 }

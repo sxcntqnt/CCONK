@@ -11,7 +11,7 @@
     "ws:build:cjs": "tsc -p tsconfig.server.cjs.json",
     "ws:dev": "npm run ws:build:cjs && node lib-cjs/lib/server/wsserver.js",
     "ws:start": "node lib-cjs/lib/server/wsserver.js",
-    "start": "next start -p 5001",
+    "start": "concurrently -k -r --success=first \"next start -p 5001\" \"npm run ws:start\"",
     "lint": "npx lint-staged",
     "format": "npm run prettier:check",
     "prettier:check": "prettier --config .prettierrc --check \"src/**/*.{ts,tsx,css,html}\"",

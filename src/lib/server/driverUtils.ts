@@ -1,4 +1,4 @@
-import { db } from '@/lib/prisma';
+import { db } from '../prisma';
 import {
     Driver,
     Bus,
@@ -9,7 +9,7 @@ import {
     DriverData,
     DriverStatus,
     TripStatus,
-} from '@/utils/constants/types';
+} from '../../utils/constants/types';
 
 export const getDriverById = async (driverId: number): Promise<ApiResponse<Driver>> => {
     try {

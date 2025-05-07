@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/lib/prisma/client';
+import { PrismaClient } from '../prisma/client';
 import { Svix, Webhook } from 'svix';
 import express, { Request, Response, RequestHandler } from 'express';
 import bodyParser from 'body-parser';
@@ -6,7 +6,8 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { getTripIdForDriver, updateTripStatus, getDriverById, TripStatus, DriverStatus } from '@/utils';
+import { getTripIdForDriver, updateTripStatus, getDriverById } from './driverUtils';
+import { TripStatus, DriverStatus } from '../../utils/constants/types';
 
 // Load environment variables
 dotenv.config({ path: './.env' });
