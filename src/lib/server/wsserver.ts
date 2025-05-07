@@ -10,11 +10,11 @@ import { getTripIdForDriver, updateTripStatus, getDriverById } from './driverUti
 import { TripStatus, DriverStatus } from '../../utils/constants/types';
 
 // Load environment variables
-dotenv.config({ path: './.env' });
+dotenv.config({ path: '../../../.env' });
 
 // Initialize Express app
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5001' }));
 app.use(bodyParser.json());
 
 // Create HTTP server
@@ -22,7 +22,7 @@ const httpServer = createServer(app);
 
 // Initialize Socket.IO
 const io = new Server(httpServer, {
-    cors: { origin: process.env.FRONTEND_URL || 'http://localhost:3000' },
+    cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5001' },
     transports: ['websocket'],
 });
 
@@ -709,7 +709,7 @@ app.post('/api/setup-trip-webhook', setupTripWebhook);
 app.post('/api/webhooks/trip-updates', tripUpdatesWebhook);
 
 // Start the server
-const port = process.env.PORT || 1738;
+const port = process.env.NEXT_PUBLIC_WEBSOCKET_PORT || 1739;
 httpServer.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
