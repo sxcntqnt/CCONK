@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { getTripIdForDriver, updateTripStatus, getDriverById, TripStatus, DriverStatus } from '@/utils/index';
+import { getTripIdForDriver, updateTripStatus, getDriverById, TripStatus, DriverStatus } from '@/utils';
 
 // Load environment variables
 dotenv.config({ path: './.env' });

@@ -13,21 +13,9 @@ import {
     Geofence,
     IncomeExpense,
     Image,
-} from '@/utils/constants/types';
-
-export interface MarkerData {
-    id: number;
-    latitude: number;
-    longitude: number;
-    title: string;
-    profileImageUrl: string;
-    busImageUrl: string;
-    licensePlate: string;
-    capacity: number;
-    rating: number;
-    model?: string;
-    status?: string;
-}
+    MarkerData,
+    mapDriverAndBusToMarkerData,
+} from '@/utils';
 
 export interface Message {
     id: number;
@@ -134,20 +122,6 @@ export interface LocationStore {
     setUserLocation: (location: { latitude: number; longitude: number; address: string }) => void;
     setDestinationLocation: (location: { latitude: number; longitude: number; address: string }) => void;
 }
-
-export const mapDriverAndBusToMarkerData = (driver: Driver, bus: Bus): MarkerData => ({
-    id: bus.id,
-    latitude: bus.latitude || 0,
-    longitude: bus.longitude || 0,
-    title: `${driver.firstName} ${driver.lastName}`,
-    profileImageUrl: driver.profileImageUrl || '/images/default-profile.jpg',
-    busImageUrl: bus.images?.[0]?.src || '/images/default-bus.jpg',
-    licensePlate: bus.licensePlate,
-    capacity: bus.capacity,
-    rating: driver.rating || 4.5,
-    model: bus.model,
-    status: driver.status,
-});
 
 export const useOwnerStore = create<OwnerStore>((set) => ({
     owners: [],

@@ -1,18 +1,5 @@
 import { db } from '@/lib/prisma';
-import {
-    Driver,
-    Bus,
-    Trip,
-    Reservation,
-    User,
-    ApiResponse,
-    DriverData,
-    DriverStatus,
-    TripStatus,
-} from '@/utils/constants/types';
-import { MarkerData, mapDriverAndBusToMarkerData } from '@/store';
-import { notifyDriverArrival } from '@/actions/notify-driver-arrival';
-import { ROLES } from '@/utils/constants/roles';
+import { Driver, Bus, Trip, Reservation, User, ApiResponse, DriverData, DriverStatus, TripStatus } from '@/utils';
 
 export const getDriverById = async (driverId: number): Promise<ApiResponse<Driver>> => {
     try {
@@ -31,7 +18,7 @@ export const getDriverById = async (driverId: number): Promise<ApiResponse<Drive
             id: driver.id,
             userId: driver.userId,
             licenseNumber: driver.licenseNumber,
-            status: driver.status, // No .toLowerCase(), matches 'ACTIVE' | 'OFFLINE'
+            status: driver.status,
             firstName: driver.user.name.split(' ')[0],
             lastName: driver.user.name.split(' ')[1] || '',
             email: driver.user.email,
@@ -80,24 +67,6 @@ export const getBusByDriverId = async (driverId: number): Promise<ApiResponse<Bu
         return { error: 'Internal server error', status: 500 };
     }
 };
-
-export const getDriverAndBusMarkerData = async (driverId: number): Promise<ApiResponse<MarkerData>> => {
-    try {
-        const driverResponse = await getDriverById(driverId);
-        const busResponse = await getBusByDriverId(driverId);
-
-        if (driverResponse.error || busResponse.error) {
-            return { error: driverResponse.error || busResponse.error, status: 404 };
-        }
-
-        const markerData = mapDriverAndBusToMarkerData(driverResponse.data!, busResponse.data!);
-        return { data: markerData, status: 200 };
-    } catch (error) {
-        console.error('Error fetching marker data:', error);
-        return { error: 'Internal server error', status: 500 };
-    }
-};
-
 export const getActiveTripsForDriver = async (driverId: number): Promise<ApiResponse<Trip[]>> => {
     try {
         const trips = await db.trip.findMany({
@@ -124,41 +93,23 @@ export const getActiveTripsForDriver = async (driverId: number): Promise<ApiResp
             },
         });
 
-        const formattedTrips: Trip[] = trips.map(
-            (trip: {
-                id: number;
-                busId: number;
-                driverId: number | null;
-                departureCity: string;
-                arrivalCity: string;
-                departureTime: Date;
-                arrivalTime: Date | null;
-                status: string;
-                isFullyBooked: boolean;
-                originLatitude: number | null;
-                originLongitude: number | null;
-                destinationLatitude: number | null;
-                destinationLongitude: number | null;
-                createdAt: Date;
-                updatedAt: Date;
-            }) => ({
-                id: trip.id,
-                busId: trip.busId,
-                driverId: trip.driverId || undefined,
-                departureCity: trip.departureCity,
-                arrivalCity: trip.arrivalCity,
-                departureTime: trip.departureTime.toISOString(),
-                arrivalTime: trip.arrivalTime?.toISOString(),
-                status: trip.status.toLowerCase() as 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
-                isFullyBooked: trip.isFullyBooked,
-                originLatitude: trip.originLatitude || undefined,
-                originLongitude: trip.originLongitude || undefined,
-                destinationLatitude: trip.destinationLatitude || undefined,
-                destinationLongitude: trip.destinationLongitude || undefined,
-                createdAt: trip.createdAt.toISOString(),
-                updatedAt: trip.updatedAt.toISOString(),
-            }),
-        );
+        const formattedTrips: Trip[] = trips.map((trip) => ({
+            id: trip.id,
+            busId: trip.busId,
+            driverId: trip.driverId || undefined,
+            departureCity: trip.departureCity,
+            arrivalCity: trip.arrivalCity,
+            departureTime: trip.departureTime.toISOString(),
+            arrivalTime: trip.arrivalTime?.toISOString(),
+            status: trip.status.toLowerCase() as 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
+            isFullyBooked: trip.isFullyBooked,
+            originLatitude: trip.originLatitude || undefined,
+            originLongitude: trip.originLongitude || undefined,
+            destinationLatitude: trip.destinationLatitude || undefined,
+            destinationLongitude: trip.destinationLongitude || undefined,
+            createdAt: trip.createdAt.toISOString(),
+            updatedAt: trip.updatedAt.toISOString(),
+        }));
 
         return { data: formattedTrips, status: 200 };
     } catch (error) {
@@ -357,27 +308,15 @@ export const getUsersWithReservations = async (tripId: number): Promise<ApiRespo
             },
         });
 
-        const users: User[] = reservations.map(
-            (reservation: {
-                user: {
-                    id: number;
-                    clerkId: string;
-                    name: string;
-                    email: string;
-                    image: string;
-                    phoneNumber: string | null;
-                    role: string;
-                };
-            }) => ({
-                id: reservation.user.id,
-                clerkId: reservation.user.clerkId,
-                name: reservation.user.name,
-                email: reservation.user.email,
-                image: reservation.user.image,
-                phoneNumber: reservation.user.phoneNumber || undefined,
-                role: reservation.user.role,
-            }),
-        );
+        const users: User[] = reservations.map((reservation) => ({
+            id: reservation.user.id,
+            clerkId: reservation.user.clerkId,
+            name: reservation.user.name,
+            email: reservation.user.email,
+            image: reservation.user.image,
+            phoneNumber: reservation.user.phoneNumber || undefined,
+            role: reservation.user.role,
+        }));
 
         return { data: users, status: 200 };
     } catch (error) {
@@ -404,7 +343,7 @@ export const getDriverData = async (clerkId: string): Promise<ApiResponse<Driver
             },
         });
 
-        if (!driverRecord || driverRecord.role !== ROLES.DRIVER || !driverRecord.driver) {
+        if (!driverRecord || driverRecord.role !== 'DRIVER' || !driverRecord.driver) {
             return { error: 'User is not a driver or has no driver profile', status: 404 };
         }
 
@@ -413,7 +352,7 @@ export const getDriverData = async (clerkId: string): Promise<ApiResponse<Driver
             busId: driverRecord.driver.busId || undefined,
             userId: driverRecord.driver.userId,
             licenseNumber: driverRecord.driver.licenseNumber,
-            status: driverRecord.driver.status, // No .toLowerCase(), matches 'ACTIVE' | 'OFFLINE'
+            status: driverRecord.driver.status,
             firstName: driverRecord.name.split(' ')[0],
             lastName: driverRecord.name.split(' ')[1] || '',
             email: driverRecord.email,
@@ -472,74 +411,5 @@ export const getReservationCount = async (tripId: number): Promise<ApiResponse<n
     } catch (error) {
         console.error('Error fetching reservation count:', error);
         return { error: 'Failed to fetch reservation count', status: 500 };
-    }
-};
-
-export const handleArrival = async (tripId: number): Promise<ApiResponse<Trip>> => {
-    try {
-        const trip = await db.trip.findUnique({
-            where: { id: tripId },
-        });
-
-        if (!trip) {
-            return { error: 'Trip not found', status: 404 };
-        }
-
-        if (trip.status !== 'IN_PROGRESS' && trip.status !== 'SCHEDULED') {
-            return { error: 'Trip is not active', status: 400 };
-        }
-
-        const updatedTrip = await db.trip.update({
-            where: { id: tripId },
-            data: {
-                status: 'COMPLETED',
-                arrivalTime: new Date(),
-                updatedAt: new Date(),
-            },
-            select: {
-                id: true,
-                busId: true,
-                driverId: true,
-                departureCity: true,
-                arrivalCity: true,
-                departureTime: true,
-                arrivalTime: true,
-                status: true,
-                isFullyBooked: true,
-                originLatitude: true,
-                originLongitude: true,
-                destinationLatitude: true,
-                destinationLongitude: true,
-                createdAt: true,
-                updatedAt: true,
-            },
-        });
-
-        const formattedTrip: Trip = {
-            id: updatedTrip.id,
-            busId: updatedTrip.busId,
-            driverId: updatedTrip.driverId || undefined,
-            departureCity: updatedTrip.departureCity,
-            arrivalCity: updatedTrip.arrivalCity,
-            departureTime: updatedTrip.departureTime.toISOString(),
-            arrivalTime: updatedTrip.arrivalTime?.toISOString(),
-            status: updatedTrip.status.toLowerCase() as 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
-            isFullyBooked: updatedTrip.isFullyBooked,
-            originLatitude: updatedTrip.originLatitude || undefined,
-            originLongitude: updatedTrip.originLongitude || undefined,
-            destinationLatitude: updatedTrip.destinationLatitude || undefined,
-            destinationLongitude: updatedTrip.destinationLongitude || undefined,
-            createdAt: updatedTrip.createdAt.toISOString(),
-            updatedAt: updatedTrip.updatedAt.toISOString(),
-        };
-
-        const formData = new FormData();
-        formData.append('tripId', tripId.toString());
-        await notifyDriverArrival(formData);
-
-        return { data: formattedTrip, status: 200 };
-    } catch (error) {
-        console.error('Error handling arrival:', error);
-        return { error: 'Internal server error', status: 500 };
     }
 };

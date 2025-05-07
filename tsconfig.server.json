@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2018",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": false,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "noImplicitAny": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/lib/prisma": ["./src/lib/prisma/index.ts"],
+      "@prisma/client": ["./src/lib/prisma/client"]
+    }
+  },
+  "include": [
+    "src/lib/server/wsserver.ts",
+    "src/lib/prisma",
+    "src/utils/functions/driverUtils.ts",
+    "src/utils/constants/types.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "build",
+    "src/actions",
+    "src/api",
+    "src/app",
+    "src/components",
+    "src/hooks",
+    "src/lib/index.ts",
+    "src/lib/mpesa",
+    "src/lib/names.ts",
+    "src/lib/websocket",
+    "src/middleware.ts",
+    "src/store",
+    "src/styles",
+    "src/utils"
+  ]
+}

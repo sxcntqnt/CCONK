@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useDriverStore, useBusStore, useReservationStore, mapDriverAndBusToMarkerData, MarkerData } from '@/store';
+import { useDriverStore, useBusStore, useReservationStore } from '@/store';
+import { getDriverAndBusMarkerData, MarkerData, mapDriverAndBusToMarkerData } from '@/utils';
 import Image from 'next/image';
 import { formatTimeOfDay, fetchAPI } from '@/lib/names';
 import { useEffect, useState, useCallback } from 'react';

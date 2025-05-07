@@ -1,12 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useDriverStore, useBusStore, MarkerData, mapDriverAndBusToMarkerData } from '@/store';
+import { useDriverStore, useBusStore } from '@/store';
 import { useState, useEffect } from 'react';
 import DriverCard from '@/components/ui/DriverCard';
 import RideLayout from '@/components/ui/RideLayout';
 import { Driver } from '@/utils/constants/types';
-import { getDriverAndBusMarkerData } from '@/utils/functions/driverUtils';
+import { handleArrival, getDriverAndBusMarkerData, MarkerData, mapDriverAndBusToMarkerData } from '@/utils';
 
 const DriversPage = () => {
     const router = useRouter();

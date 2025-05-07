@@ -14,7 +14,6 @@ import { generateMetadata } from './functions/metadata';
 import {
     getDriverById,
     getBusByDriverId,
-    getDriverAndBusMarkerData,
     getActiveTripsForDriver,
     createTripReservation,
     getTripIdForDriver,
@@ -22,8 +21,9 @@ import {
     getUsersWithReservations,
     getDriverData,
     getReservationCount,
-    handleArrival,
 } from './functions/driverUtils';
+
+import { mapDriverAndBusToMarkerData, getDriverAndBusMarkerData, handleArrival } from './functions/frontendUtils';
 
 // types
 import {
@@ -56,6 +56,7 @@ import {
     TripStatus,
     ReservationStatus,
     DriverStatus,
+    MarkerData,
     KnockRecipient,
     BodyContentBlock,
 } from './constants/types';
@@ -90,6 +91,7 @@ export {
     getDriverById,
     getBusByDriverId,
     getDriverAndBusMarkerData,
+    mapDriverAndBusToMarkerData,
     getActiveTripsForDriver,
     createTripReservation,
     getTripIdForDriver,
@@ -132,6 +134,7 @@ export type {
     ApiResponse,
     DriverData,
     Report,
+    MarkerData,
     Message,
     TripStatus as TripStatusType,
     ReservationStatus as ReservationStatusType,

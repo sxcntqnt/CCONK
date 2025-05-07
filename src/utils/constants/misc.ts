@@ -1,8 +1,5 @@
 import { BarChart3Icon, LineChartIcon, FolderOpenIcon, WandSparklesIcon } from 'lucide-react';
 import { SewingPinIcon, BellIcon, BarChartIcon } from '@radix-ui/react-icons';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import Image from 'next/image';
 
 export const DEFAULT_AVATAR_URL =

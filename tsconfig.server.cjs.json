@@ -1,9 +1,8 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.server.json",
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "node",
-    "outDir": "lib-cjs",
-    "noEmit": false
+    "outDir": "lib-cjs"
   }
 }

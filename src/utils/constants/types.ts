@@ -1,5 +1,4 @@
 import { StaticImageData } from 'next/image';
-import { MarkerData } from '@/store';
 import { GeoJSON } from 'geojson';
 import { Recipient, ContentBlock } from '@knocklabs/client';
 
@@ -259,6 +258,19 @@ export enum ReservationStatus {
 export enum DriverStatus {
     ACTIVE = 'ACTIVE',
     OFFLINE = 'OFFLINE',
+}
+export interface MarkerData {
+    id: number;
+    latitude: number;
+    longitude: number;
+    title: string;
+    profileImageUrl: string;
+    busImageUrl: string;
+    licensePlate: string;
+    capacity: number;
+    rating: number;
+    model?: string;
+    status?: string;
 }
 // Custom type for Knock Recipient to match workflow data
 export type KnockRecipient = Recipient & {
