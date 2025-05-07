@@ -709,7 +709,7 @@ app.post('/api/setup-trip-webhook', setupTripWebhook);
 app.post('/api/webhooks/trip-updates', tripUpdatesWebhook);
 
 // Start the server
-const port = process.env.NEXT_PUBLIC_WEBSOCKET_PORT || 1739;
+const port = process.env.NEXT_PUBLIC_WEBSOCKET_PORT || 1738;
 httpServer.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
