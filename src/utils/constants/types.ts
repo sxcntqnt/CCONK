@@ -1,6 +1,16 @@
 import { StaticImageData } from 'next/image';
 import { GeoJSON } from 'geojson';
 import { Recipient, ContentBlock } from '@knocklabs/client';
+import { ROLES, Role } from './roles';
+import {
+    MatatuCapacity,
+    SeatCategory,
+    SeatStatus,
+    DriverStatus,
+    TripStatus,
+    ReservationStatus,
+    PaymentStatus,
+} from '@prisma/client';
 
 export type Breakpoint = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
@@ -30,29 +40,23 @@ export type FrameRenderedComponentPropsWithIndex = FrameRenderedComponentProps &
 };
 
 export type Frame = {
-    /* The key will default to frame.default.src if this is blank */
-    key?: string;
+    key: string;
     mobile?: NRCFrameComponent;
     desktop?: NRCFrameComponent;
 };
+
 export type NRCFrameComponent = {
     image?: Partial<StaticImageData> & NRCImage;
-    /* This component will be absolutely positioned on top of the image. */
     component?: React.ReactNode | ((props: FrameRenderedComponentPropsWithIndex) => React.ReactNode);
 };
 
 export type NRCCarouselProps = {
-    /* Frames will default to the aspect ratio of the first image, they must all be the same ratio unless you use "heights". */
     frames: Frame[];
-    /* This will override the strict resolution mandate, allowing you to choose a height that the Frames will conform to. Not recommend. */
     heights?: DesktopMobile<number>;
-    /* The point at which the Carousel will switch to Desktop components. If this is not set the mobile option will be defaulted. */
     breakpoint?: Breakpoint;
     slideDuration?: number;
     noAutoPlay?: boolean;
-    /* This component will be displayed before the images load in an absolutely positioned container with gull width and height. */
     loadingComponent?: React.ReactNode;
-    /* This is the blur quality of the initial blurred image 1-100, the trade off is performance verse beauty. */
     blurQuality?: number;
     noBlur?: boolean;
     ariaLabel?: string;
@@ -60,168 +64,403 @@ export type NRCCarouselProps = {
     willAutoPlayOutsideViewport?: boolean;
 };
 
-export type Owner = {
-    id: number;
-    userId: number;
-    createdAt: Date;
-    updatedAt: Date;
-    profileImageUrl: string;
-    buses: Bus[];
-    geofences: Geofence[];
-    incomeExpenses: IncomeExpense[];
-    user: User;
-    reports: Report[];
-};
-
 export type User = {
-    id: number;
+    id: string;
     clerkId: string;
-    name: string;
-    email: string;
-    image: string;
-    phoneNumber?: string;
-    role: string;
-};
-
-export interface Driver {
-    id: number;
-    busId?: number;
-    userId: number;
-    licenseNumber: string;
-    status: 'ACTIVE' | 'OFFLINE';
     firstName: string;
     lastName: string;
     email: string;
-    profileImageUrl: string;
-    rating?: number;
-}
+    image: string;
+    phoneNumber?: string;
+    role: Role;
+    notifications?: Notification[];
+    sentMessages?: Message[];
+    receivedMessages?: Message[];
+    passenger?: Passenger;
+    driver?: Driver;
+    owner?: Owner;
+    organization?: Organization;
+    payments?: Payment[];
+    reservations?: Reservation[];
+    geofences?: Geofence[];
+    createdAt: Date;
+    updatedAt: Date;
+};
 
-export interface Bus {
-    id: number;
+export type Owner = {
+    id: string;
+    userId: string;
+    createdAt: Date;
+    updatedAt: Date;
+    user: User;
+    buses: Bus[];
+    geofences: Geofence[];
+    incomeExpenses: IncomeExpense[];
+    reports: Report[];
+    notifications?: Notification[];
+    sentMessages?: Message[];
+    receivedMessages?: Message[];
+    organizationId?: string;
+    organization?: Organization;
+};
+
+export type Organization = {
+    id: string;
+    userId: string;
+    createdAt: Date;
+    updatedAt: Date;
+    user: User;
+    buses: Bus[];
+    owners: Owner[];
+    notifications?: Notification[];
+    sentMessages?: Message[];
+    receivedMessages?: Message[];
+};
+
+export type Bus = {
+    id: string;
     licensePlate: string;
     capacity: number;
     model?: string;
     latitude?: number;
     longitude?: number;
-    lastLocationUpdate?: string;
-    category: string;
-    images: { src: string; alt: string }[];
-}
-
-export type Image = {
-    id: number;
-    busId: number;
-    src: string;
-    blurDataURL?: string;
-    alt: string;
+    lastLocationUpdate?: Date;
+    createdAt: Date;
+    updatedAt: Date;
+    category: MatatuCapacity;
+    ownerId?: string;
+    owner?: Owner;
+    organizationId?: string;
+    organization?: Organization;
+    driverId?: string;
+    driver?: Driver;
+    passengers: Passenger[];
+    images: Image[];
+    seats?: Seat[];
+    trips?: Trip[];
+    fuelRecords?: Fuel[];
+    reminders?: Reminder[];
+    trackingRecords?: Tracking[];
+    geofenceEvents?: GeofenceEvent[];
 };
 
-export interface Trip {
-    id: number;
-    busId: number;
-    driverId?: number;
-    departureCity: string;
-    arrivalCity: string;
-    departureTime: string;
-    arrivalTime?: string;
-    status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
-    isFullyBooked: boolean;
-    originLatitude?: number;
-    originLongitude?: number;
-    destinationLatitude?: number;
-    destinationLongitude?: number;
-    createdAt: string;
-    updatedAt: string;
+export type Driver = {
+    id: string;
+    userId: string;
+    busId?: string;
+    licenseNumber: string;
+    status: DriverStatus;
+    hireDate?: Date;
+    rating?: number;
+    profileImageUrl: string;
+    createdAt: Date;
+    updatedAt: Date;
+    user: User;
     bus?: Bus;
-}
+    notifications?: Notification[];
+    trips?: Trip[];
+    sentMessages?: Message[];
+    receivedMessages?: Message[];
+};
 
-export type Seat = {
-    id: number;
-    busId: number;
-    seatNumber: number;
-    price: number;
-    row: number;
-    column: number;
-    category: string;
-    status: string;
+export type Passenger = {
+    id: string;
+    userId: string;
+    busId?: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    user: User;
+    bus?: Bus;
+    payments?: Payment[];
+    reservations?: Reservation[];
+    notifications?: Notification[];
+    sentMessages?: Message[];
+    receivedMessages?: Message[];
+};
+
+export type Route = {
+    id: string;
+    route_number: string;
+    pickup_point: {
+        pickup_point: string;
+        pickup_latlng: { latitude: number; longitude: number };
+        pickup_hexid: string;
+    };
+    destinations: {
+        destination: string;
+        destination_latlng: { latitude: number; longitude: number };
+        destination_hexid: string;
+    }[];
+    helix: string[];
+    createdAt: Date;
+    updatedAt: Date;
+    trips?: Trip[];
+};
+
+export type Trip = {
+    id: string;
+    busId: string;
+    driverId?: string;
+    routeId: string;
+    destinationIndex: number;
+    departureTime: Date;
+    arrivalTime?: Date;
+    status: TripStatus;
+    isFullyBooked: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    bus: {
+        id: string;
+        licensePlate: string;
+        capacity: number;
+        category: MatatuCapacity;
+        images: Image[];
+    };
+    driver?: Driver;
+    route?: Route;
+    reservations?: Reservation[];
+    notifications?: Notification[];
+    messages?: Message[];
+    trackingRecords?: Tracking[];
 };
 
 export type Reservation = {
-    id: number;
-    userId: number;
-    tripId: number;
-    seatId: number;
-    status: 'pending' | 'confirmed' | 'cancelled';
-    bookedAt: string;
-    updatedAt: string;
-    paymentId?: number;
+    id: string;
+    userId: string;
+    tripId: string;
+    seatId: string;
+    status: ReservationStatus;
+    bookedAt: Date;
+    updatedAt: Date;
+    successfulPaymentId?: string;
+    trip: Trip;
+    seat: Seat;
+    user: User;
+    passenger?: Passenger;
+    successfulPayment?: Payment;
+    payments: Payment[];
+    messages?: Message[];
 };
 
 export type Payment = {
-    id: number;
-    userId: number;
+    id: string;
+    reservationId: string;
+    userId: string;
     amount: number;
-    transactionId: string;
-    phoneNumber: string;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-    transactionDate?: string;
+    mPesaReceiptNumber?: string;
+    merchantRequestId?: string;
+    checkoutRequestId?: string;
+    resultCode?: number;
+    resultDesc?: string;
+    balance?: number;
+    phoneNumber: string | null;
+    status: PaymentStatus;
+    transactionDate?: Date;
+    callbackMetadata?: any;
+    createdAt: Date;
+    updatedAt: Date;
+    user: User;
+    passenger?: Passenger;
+    reservation: Reservation;
+    successfulReservation?: Reservation;
 };
 
 export type Notification = {
-    id: number;
-    userId: number;
-    tripId: number | null;
+    id: string;
+    userId: string;
+    tripId?: string;
     type: string;
     message: string;
     status: string;
     createdAt: Date;
-    sentAt: Date | null;
-    driverId: number | null;
+    sentAt?: Date;
+    driverId?: string;
     subject: string;
+    driver?: Driver;
+    trip?: Trip;
+    user: User;
+    passenger?: Passenger;
+    owner?: Owner;
+    organization?: Organization;
 };
 
-export interface Geofence {
-    id: number;
-    ownerId?: number | null;
-    userId?: number | null;
+export type Fuel = {
+    id: string;
+    busId: string;
+    fuelQuantity: number;
+    odometerReading: number;
+    fuelPrice: number;
+    fuelFillDate: Date;
+    fuelAddedBy: string;
+    fuelComments?: string;
+    createdAt: Date;
+    updatedAt: Date;
+    bus: {
+        id: string;
+        licensePlate: string;
+    };
+};
+
+export type Reminder = {
+    id: string;
+    busId: string;
+    date: Date;
+    message: string;
+    title: string;
+    isRead: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    maintenanceType?: string;
+    isMaintenance: boolean;
+    bus: {
+        id: string;
+        licensePlate: string;
+    };
+};
+
+export type Tracking = {
+    id: string;
+    busId: string;
+    tripId?: string;
+    time: Date;
+    latitude: number;
+    longitude: number;
+    altitude?: number;
+    speed?: number;
+    bearing?: number;
+    accuracy?: number;
+    provider?: string;
+    comment?: string;
+    createdAt: Date;
+    bus: {
+        id: string;
+        licensePlate: string;
+    };
+    trip?: Trip;
+    geofenceEvents?: GeofenceEvent[];
+};
+
+export type Geofence = {
+    id: string;
+    ownerId?: string;
+    userId?: string;
     name: string;
     h3Index: string;
     resolution: number;
-    geoJson: GeoJSON;
+    geoJson: any;
     color: string;
     createdAt: Date;
     updatedAt: Date;
-    owner?: Owner | null;
-    user?: User | null;
-}
+    owner?: Owner;
+    user?: User;
+    geofenceEvents?: GeofenceEvent[];
+};
 
-export interface IncomeExpense {
-    id: number;
-    ownerId: number;
+export type GeofenceEvent = {
+    id: string;
+    busId: string;
+    geofenceId: string;
+    trackingId?: string;
+    event: string;
+    timestamp: Date;
+    createdAt: Date;
+    updatedAt: Date;
+    bus: {
+        id: string;
+        licensePlate: string;
+    };
+    geofence: {
+        id: string;
+        name: string;
+    };
+    tracking?: Tracking;
+};
+
+export type IncomeExpense = {
+    id: string;
+    ownerId: string;
     type: string;
     amount: number;
     description?: string;
-    recordedAt: Date;
-    updatedAt: Date;
+    recordedAt: string;
+    updatedAt: string;
     owner: Owner;
-}
+};
 
-export interface Report {
-    id: number;
-    ownerId: number;
+export type Report = {
+    id: string;
+    ownerId: string;
     title: string;
     description?: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
+    type: string;
+    data?: Record<string, any>;
+    generatedAt: string;
+    updatedAt: string;
+    owner: Owner;
+};
 
-export interface DriverCardProps {
-    item: MarkerData;
-    selected: number;
+export type Image = {
+    id: string;
+    busId: string;
+    src: string;
+    blurDataURL?: string | null;
+    alt: string;
+    bus?: Bus;
+};
+
+export type Message = {
+    id: string;
+    reservationId: string;
+    tripId: string;
+    senderId: string;
+    receiverId: string;
+    content: string;
+    timestamp: Date;
+    deletedAt?: Date;
+    reservation: Reservation;
+    trip: Trip;
+    sender: User;
+    receiver: User;
+    senderPassenger?: Passenger;
+    receiverPassenger?: Passenger;
+    senderDriver?: Driver;
+    receiverDriver?: Driver;
+    senderOwner?: Owner;
+    receiverOwner?: Owner;
+    senderOrganization?: Organization;
+    receiverOrganization?: Organization;
+};
+
+export type Seat = {
+    id: string;
+    busId: string;
+    seatNumber: number;
+    price: number;
+    row: number;
+    column: number;
+    category: SeatCategory;
+    status: SeatStatus;
+    bus: Bus;
+    reservations?: Reservation[];
+};
+
+export type DriverCardProps = {
+    item: {
+        id: string;
+        title: string;
+        profileImageUrl: string;
+        busImageUrl: string;
+        licensePlate: string;
+        capacity: number;
+        rating: number;
+        latitude: number;
+        longitude: number;
+        model?: string;
+        status?: DriverStatus;
+    };
+    selected: string;
     setSelected: () => void;
-}
+};
 
 export interface ApiResponse<T> {
     data?: T;
@@ -232,35 +471,12 @@ export interface ApiResponse<T> {
 export interface DriverData {
     driver: Driver;
     trip: Trip | null;
+    reservations: Reservation[];
+    fuelRecords: Fuel[];
 }
 
-export interface Message {
-    id: number;
-    reservationId: number;
-    senderId: number;
-    receiverId: number;
-    content: string;
-    timestamp: string;
-}
-export enum TripStatus {
-    SCHEDULED = 'SCHEDULED',
-    IN_PROGRESS = 'IN_PROGRESS',
-    COMPLETED = 'COMPLETED',
-    CANCELLED = 'CANCELLED',
-}
-
-export enum ReservationStatus {
-    PENDING = 'PENDING',
-    CONFIRMED = 'CONFIRMED',
-    CANCELLED = 'CANCELLED',
-}
-
-export enum DriverStatus {
-    ACTIVE = 'ACTIVE',
-    OFFLINE = 'OFFLINE',
-}
 export interface MarkerData {
-    id: number;
+    id: string;
     latitude: number;
     longitude: number;
     title: string;
@@ -270,15 +486,37 @@ export interface MarkerData {
     capacity: number;
     rating: number;
     model?: string;
-    status?: string;
+    status?: DriverStatus;
 }
-// Custom type for Knock Recipient to match workflow data
+
 export type KnockRecipient = Recipient & {
-    name: string;
+    firstName: string;
+    lastName: string;
 };
 
-// Custom type for body content block
 export type BodyContentBlock = ContentBlock & {
     name: 'body';
     rendered: string;
+};
+
+export type SeatData = {
+    id: string;
+    busId: string;
+    label: string;
+    status: SeatStatus;
+    price: number;
+    row?: number;
+    column?: number;
+    category?: SeatCategory;
+    reservation?: {
+        id: string;
+        tripId: string;
+        user: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            email: string;
+        };
+        status: ReservationStatus;
+    };
 };

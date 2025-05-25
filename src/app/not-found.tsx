@@ -20,7 +20,7 @@ const NotFound = () => {
                         </Link>
                         .
                     </p>
-                    <Link href="/" legacyBehavior>
+                    <Link href="/">
                         <Button className="mt-8">Back to homepage</Button>
                     </Link>
                 </div>

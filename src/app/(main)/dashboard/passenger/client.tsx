@@ -244,7 +244,7 @@ export default function PassengerDashboardClient({ userData, passenger, buses, e
                 </div>
 
                 <div className="mt-8 flex justify-center gap-4">
-                    <Link href="/" legacyBehavior>
+                    <Link href="/">
                         <Button
                             variant="outline"
                             className="text-white border-gray-700 hover:bg-gray-600 w-32 transition-colors"

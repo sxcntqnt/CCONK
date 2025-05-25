@@ -1,4 +1,3 @@
-// src/components/NRCCarousel.tsx
 'use client';
 
 import React, { RefObject, useEffect, useRef, useState, useCallback } from 'react';
@@ -50,12 +49,13 @@ const NRCCarousel = ({
     const infiniteFrames = [frames[frames.length - 1], ...frames, frames[0]];
     const lessThanTwoFrames = frames.length < 2;
 
+    // Adjusted visible frames for Netflix-style layout
     const visibleFrames = {
         sm: 1,
         md: 2,
         lg: 3,
-        xl: 4,
-        '2xl': 5,
+        xl: 3,
+        '2xl': 4,
     };
     const currentVisibleCount = isMobile ? 1 : visibleFrames[breakpoint];
 
@@ -81,15 +81,15 @@ const NRCCarousel = ({
     const jumpTo = useCallback(
         (i: number) => {
             if (playingAnimation || lessThanTwoFrames) return;
-            if (i < 1) {
+            if (i < 0) {
                 setIndex(1);
-            } else if (i >= infiniteFrames.length - 2) {
+            } else if (i >= frames.length) {
                 setIndex(infiniteFrames.length - 2);
             } else {
                 setIndex(i + 1);
             }
         },
-        [playingAnimation, lessThanTwoFrames, infiniteFrames.length],
+        [playingAnimation, lessThanTwoFrames, frames.length, infiniteFrames.length],
     );
 
     const toggleFirstImageLoaded = useCallback(() => {
@@ -104,17 +104,17 @@ const NRCCarousel = ({
             if (event.key === 'ArrowLeft') decIndex();
             if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
-                if (controlsComponent) jumpTo(index - 1); // Trigger control action
+                jumpTo(index - 1);
             }
         },
-        [incIndex, decIndex, jumpTo, index, controlsComponent],
+        [incIndex, decIndex, jumpTo, index],
     );
 
     // Window resize handling
     const handleResize = useCallback(() => {
         setWindowWidth(window.innerWidth);
         if (containerRef.current) {
-            const scale = window.innerWidth < 768 ? 0.9 : 1;
+            const scale = window.innerWidth < 640 ? 0.95 : 1; // Smaller scale on iPhone
             containerRef.current.style.transform = `scale(${scale})`;
         }
     }, []);
@@ -123,8 +123,8 @@ const NRCCarousel = ({
     const handleScroll = useCallback(() => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
-        const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
-        containerRef.current.style.opacity = isVisible ? '1' : '0.8';
+        const isVisible = rect.top >= -100 && rect.bottom <= window.innerHeight + 100;
+        containerRef.current.style.opacity = isVisible ? '1' : '0.9';
     }, []);
 
     // Add and clean up event listeners
@@ -133,7 +133,6 @@ const NRCCarousel = ({
         window.addEventListener('resize', handleResize);
         window.addEventListener('scroll', handleScroll);
 
-        // Initial calls
         handleResize();
         handleScroll();
 
@@ -163,7 +162,7 @@ const NRCCarousel = ({
     useEffect(() => {
         let timeout: NodeJS.Timeout | undefined;
         if (playingAnimation) {
-            timeout = setTimeout(() => setPlayingAnimation(false), 500);
+            timeout = setTimeout(() => setPlayingAnimation(false), 600); // Match transition duration
         }
         if (!playingAnimation && willResetAnimStateOnAnimEnd) {
             setIndex(index === infiniteFrames.length - 1 ? 1 : infiniteFrames.length - 2);
@@ -181,32 +180,38 @@ const NRCCarousel = ({
         (firstFrame.desktop?.image?.width || DEFAULT_ASPECT_RATIO[0]) /
         (firstFrame.desktop?.image?.height || DEFAULT_ASPECT_RATIO[1]);
     const mobileAspectRatio =
-        (firstFrame.mobile?.image?.width || DEFAULT_ASPECT_RATIO[1]) /
-        (firstFrame.mobile?.image?.height || DEFAULT_ASPECT_RATIO[0]);
+        (firstFrame.mobile?.image?.width || DEFAULT_ASPECT_RATIO[0]) /
+        (firstFrame.mobile?.image?.height || DEFAULT_ASPECT_RATIO[1]);
+
+    // Swipe handlers with momentum
+    const swipeHandlers = useSwipeable({
+        onSwipedLeft: incIndex,
+        onSwipedRight: decIndex,
+        swipeDuration: 600,
+        preventScrollOnSwipe: true,
+        trackMouse: true,
+        delta: 10, // Minimum swipe distance
+        trackTouch: true,
+    });
 
     return (
         <section
-            className="overflow-hidden w-full relative"
+            className="relative w-full overflow-hidden bg-gray-900 py-4"
             ref={containerRef}
             onDragStart={(e) => e.preventDefault()}
             role="region"
             aria-label={ariaLabel || 'Promotional carousel'}
-            tabIndex={0} // Make focusable
+            tabIndex={0}
         >
+            {/* Carousel Container */}
             <div
                 className={clsx(
-                    { 'motion-safe:transition-transform motion-safe:duration-500': !disableAnimation },
                     breakpointClass.mobile,
-                    'flex gap-4 p-2',
+                    'flex gap-2 px-2 transition-transform duration-600 ease-[cubic-bezier(0.25,1,0.5,1)]',
+                    { 'motion-safe:transition-none': disableAnimation },
                 )}
                 style={{ transform: `translateX(-${(index * 100) / currentVisibleCount}%)` }}
-                {...useSwipeable({
-                    onSwipedLeft: incIndex,
-                    onSwipedRight: decIndex,
-                    swipeDuration: 500,
-                    preventScrollOnSwipe: true,
-                    trackMouse: true,
-                })}
+                {...swipeHandlers}
             >
                 {infiniteFrames.map((frame, i) => (
                     <div
@@ -216,14 +221,20 @@ const NRCCarousel = ({
                             isLastElement: i === infiniteFrames.length - 1,
                             isMobile: true,
                         })}
-                        className="relative flex-shrink-0"
+                        className={clsx(
+                            'relative flex-shrink-0 rounded-lg overflow-hidden shadow-lg transition-transform duration-300',
+                            {
+                                'scale-105 z-10': i === index, // Scale up active frame
+                                'scale-95 opacity-80': i !== index, // Scale down inactive frames
+                            },
+                        )}
                         style={{
-                            width: `calc(100% / ${currentVisibleCount})`,
+                            width: `calc(90% / ${currentVisibleCount})`, // Slightly smaller for gap
                             aspectRatio: !heights?.mobile ? mobileAspectRatio : undefined,
-                            height: heights?.mobile,
+                            height: heights?.mobile || 'auto',
                         }}
                         aria-hidden={i < index || i >= index + currentVisibleCount}
-                        inert={i < index || i >= index + currentVisibleCount ? true : undefined}
+                        aria-current={i === index ? 'true' : undefined}
                     >
                         <NRCFrame
                             priority={i === 0}
@@ -241,21 +252,17 @@ const NRCCarousel = ({
                     </div>
                 ))}
             </div>
+
+            {/* Desktop Carousel */}
             {!!breakpoint && (
                 <div
                     className={clsx(
-                        { 'motion-safe:transition-transform motion-safe:duration-500': !disableAnimation },
                         breakpointClass.desktop,
-                        'flex gap-4 p-2',
+                        'flex gap-4 px-4 transition-transform duration-600 ease-[cubic-bezier(0.25,1,0.5,1)]',
+                        { 'motion-safe:transition-none': disableAnimation },
                     )}
                     style={{ transform: `translateX(-${(index * 100) / currentVisibleCount}%)` }}
-                    {...useSwipeable({
-                        onSwipedLeft: incIndex,
-                        onSwipedRight: decIndex,
-                        swipeDuration: 500,
-                        preventScrollOnSwipe: true,
-                        trackMouse: true,
-                    })}
+                    {...swipeHandlers}
                 >
                     {infiniteFrames.map((frame, i) => (
                         <div
@@ -264,14 +271,20 @@ const NRCCarousel = ({
                                 isFirstElement: i === 0,
                                 isLastElement: i === infiniteFrames.length - 1,
                             })}
-                            className="relative flex-shrink-0"
+                            className={clsx(
+                                'relative flex-shrink-0 rounded-lg overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105',
+                                {
+                                    'scale-105 z-10': i === index, // Scale up active frame
+                                    'scale-95 opacity-80': i !== index, // Scale down inactive frames
+                                },
+                            )}
                             style={{
-                                width: `calc(100% / ${currentVisibleCount})`,
+                                width: `calc(90% / ${currentVisibleCount})`,
                                 aspectRatio: !heights?.desktop ? desktopAspectRatio : undefined,
-                                height: heights?.desktop,
+                                height: heights?.desktop || 'auto',
                             }}
                             aria-hidden={i < index || i >= index + currentVisibleCount}
-                            inert={i < index || i >= index + currentVisibleCount ? true : undefined}
+                            aria-current={i === index ? 'true' : undefined}
                         >
                             <NRCFrame
                                 priority={i === 0}
@@ -290,6 +303,57 @@ const NRCCarousel = ({
                     ))}
                 </div>
             )}
+
+            {/* Netflix-Style Controls */}
+            <div className="absolute inset-0 flex items-center justify-between px-2 sm:px-4 pointer-events-none">
+                <button
+                    className={clsx(
+                        'pointer-events-auto bg-gray-800 bg-opacity-50 rounded-full p-2 text-white hover:bg-opacity-75 transition-opacity',
+                        { 'opacity-0': index <= 1 && !isHovering, 'opacity-100': index > 1 || isHovering },
+                    )}
+                    onClick={decIndex}
+                    aria-label="Previous slide"
+                    disabled={playingAnimation || lessThanTwoFrames}
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <button
+                    className={clsx(
+                        'pointer-events-auto bg-gray-800 bg-opacity-50 rounded-full p-2 text-white hover:bg-opacity-75 transition-opacity',
+                        {
+                            'opacity-0': index >= infiniteFrames.length - 2 && !isHovering,
+                            'opacity-100': index < infiniteFrames.length - 2 || isHovering,
+                        },
+                    )}
+                    onClick={incIndex}
+                    aria-label="Next slide"
+                    disabled={playingAnimation || lessThanTwoFrames}
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+
+            {/* Dot Indicators */}
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-2">
+                {frames.map((_, i) => (
+                    <button
+                        key={i}
+                        className={clsx(
+                            'w-2 h-2 rounded-full transition-all duration-300',
+                            i === index - 1 ? 'bg-white scale-125' : 'bg-gray-500',
+                        )}
+                        onClick={() => jumpTo(i)}
+                        aria-label={`Go to slide ${i + 1}`}
+                        aria-current={i === index - 1 ? 'true' : undefined}
+                    />
+                ))}
+            </div>
+
+            {/* Custom Controls */}
             {!!controlsComponent &&
                 controlsComponent({
                     decrementCarousel: decIndex,

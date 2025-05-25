@@ -1,16 +1,24 @@
 import { db } from '@/lib/prisma';
 import { notifyDriverArrival } from '@/actions/notify-driver-arrival';
-import {
-    ROLES,
-    MarkerData,
-    Driver,
-    Bus,
-    Trip,
-    ApiResponse,
-    TripStatus,
-    getDriverById,
-    getBusByDriverId,
-} from '@/utils';
+import { ROLES, Driver, Bus, Trip, ApiResponse, TripStatus } from '@/utils';
+
+import { getDriverById, getBusByDriverId } from './driverUtils';
+
+// Define MarkerData type locally to match usage in this file
+export type MarkerData = {
+    id: number;
+    latitude: number;
+    longitude: number;
+    title: string;
+    profileImageUrl: string;
+    busImageUrl: string;
+    licensePlate: string;
+    capacity: number;
+    rating: number;
+    model?: string;
+    status: 'ACTIVE' | 'OFFLINE';
+};
+
 export const mapDriverAndBusToMarkerData = (driver: Driver, bus: Bus): MarkerData => ({
     id: bus.id,
     latitude: bus.latitude || 0,
@@ -79,6 +87,15 @@ export const handleArrival = async (tripId: number): Promise<ApiResponse<Trip>> 
                 destinationLongitude: true,
                 createdAt: true,
                 updatedAt: true,
+                bus: {
+                    select: {
+                        id: true,
+                        licensePlate: true,
+                        capacity: true,
+                        category: true,
+                        images: true,
+                    },
+                },
             },
         });
 
@@ -98,6 +115,19 @@ export const handleArrival = async (tripId: number): Promise<ApiResponse<Trip>> 
             destinationLongitude: updatedTrip.destinationLongitude || undefined,
             createdAt: updatedTrip.createdAt.toISOString(),
             updatedAt: updatedTrip.updatedAt.toISOString(),
+            bus: {
+                id: updatedTrip.bus.id,
+                licensePlate: updatedTrip.bus.licensePlate,
+                capacity: updatedTrip.bus.capacity,
+                category: updatedTrip.bus.category,
+                images: updatedTrip.bus.images.map((img) => ({
+                    id: img.id,
+                    busId: img.busId,
+                    src: img.src,
+                    blurDataURL: img.blurDataURL || undefined,
+                    alt: img.alt,
+                })),
+            },
         };
 
         const formData = new FormData();

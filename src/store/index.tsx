@@ -15,6 +15,7 @@ import {
     Image,
     MarkerData,
     mapDriverAndBusToMarkerData,
+    Reminder,
 } from '@/utils';
 
 export interface Message {
@@ -252,4 +253,71 @@ export const useLocationStore = create<LocationStore>((set) => ({
         const { selectedDriver, clearSelectedDriver } = useDriverStore.getState();
         if (selectedDriver) clearSelectedDriver();
     },
+}));
+
+interface SettingsState {
+    notifications: {
+        email: boolean;
+        push: boolean;
+    };
+    theme: 'light' | 'dark';
+    setNotifications: (notifications: Partial<SettingsState['notifications']>) => void;
+    setTheme: (theme: 'light' | 'dark') => void;
+}
+
+export const useSettingsStore = create<SettingsState>((set) => ({
+    notifications: {
+        email: true,
+        push: true,
+    },
+    theme: 'dark',
+    setNotifications: (notifications) =>
+        set((state) => ({
+            notifications: { ...state.notifications, ...notifications },
+        })),
+    setTheme: (theme) => set({ theme }),
+}));
+
+// Define the store's state and actions
+interface ReminderStore {
+    reminders: Reminder[];
+    setReminders: (reminders: Reminder[]) => void;
+    addReminder: (reminder: Reminder) => void;
+    updateReminder: (id: number, updatedReminder: Partial<Reminder>) => void;
+    removeReminder: (id: number) => void;
+    markAsRead: (id: number, isread: boolean) => void;
+}
+
+// Create the Zustand store
+export const useReminderStore = create<ReminderStore>((set) => ({
+    reminders: [],
+
+    // Set the entire reminders array
+    setReminders: (reminders) => set({ reminders }),
+
+    // Add a new reminder
+    addReminder: (reminder) =>
+        set((state) => ({
+            reminders: [...state.reminders, reminder],
+        })),
+
+    // Update an existing reminder by ID
+    updateReminder: (id, updatedReminder) =>
+        set((state) => ({
+            reminders: state.reminders.map((reminder) =>
+                reminder.id === id ? { ...reminder, ...updatedReminder } : reminder,
+            ),
+        })),
+
+    // Remove a reminder by ID
+    removeReminder: (id) =>
+        set((state) => ({
+            reminders: state.reminders.filter((reminder) => reminder.id !== id),
+        })),
+
+    // Mark a reminder as read/unread
+    markAsRead: (id, isread) =>
+        set((state) => ({
+            reminders: state.reminders.map((reminder) => (reminder.id === id ? { ...reminder, isread } : reminder)),
+        })),
 }));

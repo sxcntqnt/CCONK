@@ -60,6 +60,11 @@ const GeofenceControls: React.FC<GeofenceControlsProps> = ({
         }
     };
 
+    // Shorten h3Index for display
+    const shortenH3Index = (h3Index: string) => {
+        return h3Index.length > 10 ? `${h3Index.slice(0, 7)}...` : h3Index;
+    };
+
     return (
         <div className="w-full md:w-1/4 p-4 bg-background border-l border-border overflow-y-auto">
             <div className="mb-6">
@@ -104,7 +109,11 @@ const GeofenceControls: React.FC<GeofenceControlsProps> = ({
                         {geofences.map((geofence) => (
                             <li
                                 key={geofence.id}
-                                className={`p-3 rounded-lg border transition-all duration-200 ${activeGeofence === geofence.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                                className={`p-3 rounded-lg border transition-all duration-200 ${
+                                    activeGeofence === geofence.id
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-border hover:border-primary/50'
+                                }`}
                             >
                                 <div className="flex items-center">
                                     <div
@@ -143,7 +152,11 @@ const GeofenceControls: React.FC<GeofenceControlsProps> = ({
                                                     {geofence.name}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground">
-                                                    Created {geofence.createdAt.toLocaleDateString()}
+                                                    Resolution: {geofence.resolution} • H3:{' '}
+                                                    {shortenH3Index(geofence.h3Index)} • Created{' '}
+                                                    {new Date(geofence.createdAt).toLocaleDateString()}
+                                                    {geofence.updatedAt &&
+                                                        ` • Updated ${new Date(geofence.updatedAt).toLocaleDateString()}`}
                                                 </div>
                                             </div>
                                         )}

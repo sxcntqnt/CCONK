@@ -1,4 +1,10 @@
-export type MatatuCapacity = '14' | '26' | '33' | '46' | '52' | '67';
+export type MatatuCapacity =
+    | 'CAPACITY_14'
+    | 'CAPACITY_26'
+    | 'CAPACITY_33'
+    | 'CAPACITY_46'
+    | 'CAPACITY_52'
+    | 'CAPACITY_67';
 
 interface MatatuConfig {
     totalSeats: number;
@@ -7,12 +13,12 @@ interface MatatuConfig {
 }
 
 export const matatuConfigs: Record<MatatuCapacity, MatatuConfig> = {
-    '14': {
+    CAPACITY_14: {
         totalSeats: 14,
         title: '14-Seater Matatu',
         layout: [[[1, 2]], [[3, 4, 5]], [[6], [7, 8]], [[9], [10, 11]], [[12, 13, 14]]],
     },
-    '26': {
+    CAPACITY_26: {
         totalSeats: 26,
         title: '26-Seater Matatu',
         layout: [
@@ -43,7 +49,7 @@ export const matatuConfigs: Record<MatatuCapacity, MatatuConfig> = {
             ],
         ],
     },
-    '33': {
+    CAPACITY_33: {
         totalSeats: 33,
         title: '33-Seater Matatu',
         layout: [
@@ -79,7 +85,7 @@ export const matatuConfigs: Record<MatatuCapacity, MatatuConfig> = {
             [[31, 32, 33]],
         ],
     },
-    '46': {
+    CAPACITY_46: {
         totalSeats: 46,
         title: '46-Seater Matatu',
         layout: [
@@ -127,7 +133,7 @@ export const matatuConfigs: Record<MatatuCapacity, MatatuConfig> = {
             [[42, 43, 44, 45, 46]],
         ],
     },
-    '52': {
+    CAPACITY_52: {
         totalSeats: 52,
         title: '52-Seater Matatu',
         layout: [
@@ -171,7 +177,7 @@ export const matatuConfigs: Record<MatatuCapacity, MatatuConfig> = {
             [[47, 48, 49, 50, 51, 52]],
         ],
     },
-    '67': {
+    CAPACITY_67: {
         totalSeats: 67,
         title: '67-Seater Matatu',
         layout: [
@@ -229,11 +235,21 @@ export const matatuConfigs: Record<MatatuCapacity, MatatuConfig> = {
     },
 };
 
-export const validCapacities: MatatuCapacity[] = Object.keys(matatuConfigs) as MatatuCapacity[];
+export const validCapacities: MatatuCapacity[] = [
+    'CAPACITY_14',
+    'CAPACITY_26',
+    'CAPACITY_33',
+    'CAPACITY_46',
+    'CAPACITY_52',
+    'CAPACITY_67',
+];
 
-export function validateCapacity(capacity: number | string | null | undefined): MatatuCapacity {
-    const capacityStr = String(capacity);
-    return validCapacities.includes(capacityStr as MatatuCapacity) ? (capacityStr as MatatuCapacity) : '14';
+export function validateCapacity(capacity: number | string): MatatuCapacity {
+    const capacityStr = `CAPACITY_${capacity}` as MatatuCapacity;
+    if (!validCapacities.includes(capacityStr)) {
+        throw new Error(`Invalid capacity: ${capacity}. Must be one of ${validCapacities.join(', ')}`);
+    }
+    return capacityStr;
 }
 
 // Configuration validation

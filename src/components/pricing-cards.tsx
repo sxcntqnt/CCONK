@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn, PLANS } from '@/utils';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { CheckCircleIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';

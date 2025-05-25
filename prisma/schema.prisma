@@ -8,6 +8,41 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MatatuCapacity {
+  CAPACITY_14
+  CAPACITY_26
+  CAPACITY_33
+  CAPACITY_46
+  CAPACITY_51
+  CAPACITY_52
+  CAPACITY_67
+}
+
+enum SeatCategory {
+  single
+  window
+  aisle
+  middle
+}
+
+enum SeatStatus {
+  AVAILABLE
+  SELECTED
+  RESERVED
+}
+
+enum Role {
+  PASSENGER
+  DRIVER
+  OWNER
+  ORGANIZATION
+}
+
+enum DriverStatus {
+  ACTIVE
+  INACTIVE
+}
+
 enum TripStatus {
   SCHEDULED
   IN_PROGRESS
@@ -19,138 +54,209 @@ enum ReservationStatus {
   PENDING
   CONFIRMED
   CANCELLED
+  COMPLETED
 }
 
-enum DriverStatus {
-  ACTIVE
-  OFFLINE
-}
-
-model Owner {
-  id             Int             @id @default(autoincrement())
-  userId         Int             @unique
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  buses          Bus[]
-  geofences      Geofence[]
-  incomeExpenses IncomeExpense[]
-  user           User            @relation(fields: [userId], references: [id])
-  reports        Report[]
-
-  @@index([userId])
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
 }
 
 model User {
-  id              Int            @id @default(autoincrement())
+  id              String         @id @default(uuid())
   clerkId         String         @unique
-  name            String
+  firstName       String
+  lastName        String
   email           String         @unique
   image           String
   phoneNumber     String?
-  role            String         @default("passenger")
-  driver          Driver?
-  geofences       Geofence[]
-  notifications   Notification[]
-  owner           Owner?
-  payments        Payment[]
-  reservations    Reservation[]
-  sentMessages    Message[]      @relation("Sender") // Added for sender relation
-  receivedMessages Message[]     @relation("Receiver") // Added for receiver relation
+  role            Role           @default(PASSENGER)
+  notifications   Notification[] @relation("UserNotifications")
+  sentMessages    Message[]      @relation("Sender")
+  receivedMessages Message[]      @relation("Receiver")
+  passenger       Passenger?     @relation("PassengerUser")
+  driver          Driver?        @relation("DriverUser")
+  owner           Owner?         @relation("OwnerUser")
+  organization    Organization?  @relation("OrganizationUser")
+  payments        Payment[]      @relation("UserPayments")
+  reservations    Reservation[]  @relation("UserReservations")
+  geofences       Geofence[]     @relation("UserGeofences")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([email])
   @@index([clerkId])
 }
 
+model Passenger {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  busId           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  user            User           @relation("PassengerUser", fields: [userId], references: [id])
+  bus             Bus?           @relation("BusPassengers", fields: [busId], references: [id])
+  payments        Payment[]      @relation("PassengerPayments")
+  reservations    Reservation[]  @relation("PassengerReservations")
+  notifications   Notification[] @relation("PassengerNotifications")
+  sentMessages    Message[]      @relation("PassengerSender")
+  receivedMessages Message[]      @relation("PassengerReceiver")
+
+  @@index([userId])
+  @@index([busId])
+}
+
 model Driver {
-  id              Int           @id @default(autoincrement())
-  userId          Int           @unique
-  busId           Int?
-  licenseNumber   String        @unique
-  status          DriverStatus  @default(ACTIVE)
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  busId           String?        @unique
+  licenseNumber   String         @unique
+  status          DriverStatus   @default(ACTIVE)
   hireDate        DateTime?
   rating          Float?
   profileImageUrl String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  bus             Bus?          @relation(fields: [busId], references: [id])
-  user            User          @relation(fields: [userId], references: [id])
-  notifications   Notification[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  user            User           @relation("DriverUser", fields: [userId], references: [id])
+  bus             Bus?           @relation("DriverBus", fields: [busId], references: [id])
+  notifications   Notification[] @relation("DriverNotifications")
   trips           Trip[]
+  sentMessages    Message[]      @relation("DriverSender")
+  receivedMessages Message[]      @relation("DriverReceiver")
 
   @@index([userId])
   @@index([busId])
   @@index([licenseNumber])
 }
 
+model Owner {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  user            User           @relation("OwnerUser", fields: [userId], references: [id])
+  buses           Bus[]          @relation("OwnerBuses")
+  geofences       Geofence[]     @relation("OwnerGeofences")
+  incomeExpenses  IncomeExpense[]
+  reports         Report[]
+  notifications   Notification[] @relation("OwnerNotifications")
+  sentMessages    Message[]      @relation("OwnerSender")
+  receivedMessages Message[]      @relation("OwnerReceiver")
+  organizationId   String?
+  organization    Organization?  @relation("OrganizationOwners", fields: [organizationId], references: [id])
+
+  @@index([userId])
+  @@index([organizationId])
+}
+
+model Organization {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  user            User           @relation("OrganizationUser", fields: [userId], references: [id])
+  buses           Bus[]          @relation("OrganizationBuses")
+  owners          Owner[]        @relation("OrganizationOwners")
+  notifications   Notification[] @relation("OrganizationNotifications")
+  sentMessages    Message[]      @relation("OrganizationSender")
+  receivedMessages Message[]      @relation("OrganizationReceiver")
+
+  @@index([userId])
+}
+
 model Bus {
-  id                Int       @id @default(autoincrement())
-  licensePlate      String    @unique
+  id                String         @id @default(uuid())
+  licensePlate      String         @unique
   capacity          Int
   model             String?
   latitude          Float?
   longitude         Float?
   lastLocationUpdate DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  category          String
-  ownerId           Int?
-  owner             Owner?    @relation(fields: [ownerId], references: [id])
-  drivers           Driver[]
+  createdAt         DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  category          MatatuCapacity
+  ownerId           String?
+  owner             Owner?         @relation("OwnerBuses", fields: [ownerId], references: [id])
+  organizationId     String?
+  organization      Organization?  @relation("OrganizationBuses", fields: [organizationId], references: [id])
+  driverId          String?        @unique
+  driver            Driver?        @relation("DriverBus")
+  passengers        Passenger[]    @relation("BusPassengers")
   images            Image[]
   seats             Seat[]
   trips             Trip[]
+  fuelRecords       Fuel[]
+  reminders         Reminder[]
+  trackingRecords   Tracking[]
+  geofenceEvents    GeofenceEvent[]
 
   @@index([licensePlate])
   @@index([ownerId])
+  @@index([organizationId])
+  @@index([driverId])
 }
 
 model Image {
-  id          Int     @id @default(autoincrement())
-  busId       Int
+  id          String   @id @default(uuid())
+  busId       String
   src         String
   blurDataURL String?
   alt         String
-  bus         Bus     @relation(fields: [busId], references: [id])
+  bus         Bus      @relation(fields: [busId], references: [id])
 
   @@index([busId])
 }
 
+model Route {
+  id            String    @id @default(uuid())
+  route_number  String    @unique
+  pickup_point  Json      // { pickup_point: string, pickup_latlng: { latitude: number, longitude: number }, pickup_hexid: string }
+  destinations  Json[]    // Array of { destination: string, destination_latlng: { latitude: number, longitude: number }, destination_hexid: string }
+  helix         String[]  // Array of H3 indices defining the route path
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  trips         Trip[]    @relation("RouteTrips")
+
+  @@index([route_number])
+}
+
 model Trip {
-  id                  Int           @id @default(autoincrement())
-  busId               Int
-  driverId            Int?
-  departureCity       String
-  arrivalCity         String
-  departureTime       DateTime
-  arrivalTime         DateTime?
-  status              TripStatus    @default(SCHEDULED)
-  isFullyBooked       Boolean       @default(false)
-  originLatitude      Float?
-  originLongitude     Float?
-  destinationLatitude  Float?
-  destinationLongitude Float?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  notifications       Notification[]
-  reservations        Reservation[]
-  bus                 Bus           @relation(fields: [busId], references: [id])
-  driver              Driver?       @relation(fields: [driverId], references: [id])
-  messages            Message[]     // Added for trip relation
+  id            String         @id @default(uuid())
+  busId         String
+  driverId      String?
+  routeId       String
+  destinationIndex Int
+  departureTime DateTime
+  arrivalTime   DateTime?
+  status        TripStatus     @default(SCHEDULED)
+  isFullyBooked Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  bus           Bus            @relation(fields: [busId], references: [id])
+  driver        Driver?        @relation(fields: [driverId], references: [id])
+  route         Route          @relation("RouteTrips", fields: [routeId], references: [id])
+  reservations  Reservation[]
+  notifications Notification[] @relation("TripNotifications")
+  messages      Message[]
+  trackingRecords Tracking[]   @relation("TripTracking")
 
   @@index([busId])
   @@index([driverId])
+  @@index([routeId])
   @@index([departureTime])
 }
 
 model Seat {
-  id           Int          @id @default(autoincrement())
-  busId        Int
+  id           String       @id @default(uuid())
+  busId        String
   seatNumber   Int
   price        Float
   row          Int
   column       Int
-  category     String
-  status       String       @default("available")
+  category     SeatCategory
+  status       SeatStatus   @default(AVAILABLE)
   bus          Bus          @relation(fields: [busId], references: [id])
   reservations Reservation[]
 
@@ -160,58 +266,75 @@ model Seat {
 }
 
 model Reservation {
-  id        Int               @id @default(autoincrement())
-  userId    Int
-  tripId    Int
-  seatId    Int
-  status    ReservationStatus @default(PENDING)
-  bookedAt  DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  paymentId Int?              @unique
-  payment   Payment?          @relation(fields: [paymentId], references: [id])
-  seat      Seat              @relation(fields: [seatId], references: [id])
-  trip      Trip              @relation(fields: [tripId], references: [id])
-  user      User              @relation(fields: [userId], references: [id])
-  messages  Message[]         // Added for reservation relation
+  id                  String            @id @default(uuid())
+  userId              String
+  tripId              String
+  seatId              String
+  status              ReservationStatus @default(PENDING)
+  bookedAt            DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  successfulPaymentId String?           @unique
+  trip                Trip              @relation(fields: [tripId], references: [id])
+  seat                Seat              @relation(fields: [seatId], references: [id])
+  user                User              @relation("UserReservations", fields: [userId], references: [id], map: "reservation_user_fkey")
+  passenger           Passenger?        @relation("PassengerReservations", fields: [userId], references: [userId], map: "reservation_passenger_fkey")
+  successfulPayment   Payment?          @relation("SuccessfulPayment", fields: [successfulPaymentId], references: [id])
+  payments            Payment[]         @relation("ReservationPayments")
+  messages            Message[]
 
   @@unique([tripId, seatId])
   @@index([userId])
   @@index([tripId])
   @@index([seatId])
-  @@index([paymentId])
+  @@index([successfulPaymentId])
 }
 
 model Payment {
-  id              Int          @id @default(autoincrement())
-  userId          Int
-  amount          Float
-  transactionId   String       @unique
-  phoneNumber     String
-  status          String       @default("pending")
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  transactionDate DateTime?
-  user            User         @relation(fields: [userId], references: [id])
-  reservation     Reservation?
+  id                  String        @id @default(uuid())
+  reservationId       String
+  userId              String
+  amount              Float
+  mPesaReceiptNumber  String?       @unique
+  merchantRequestId   String?       @unique
+  checkoutRequestId   String?       @unique
+  resultCode          Int?
+  resultDesc          String?
+  balance             Float?
+  phoneNumber         String
+  status              PaymentStatus @default(PENDING)
+  transactionDate     DateTime?
+  callbackMetadata    Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  user                User          @relation("UserPayments", fields: [userId], references: [id], map: "payment_user_fkey")
+  passenger           Passenger?    @relation("PassengerPayments", fields: [userId], references: [userId], map: "payment_passenger_fkey")
+  reservation         Reservation   @relation("ReservationPayments", fields: [reservationId], references: [id])
+  successfulReservation Reservation? @relation("SuccessfulPayment")
 
   @@index([userId])
-  @@index([transactionId])
+  @@index([reservationId])
+  @@index([mPesaReceiptNumber])
+  @@index([merchantRequestId])
+  @@index([checkoutRequestId])
 }
 
 model Notification {
-  id        Int       @id @default(autoincrement())
-  userId    Int
-  tripId    Int?
+  id        String     @id @default(uuid())
+  userId    String
+  tripId    String?
   type      String
   message   String
-  status    String    @default("pending")
-  createdAt DateTime  @default(now())
+  status    String     @default("pending")
+  createdAt DateTime   @default(now())
   sentAt    DateTime?
-  driverId  Int?
+  driverId  String?
   subject   String
-  driver    Driver?   @relation(fields: [driverId], references: [id])
-  trip      Trip?     @relation(fields: [tripId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
+  driver    Driver?    @relation("DriverNotifications", fields: [driverId], references: [id])
+  trip      Trip?      @relation("TripNotifications", fields: [tripId], references: [id])
+  user      User       @relation("UserNotifications", fields: [userId], references: [id], map: "notification_user_fkey")
+  passenger Passenger? @relation("PassengerNotifications", fields: [userId], references: [userId], map: "notification_passenger_fkey")
+  owner     Owner?     @relation("OwnerNotifications", fields: [userId], references: [userId], map: "notification_owner_fkey")
+  organization Organization? @relation("OrganizationNotifications", fields: [userId], references: [userId], map: "notification_organization_fkey")
 
   @@index([userId])
   @@index([tripId])
@@ -219,11 +342,12 @@ model Notification {
 }
 
 model Report {
-  id          Int      @id @default(autoincrement())
-  ownerId     Int
+  id          String   @id @default(uuid())
+  ownerId     String
   title       String
   description String?
   type        String
+  data        Json?    // Added
   generatedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
   owner       Owner    @relation(fields: [ownerId], references: [id])
@@ -233,18 +357,19 @@ model Report {
 }
 
 model Geofence {
-  id         Int      @id @default(autoincrement())
-  ownerId    Int?
-  userId     Int?
-  name       String
-  h3Index    String
-  resolution Int
-  geoJson    Json
-  color      String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  owner      Owner?   @relation(fields: [ownerId], references: [id])
-  user       User?    @relation(fields: [userId], references: [id])
+  id            String         @id @default(uuid())
+  ownerId       String?
+  userId        String?
+  name          String
+  h3Index       String
+  resolution    Int
+  geoJson       Json
+  color         String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  owner         Owner?         @relation("OwnerGeofences", fields: [ownerId], references: [id])
+  user          User?          @relation("UserGeofences", fields: [userId], references: [id])
+  geofenceEvents GeofenceEvent[]
 
   @@index([ownerId])
   @@index([userId])
@@ -252,8 +377,8 @@ model Geofence {
 }
 
 model IncomeExpense {
-  id          Int      @id @default(autoincrement())
-  ownerId     Int
+  id          String   @id @default(uuid())
+  ownerId     String
   type        String
   amount      Float
   description String?
@@ -266,18 +391,103 @@ model IncomeExpense {
 }
 
 model Message {
-  id            Int         @id @default(autoincrement())
-  reservationId Int
-  tripId        Int
-  senderId      Int
-  receiverId    Int
-  content       String
-  timestamp     DateTime
-  deletedAt     DateTime?
-  reservation   Reservation @relation(fields: [reservationId], references: [id])
-  trip          Trip        @relation(fields: [tripId], references: [id])
-  sender        User        @relation("Sender", fields: [senderId], references: [id])
-  receiver      User        @relation("Receiver", fields: [receiverId], references: [id])
+  id               String        @id @default(uuid())
+  reservationId    String
+  tripId           String
+  senderId         String
+  receiverId       String
+  content          String
+  timestamp        DateTime      @default(now())
+  deletedAt        DateTime?
+  reservation      Reservation   @relation(fields: [reservationId], references: [id])
+  trip             Trip          @relation(fields: [tripId], references: [id])
+  sender           User          @relation("Sender", fields: [senderId], references: [id], map: "message_sender_user_fkey")
+  receiver         User          @relation("Receiver", fields: [receiverId], references: [id], map: "message_receiver_user_fkey")
+  senderPassenger  Passenger?    @relation("PassengerSender", fields: [senderId], references: [userId], map: "message_sender_passenger_fkey")
+  receiverPassenger Passenger?    @relation("PassengerReceiver", fields: [receiverId], references: [userId], map: "message_receiver_passenger_fkey")
+  senderDriver     Driver?       @relation("DriverSender", fields: [senderId], references: [userId], map: "message_sender_driver_fkey")
+  receiverDriver   Driver?       @relation("DriverReceiver", fields: [receiverId], references: [userId], map: "message_receiver_driver_fkey")
+  senderOwner      Owner?        @relation("OwnerSender", fields: [senderId], references: [userId], map: "message_sender_owner_fkey")
+  receiverOwner    Owner?        @relation("OwnerReceiver", fields: [receiverId], references: [userId], map: "message_receiver_owner_fkey")
+  senderOrganization Organization? @relation("OrganizationSender", fields: [senderId], references: [userId], map: "message_sender_organization_fkey")
+  receiverOrganization Organization? @relation("OrganizationReceiver", fields: [receiverId], references: [userId], map: "message_receiver_organization_fkey")
 
   @@index([reservationId, tripId])
+}
+
+model Fuel {
+  id              String   @id @default(uuid())
+  busId           String
+  fuelQuantity    Float
+  odometerReading Int
+  fuelPrice       Float
+  fuelFillDate    DateTime
+  fuelAddedBy     String
+  fuelComments    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  bus             Bus      @relation(fields: [busId], references: [id])
+
+  @@index([busId])
+  @@map("fuel")
+}
+
+model Reminder {
+  id              String   @id @default(uuid())
+  busId           String
+  bus             Bus      @relation(fields: [busId], references: [id])
+  date            DateTime
+  message         String
+  title           String
+  isRead          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  maintenanceType String?
+  isMaintenance   Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+
+  @@index([busId])
+  @@map("reminder")
+}
+
+model Tracking {
+  id              String        @id @default(uuid())
+  busId           String
+  tripId          String?
+  time            DateTime
+  latitude        Float
+  longitude       Float
+  altitude        Float?
+  speed           Float?
+  bearing         Float?
+  accuracy        Float?
+  provider        String?
+  comment         String?
+  createdAt       DateTime      @default(now())
+  bus             Bus           @relation(fields: [busId], references: [id])
+  trip            Trip?         @relation("TripTracking", fields: [tripId], references: [id])
+  geofenceEvents  GeofenceEvent[] @relation("TrackingGeofenceEvents")
+
+  @@index([busId])
+  @@index([tripId])
+  @@index([time])
+  @@map("tracking")
+}
+
+model GeofenceEvent {
+  id           String    @id @default(uuid())
+  busId        String
+  geofenceId   String
+  trackingId   String?
+  event        String
+  timestamp    DateTime
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bus          Bus       @relation(fields: [busId], references: [id])
+  geofence     Geofence  @relation(fields: [geofenceId], references: [id])
+  tracking     Tracking? @relation("TrackingGeofenceEvents", fields: [trackingId], references: [id])
+
+  @@index([busId])
+  @@index([geofenceId])
+  @@index([trackingId])
+  @@map("geofence_event")
 }

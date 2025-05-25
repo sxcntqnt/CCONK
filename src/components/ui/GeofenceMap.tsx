@@ -6,10 +6,11 @@ import MaplibreDraw, { DrawCustomMode, DrawCustomModeThis, MapMouseEvent } from 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import GeofenceControls from './GeofenceControls';
 import { GeoJSON } from 'geojson';
+import { Geofence } from '@/utils/constants/types';
 import { MapComponent } from './MapComponent';
-import { Owner, User, Geofence } from '@/utils/constants/types';
+import { latLngToCell } from 'h3-js'; // Use latLngToCell for h3Index computation
 
-// Custom Rectangle Mode
+// Custom Rectangle Mode (unchanged)
 interface RectangleModeState {
     startPoint: maplibregl.LngLat | null;
 }
@@ -34,15 +35,10 @@ export const RectangleMode: DrawCustomMode<RectangleModeState, any> = {
             [state.startPoint.lng, state.startPoint.lat],
         ];
         const feature: GeoJSON = {
-            type: 'Feature',
-            geometry: {
-                type: 'Polygon',
-                coordinates: [coordinates],
-            },
-            properties: {},
-            id: Date.now(),
+            type: 'Polygon',
+            coordinates: [coordinates],
         };
-        this.map.fire('draw.create', { features: [feature] });
+        this.map.fire('draw.create', { features: [{ ...feature, id: Date.now(), properties: {} }] });
         this.changeMode('simple_select');
     },
     toDisplayFeatures(
@@ -74,15 +70,37 @@ const GeofenceMap = () => {
     const handleDrawCreate = (e: any) => {
         const id = Date.now();
         const color = getRandomColor();
+        const geoJson = e.features[0];
+
+        // Optional: Compute h3Index client-side using latLngToCell
+        let h3Index = '';
+        try {
+            // Compute centroid of polygon coordinates
+            const coordinates = geoJson.geometry.coordinates[0];
+            const centroid = coordinates.reduce(
+                (acc: [number, number], [lng, lat]: [number, number]) => [
+                    acc[0] + lng / coordinates.length,
+                    acc[1] + lat / coordinates.length,
+                ],
+                [0, 0],
+            );
+            // Use latLngToCell with [lat, lng] at resolution 8
+            h3Index = latLngToCell(centroid[1], centroid[0], 8);
+        } catch (error) {
+            console.warn('Failed to compute h3Index:', error);
+        }
+
         const newGeofence: Geofence = {
             id,
             name: `Geofence ${geofences.length + 1}`,
-            h3Index: '',
+            h3Index,
             resolution: 8,
-            geoJson: e.features[0],
+            geoJson,
             color,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            ownerId: undefined,
+            userId: undefined,
         };
         setGeofences((prev) => [...prev, newGeofence]);
         setActiveGeofence(id);
@@ -94,7 +112,7 @@ const GeofenceMap = () => {
         setGeofences((prev) =>
             prev.map((geofence) =>
                 geofence.id === updatedFeature.id
-                    ? { ...geofence, geoJson: updatedFeature, updatedAt: new Date() }
+                    ? { ...geofence, geoJson: updatedFeature, updatedAt: new Date().toISOString() }
                     : geofence,
             ),
         );
@@ -159,7 +177,9 @@ const GeofenceMap = () => {
 
     const handleNameChange = (id: number, name: string) => {
         setGeofences((prev) =>
-            prev.map((geofence) => (geofence.id === id ? { ...geofence, name, updatedAt: new Date() } : geofence)),
+            prev.map((geofence) =>
+                geofence.id === id ? { ...geofence, name, updatedAt: new Date().toISOString() } : geofence,
+            ),
         );
     };
 

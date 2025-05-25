@@ -50,7 +50,7 @@ export const getBusByDriverId = async (driverId: number): Promise<ApiResponse<Bu
             where: { id: driverId },
             include: {
                 bus: {
-                    include: { images: { select: { src: true, alt: true } } },
+                    include: { images: { select: { id: true, busId: true, src: true, blurDataURL: true, alt: true } } },
                 },
             },
         });
@@ -68,7 +68,13 @@ export const getBusByDriverId = async (driverId: number): Promise<ApiResponse<Bu
             longitude: driver.bus.longitude || undefined,
             lastLocationUpdate: driver.bus.lastLocationUpdate?.toISOString(),
             category: driver.bus.category,
-            images: driver.bus.images,
+            images: driver.bus.images.map((img) => ({
+                id: img.id,
+                busId: img.busId,
+                src: img.src,
+                blurDataURL: img.blurDataURL || undefined,
+                alt: img.alt,
+            })),
         };
 
         return { data: formattedBus, status: 200 };
@@ -77,6 +83,7 @@ export const getBusByDriverId = async (driverId: number): Promise<ApiResponse<Bu
         return { error: 'Internal server error', status: 500 };
     }
 };
+
 export const getActiveTripsForDriver = async (driverId: number): Promise<ApiResponse<Trip[]>> => {
     try {
         const trips = await db.trip.findMany({
@@ -100,6 +107,15 @@ export const getActiveTripsForDriver = async (driverId: number): Promise<ApiResp
                 destinationLongitude: true,
                 createdAt: true,
                 updatedAt: true,
+                bus: {
+                    select: {
+                        id: true,
+                        licensePlate: true,
+                        capacity: true,
+                        category: true,
+                        images: { select: { id: true, busId: true, src: true, blurDataURL: true, alt: true } },
+                    },
+                },
             },
         });
 
@@ -119,6 +135,19 @@ export const getActiveTripsForDriver = async (driverId: number): Promise<ApiResp
             destinationLongitude: trip.destinationLongitude || undefined,
             createdAt: trip.createdAt.toISOString(),
             updatedAt: trip.updatedAt.toISOString(),
+            bus: {
+                id: trip.bus.id,
+                licensePlate: trip.bus.licensePlate,
+                capacity: trip.bus.capacity,
+                category: trip.bus.category,
+                images: trip.bus.images.map((img) => ({
+                    id: img.id,
+                    busId: img.busId,
+                    src: img.src,
+                    blurDataURL: img.blurDataURL || undefined,
+                    alt: img.alt,
+                })),
+            },
         }));
 
         return { data: formattedTrips, status: 200 };
@@ -271,6 +300,15 @@ export const updateTripStatus = async (tripId: number, status: TripStatus): Prom
                 destinationLongitude: true,
                 createdAt: true,
                 updatedAt: true,
+                bus: {
+                    select: {
+                        id: true,
+                        licensePlate: true,
+                        capacity: true,
+                        category: true,
+                        images: { select: { id: true, busId: true, src: true, blurDataURL: true, alt: true } },
+                    },
+                },
             },
         });
 
@@ -290,6 +328,19 @@ export const updateTripStatus = async (tripId: number, status: TripStatus): Prom
             destinationLongitude: updatedTrip.destinationLongitude || undefined,
             createdAt: updatedTrip.createdAt.toISOString(),
             updatedAt: updatedTrip.updatedAt.toISOString(),
+            bus: {
+                id: updatedTrip.bus.id,
+                licensePlate: updatedTrip.bus.licensePlate,
+                capacity: updatedTrip.bus.capacity,
+                category: updatedTrip.bus.category,
+                images: updatedTrip.bus.images.map((img) => ({
+                    id: img.id,
+                    busId: img.busId,
+                    src: img.src,
+                    blurDataURL: img.blurDataURL || undefined,
+                    alt: img.alt,
+                })),
+            },
         };
 
         return { data: formattedTrip, status: 200 };
@@ -344,7 +395,15 @@ export const getDriverData = async (clerkId: string): Promise<ApiResponse<Driver
                     include: {
                         trips: {
                             where: { status: { in: ['SCHEDULED', 'IN_PROGRESS'] }, arrivalTime: null },
-                            include: { bus: { include: { images: { select: { src: true, alt: true } } } } },
+                            include: {
+                                bus: {
+                                    include: {
+                                        images: {
+                                            select: { id: true, busId: true, src: true, blurDataURL: true, alt: true },
+                                        },
+                                    },
+                                },
+                            },
                             orderBy: { departureTime: 'desc' },
                             take: 1,
                         },
@@ -389,19 +448,19 @@ export const getDriverData = async (clerkId: string): Promise<ApiResponse<Driver
                 destinationLongitude: tripRecord.destinationLongitude || undefined,
                 createdAt: tripRecord.createdAt.toISOString(),
                 updatedAt: tripRecord.updatedAt.toISOString(),
-                bus: tripRecord.bus
-                    ? {
-                          id: tripRecord.bus.id,
-                          licensePlate: tripRecord.bus.licensePlate,
-                          capacity: tripRecord.bus.capacity,
-                          model: tripRecord.bus.model || undefined,
-                          latitude: tripRecord.bus.latitude || undefined,
-                          longitude: tripRecord.bus.longitude || undefined,
-                          lastLocationUpdate: tripRecord.bus.lastLocationUpdate?.toISOString(),
-                          category: tripRecord.bus.category,
-                          images: tripRecord.bus.images,
-                      }
-                    : undefined,
+                bus: {
+                    id: tripRecord.bus.id,
+                    licensePlate: tripRecord.bus.licensePlate,
+                    capacity: tripRecord.bus.capacity,
+                    category: tripRecord.bus.category,
+                    images: tripRecord.bus.images.map((img) => ({
+                        id: img.id,
+                        busId: img.busId,
+                        src: img.src,
+                        blurDataURL: img.blurDataURL || undefined,
+                        alt: img.alt,
+                    })),
+                },
             };
         }
 

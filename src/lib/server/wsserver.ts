@@ -8,9 +8,11 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { getTripIdForDriver, updateTripStatus, getDriverById } from './driverUtils';
 import { TripStatus, DriverStatus } from '../../utils/constants/types';
+import path from 'path';
 
 // Load environment variables
-dotenv.config({ path: '../../../.env' });
+const envPath = path.resolve(process.cwd(), '.env');
+dotenv.config({ path: envPath });
 
 // Initialize Express app
 const app = express();

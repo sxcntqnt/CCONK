@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Knock, { FeedItem, FeedStoreState, NotificationSource } from '@knocklabs/client';
+import { motion } from 'motion/react';
+import { toast } from 'sonner';
 import '@knocklabs/react/dist/index.css';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -17,11 +19,10 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Inbox } from 'lucide-react';
-import { Toaster } from './sonner';
-import { ToastProvider, ToastViewport, Toast, ToastTitle, ToastDescription, ToastClose } from './toast';
-import { FeedItemCard } from './FeedItemCard';
+import { Toaster } from '@/components/ui/sonner';
+import { FeedItemCard } from '@/components/ui/FeedItemCard';
 import { ROLES, Role } from '@/utils';
-import PreferenceCenter from './PreferenceCenter';
+import PreferenceCenter from '@/components/ui/PreferenceCenter';
 import { cn } from '@/utils';
 
 type ExternalNotification = {
@@ -49,60 +50,77 @@ const NotificationFeed = ({
 }: NotificationFeedProps) => {
     const { user } = useUser();
     const [feed, setFeed] = useState<FeedStoreState>({} as FeedStoreState);
-    const [isWelcomeToastOpen, setIsWelcomeToastOpen] = useState(false);
-    const [isNotificationToastOpen, setIsNotificationToastOpen] = useState(false);
-    const [latestNotification, setLatestNotification] = useState<FeedItem | null>(null);
 
     if (!user) return null;
 
-    const knockClient = new Knock(process.env.NEXT_PUBLIC_KNOCK_PUBLIC_API_KEY as string);
-    knockClient.authenticate(user.id);
-    const knockFeed = knockClient.feeds.initialize(process.env.NEXT_PUBLIC_KNOCK_FEED_CHANNEL_ID as string, {
-        page_size: 20,
-        archived: 'include',
-    });
+    // Initialize Knock client and feed once
+    const knockClient = useMemo(() => {
+        const client = new Knock(process.env.NEXT_PUBLIC_KNOCK_PUBLIC_API_KEY as string);
+        client.authenticate(user.id);
+        return client;
+    }, [user.id]);
+
+    const knockFeed = useMemo(() => {
+        return knockClient.feeds.initialize(process.env.NEXT_PUBLIC_KNOCK_FEED_CHANNEL_ID as string, {
+            page_size: 20,
+            archived: 'include',
+        });
+    }, [knockClient]);
 
     useEffect(() => {
-        knockFeed.listenForUpdates();
+        let isConnected = false;
+
         const fetchFeed = async () => {
             await knockFeed.fetch();
             const feedState = knockFeed.getState();
             setFeed(feedState);
-            // Show welcome toast when feed is loaded
-            setIsWelcomeToastOpen(true);
+            toast.success('Welcome to Notifications', {
+                description: `Your notification feed is ready at ${new Date().toLocaleString()}`,
+                className: 'bg-gray-900 text-blue-200 border-gray-700 shadow-[0_0_10px_rgba(59,130,246,0.2)]',
+            });
         };
-        fetchFeed();
 
-        knockFeed.on('items.received.realtime', ({ items }: { items: FeedItem[] }) => {
+        const handleRealtimeItems = ({ items }: { items: FeedItem[] }) => {
             items.forEach((item) => {
                 if (item.data && item.data.showToast) {
-                    // Store the latest notification and open the toast
-                    setLatestNotification(item);
-                    setIsNotificationToastOpen(true);
+                    toast.success('New Notification', {
+                        description: `📨 Received at ${new Date(item.inserted_at).toLocaleString()}`,
+                        className: 'bg-gray-900 text-blue-200 border-gray-700 shadow-[0_0_10px_rgba(59,130,246,0.2)]',
+                    });
                 }
             });
             setFeed(knockFeed.getState());
-        });
+        };
 
-        knockFeed.on('items.*', () => {
-            console.log('calling items.*');
+        const handleItemsUpdate = () => {
             setFeed(knockFeed.getState());
-        });
+        };
+
+        if (!isConnected) {
+            knockFeed.listenForUpdates();
+            isConnected = true;
+        }
+        fetchFeed();
+
+        knockFeed.on('items.received.realtime', handleRealtimeItems);
+        knockFeed.on('items.*', handleItemsUpdate);
 
         return () => {
+            knockFeed.off('items.received.realtime', handleRealtimeItems);
+            knockFeed.off('items.*', handleItemsUpdate);
             knockFeed.teardown();
+            isConnected = false;
         };
-    }, []);
+    }, [knockFeed]);
 
     const [feedItems, archivedItems] = useMemo(() => {
-        // Combine Knock feed items with external notifications
         const knockItems = feed?.items || [];
         const externalFeedItems: FeedItem[] = externalNotifications.map((notif) => ({
             id: notif.id,
             data: { showToast: true },
             inserted_at: notif.sentAt,
             updated_at: notif.sentAt,
-            archived_at: null, // Treat external notifications as non-archived by default
+            archived_at: null,
             read_at: null,
             seen_at: null,
             clicked_at: null,
@@ -115,7 +133,7 @@ const NotificationFeed = ({
             tenant: null,
             recipient: { id: user.id },
             __cursor: notif.id,
-            source: 'in_app_feed' as unknown as NotificationSource, // Cast to unknown first to satisfy type
+            source: 'in_app_feed' as unknown as NotificationSource,
             total_activities: 0,
             total_actors: 0,
         }));
@@ -137,48 +155,152 @@ const NotificationFeed = ({
     }
 
     return (
-        <ToastProvider>
-            <Tabs defaultValue="inbox" className="w-[600px]">
-                <TabsList>
-                    <TabsTrigger value="inbox">
-                        Inbox{' '}
-                        {feed.loading ? null : (
-                            <Badge className="ml-2" variant="secondary">
-                                {feed?.metadata?.unread_count || 0}
-                            </Badge>
-                        )}
-                    </TabsTrigger>
-                    <TabsTrigger value="archived">Archived</TabsTrigger>
-                    <TabsTrigger value="all">All</TabsTrigger>
-                    <Separator orientation="vertical" />
+        <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="w-[600px] bg-gray-900/95 rounded-2xl p-6 shadow-[0_0_15px_rgba(59,130,246,0.2)] border border-gray-700"
+        >
+            <Tabs defaultValue="inbox">
+                <TabsList className="bg-gray-800 rounded-xl">
+                    {['inbox', 'archived', 'all'].map((tab, index) => (
+                        <motion.div
+                            key={tab}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 * index, duration: 0.3 }}
+                        >
+                            <TabsTrigger
+                                value={tab}
+                                className={cn(
+                                    'text-gray-300 hover:text-blue-300',
+                                    tab === 'inbox' && badgeCountVisible && !feed.loading && (
+                                        <Badge className="ml-2" variant="secondary">
+                                            {feed?.metadata?.unread_count || 0}
+                                        </Badge>
+                                    ),
+                                )}
+                            >
+                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            </TabsTrigger>
+                        </motion.div>
+                    ))}
+                    <Separator orientation="vertical" className="bg-gray-600" />
                     <Dialog>
-                        <DialogTrigger className="mx-6 text-xl">⚙️</DialogTrigger>
-                        <DialogContent>
+                        <motion.div
+                            whileHover={{ scale: 1.2 }}
+                            whileTap={{ scale: 0.9 }}
+                            transition={{ type: 'spring', stiffness: 200, damping: 10 }}
+                        >
+                            <DialogTrigger className="mx-6 text-xl text-gray-300 hover:text-blue-300">⚙️</DialogTrigger>
+                        </motion.div>
+                        <DialogContent className="bg-gray-900 text-white border-gray-700 rounded-xl">
                             <DialogHeader>
-                                <DialogTitle>Notification Preferences</DialogTitle>
-                                <DialogDescription>
-                                    <PreferenceCenter />
-                                </DialogDescription>
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <DialogTitle className="text-blue-200">Notification Preferences</DialogTitle>
+                                    <DialogDescription>
+                                        <PreferenceCenter />
+                                    </DialogDescription>
+                                </motion.div>
                             </DialogHeader>
                         </DialogContent>
                     </Dialog>
                 </TabsList>
                 <TabsContent value="inbox">
-                    <div className="my-6 flex">
-                        <Button variant="outline" onClick={markAllAsRead} className="w-full mr-2">
-                            Mark all as read
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="my-6 flex"
+                    >
+                        <Button
+                            variant="outline"
+                            onClick={markAllAsRead}
+                            className="w-full mr-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-xl border-gray-600"
+                            asChild
+                        >
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                transition={{ type: 'spring', stiffness: 200, damping: 10 }}
+                            >
+                                Mark all as read
+                            </motion.button>
                         </Button>
-                        <Button variant="outline" className="w-full ml-2" onClick={markAllAsArchived}>
-                            Archive all
+                        <Button
+                            variant="outline"
+                            onClick={markAllAsArchived}
+                            className="w-full ml-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-xl border-gray-600"
+                            asChild
+                        >
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                transition={{ type: 'spring', stiffness: 200, damping: 10 }}
+                            >
+                                Archive all
+                            </motion.button>
                         </Button>
-                    </div>
+                    </motion.div>
                     {feedItems?.length > 0 ? (
-                        feedItems?.map((item: FeedItem) => {
-                            // Find matching external notification for additional data
+                        feedItems?.map((item: FeedItem, index: number) => {
                             const externalNotif = externalNotifications.find((notif) => notif.id === item.id);
                             return (
-                                <FeedItemCard
+                                <motion.div
                                     key={item.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.1 * index, duration: 0.3 }}
+                                >
+                                    <FeedItemCard
+                                        item={{
+                                            ...item,
+                                            data: {
+                                                ...item.data,
+                                                message: externalNotif?.message,
+                                                type: externalNotif?.type,
+                                                destination: externalNotif?.destination,
+                                                driverName: externalNotif?.driverName,
+                                            },
+                                        }}
+                                        knockFeed={knockFeed}
+                                        userRole={userRole}
+                                    />
+                                </motion.div>
+                            );
+                        })
+                    ) : (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                            className="flex flex-col items-center my-12 py-12 bg-gray-800 rounded-xl"
+                        >
+                            <motion.div
+                                animate={{ scale: [1, 1.1, 1] }}
+                                transition={{ repeat: Infinity, duration: 1.5 }}
+                            >
+                                <Inbox className="w-16 h-16 text-gray-300" />
+                            </motion.div>
+                            <p className="mt-6 text-gray-300">You're all caught up</p>
+                        </motion.div>
+                    )}
+                </TabsContent>
+                <TabsContent value="archived">
+                    {archivedItems?.map((item: FeedItem, index: number) => {
+                        const externalNotif = externalNotifications.find((notif) => notif.id === item.id);
+                        return (
+                            <motion.div
+                                key={item.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 * index, duration: 0.3 }}
+                            >
+                                <FeedItemCard
                                     item={{
                                         ...item,
                                         data: {
@@ -192,79 +314,41 @@ const NotificationFeed = ({
                                     knockFeed={knockFeed}
                                     userRole={userRole}
                                 />
-                            );
-                        })
-                    ) : (
-                        <div className="flex flex-col items-center my-12 py-12 bg-slate-50 rounded-md">
-                            <Inbox className="w-16 h-16" />
-                            <p className="mt-6">You're all caught up</p>
-                        </div>
-                    )}
-                </TabsContent>
-                <TabsContent value="archived">
-                    {archivedItems?.map((item: FeedItem) => {
-                        const externalNotif = externalNotifications.find((notif) => notif.id === item.id);
-                        return (
-                            <FeedItemCard
-                                key={item.id}
-                                item={{
-                                    ...item,
-                                    data: {
-                                        ...item.data,
-                                        message: externalNotif?.message,
-                                        type: externalNotif?.type,
-                                        destination: externalNotif?.destination,
-                                        driverName: externalNotif?.driverName,
-                                    },
-                                }}
-                                knockFeed={knockFeed}
-                                userRole={userRole}
-                            />
+                            </motion.div>
                         );
                     })}
                 </TabsContent>
                 <TabsContent value="all">
-                    {[...feedItems, ...archivedItems].map((item: FeedItem) => {
+                    {[...feedItems, ...archivedItems].map((item: FeedItem, index: number) => {
                         const externalNotif = externalNotifications.find((notif) => notif.id === item.id);
                         return (
-                            <FeedItemCard
+                            <motion.div
                                 key={item.id}
-                                item={{
-                                    ...item,
-                                    data: {
-                                        ...item.data,
-                                        message: externalNotif?.message,
-                                        type: externalNotif?.type,
-                                        destination: externalNotif?.destination,
-                                        driverName: externalNotif?.driverName,
-                                    },
-                                }}
-                                knockFeed={knockFeed}
-                                userRole={userRole}
-                            />
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 * index, duration: 0.3 }}
+                            >
+                                <FeedItemCard
+                                    item={{
+                                        ...item,
+                                        data: {
+                                            ...item.data,
+                                            message: externalNotif?.message,
+                                            type: externalNotif?.type,
+                                            destination: externalNotif?.destination,
+                                            driverName: externalNotif?.driverName,
+                                        },
+                                    }}
+                                    knockFeed={knockFeed}
+                                    userRole={userRole}
+                                />
+                            </motion.div>
                         );
                     })}
                 </TabsContent>
-                <Toaster />
-                <ToastViewport />
-                <Toast open={isWelcomeToastOpen} onOpenChange={setIsWelcomeToastOpen}>
-                    <ToastTitle>Welcome to Notifications</ToastTitle>
-                    <ToastDescription>
-                        Your notification feed is ready at {new Date().toLocaleString()}
-                    </ToastDescription>
-                    <ToastClose />
-                </Toast>
-                {latestNotification && (
-                    <Toast open={isNotificationToastOpen} onOpenChange={setIsNotificationToastOpen}>
-                        <ToastTitle>
-                            📨 New notification at {new Date(latestNotification.inserted_at).toLocaleString()}
-                        </ToastTitle>
-                        <ToastDescription>Snap! This real-time feed is mind-blowing 🤯</ToastDescription>
-                        <ToastClose />
-                    </Toast>
-                )}
             </Tabs>
-        </ToastProvider>
+            <Toaster />
+        </motion.div>
     );
 };
 

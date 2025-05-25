@@ -1,90 +1,51 @@
 'use client';
 
 import React, { Suspense, useEffect } from 'react';
-import { useUser, useAuth } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { KnockProvider } from '@knocklabs/react';
 import { ThemeProvider, useTheme } from 'next-themes';
-
-import '@knocklabs/react/dist/index.css';
-
-const KNOCK_PUBLIC_API_KEY = process.env.NEXT_PUBLIC_KNOCK_PUBLIC_API_KEY || '';
 
 interface Props {
     children: React.ReactNode;
 }
 
-const InnerProviders = ({ children }: Props) => {
-    const { user, isLoaded: userLoaded, isSignedIn } = useUser();
-    const { getToken } = useAuth();
+const Providers = ({ children }: Props) => {
+    const { user, isLoaded: userLoaded } = useUser();
     const { setTheme } = useTheme();
-    const [knockToken, setKnockToken] = React.useState<string | null>(null);
-    const [error, setError] = React.useState<string | null>(null);
+    const queryClient = new QueryClient();
 
+    // Initialize theme from localStorage
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') || 'dark';
         setTheme(savedTheme);
     }, [setTheme]);
 
-    useEffect(() => {
-        async function fetchToken() {
-            try {
-                const token = await getToken();
-                if (token) {
-                    setKnockToken(token);
-                } else {
-                    setError('No Clerk token available');
-                }
-            } catch (err) {
-                console.error('Failed to fetch Clerk token:', err);
-                setError('Failed to fetch Clerk token');
-            }
-        }
-        if (userLoaded && isSignedIn && user?.id) {
-            fetchToken();
-        }
-    }, [userLoaded, isSignedIn, user?.id, getToken]);
-
-    const commonProviders = (
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
-            <SidebarProvider>
-                <TooltipProvider>{children}</TooltipProvider>
-            </SidebarProvider>
-        </ThemeProvider>
-    );
-
+    // Show loading state until Clerk user data is loaded
     if (!userLoaded) {
-        return <div className="flex items-center justify-center min-h-screen">Loading authentication...</div>;
-    }
-
-    if (error) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                Error: {error} <button onClick={() => setError(null)}>Retry</button>
-            </div>
+            <div className="flex items-center justify-center min-h-screen text-gray-300">Loading authentication...</div>
         );
     }
 
-    if (!isSignedIn || !user?.id || !knockToken) {
-        return commonProviders;
-    }
-
-    return (
-        <KnockProvider apiKey={KNOCK_PUBLIC_API_KEY} userId={user.id} userToken={knockToken}>
-            {commonProviders}
-        </KnockProvider>
-    );
-};
-
-const Providers = ({ children }: Props) => {
-    const queryClient = new QueryClient();
     return (
         <QueryClientProvider client={queryClient}>
-            <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
-                <InnerProviders>{children}</InnerProviders>
-            </Suspense>
+            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+                <SidebarProvider>
+                    <TooltipProvider>
+                        <Suspense
+                            fallback={
+                                <div className="flex items-center justify-center min-h-screen text-gray-300">
+                                    Loading...
+                                </div>
+                            }
+                        >
+                            {children}
+                        </Suspense>
+                    </TooltipProvider>
+                </SidebarProvider>
+            </ThemeProvider>
         </QueryClientProvider>
     );
 };

@@ -1,3 +1,4 @@
+// src/utils/index.ts
 // constants
 import { LIST_ITEM_VARIANTS, CHILD_VARIANTS, FADE_IN_VARIANTS, MODAL_VARIANTS } from './constants/animation';
 import { APP_DOMAIN, APP_HOSTNAMES, APP_NAME } from './constants/site';
@@ -5,24 +6,23 @@ import { DEFAULT_AVATAR_URL, PAGINATION_LIMIT, COMPANIES, PROCESS } from './cons
 import { PLANS, PRICING_FEATURES, WORKSPACE_LIMIT } from './constants/pricing';
 import { NAV_LINKS } from './constants/nav-links';
 import { aeonik, inter } from './constants/fonts';
-import { ROLES, ROLE_ORDER, Role } from './constants/roles';
+import { ROLE_ORDER, ROLES, Role } from './constants/roles';
+
+// Import all required enums from @prisma/client
+import {
+    MatatuCapacity,
+    SeatCategory,
+    SeatStatus,
+    DriverStatus,
+    TripStatus,
+    ReservationStatus,
+    PaymentStatus,
+} from '@prisma/client';
 
 // functions
 import { cn } from './functions/cn';
 import { isValidUrl } from './functions/urls';
 import { generateMetadata } from './functions/metadata';
-import {
-    getDriverById,
-    getBusByDriverId,
-    getActiveTripsForDriver,
-    createTripReservation,
-    getTripIdForDriver,
-    updateTripStatus,
-    getUsersWithReservations,
-    getDriverData,
-    getReservationCount,
-} from './functions/driverUtils';
-
 import { mapDriverAndBusToMarkerData, getDriverAndBusMarkerData, handleArrival } from './functions/frontendUtils';
 
 // types
@@ -37,33 +37,37 @@ import {
     NRCFrameComponent,
     NRCCarouselProps,
     Owner,
+    Organization,
     User,
+    Passenger,
     Driver,
     Bus,
     Image,
     Trip,
     Seat,
+    SeatData,
     Reservation,
     Payment,
     Notification,
     Geofence,
     IncomeExpense,
+    Fuel,
+    Reminder,
+    Tracking,
+    GeofenceEvent,
     DriverCardProps,
     ApiResponse,
     DriverData,
     Report,
+    Route,
     Message,
-    TripStatus,
-    ReservationStatus,
-    DriverStatus,
     MarkerData,
     KnockRecipient,
     BodyContentBlock,
 } from './constants/types';
 
-// Export constants and functions
+// Export constants
 export {
-    // constants
     LIST_ITEM_VARIANTS,
     CHILD_VARIANTS,
     FADE_IN_VARIANTS,
@@ -84,28 +88,18 @@ export {
     ROLES,
     ROLE_ORDER,
 
-    // functions
-    cn,
-    isValidUrl,
-    generateMetadata,
-    getDriverById,
-    getBusByDriverId,
-    getDriverAndBusMarkerData,
-    mapDriverAndBusToMarkerData,
-    getActiveTripsForDriver,
-    createTripReservation,
-    getTripIdForDriver,
-    updateTripStatus,
-    getUsersWithReservations,
-    getDriverData,
-    getReservationCount,
-    handleArrival,
-
-    // enums (values)
+    // Export enums directly
+    MatatuCapacity,
+    SeatCategory,
+    SeatStatus,
+    DriverStatus,
     TripStatus,
     ReservationStatus,
-    DriverStatus,
+    PaymentStatus,
 };
+
+// Export functions
+export { cn, isValidUrl, generateMetadata, mapDriverAndBusToMarkerData, getDriverAndBusMarkerData, handleArrival };
 
 // Export types
 export type {
@@ -119,27 +113,36 @@ export type {
     NRCFrameComponent,
     NRCCarouselProps,
     Owner,
+    Organization,
+    Passenger,
     User,
     Driver,
     Bus,
     Image,
     Trip,
     Seat,
+    SeatData,
     Reservation,
     Payment,
     Notification,
     Geofence,
     IncomeExpense,
+    Fuel,
+    Reminder,
+    Tracking,
+    GeofenceEvent,
     DriverCardProps,
     ApiResponse,
     DriverData,
+    Route,
     Report,
     MarkerData,
     Message,
+    KnockRecipient,
+    BodyContentBlock,
+    // Remove aliased types to avoid confusion
+    Role,
     TripStatus as TripStatusType,
     ReservationStatus as ReservationStatusType,
     DriverStatus as DriverStatusType,
-    KnockRecipient,
-    BodyContentBlock,
-    Role,
 };

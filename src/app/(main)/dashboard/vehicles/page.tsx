@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { getVehiclesByCategory } from './vehicleUtils';
 import { matatuConfigs, MatatuCapacity } from '@/utils/constants/matatuSeats';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -22,8 +22,8 @@ interface VehiclesPageProps {
     licensePlate: string;
 }
 
-export default function VehiclesPage({ categories, searchResults, licensePlate }: VehiclesPageProps) {
-    const [searchValue, setSearchValue] = useState(licensePlate);
+export default function VehiclesPage({ categories = [], searchResults, licensePlate = '' }: VehiclesPageProps) {
+    const [searchValue, setSearchValue] = useState(licensePlate ?? '');
     const searchInputRef = useRef<HTMLInputElement>(null);
     const pageRef = useRef<HTMLDivElement>(null);
 
