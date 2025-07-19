@@ -30,6 +30,145 @@ import {
     PaymentStatus,
 } from '@/utils';
 
+// Common Select Configurations
+const userSelect = {
+    id: true,
+    clerkId: true,
+    firstName: true,
+    lastName: true,
+    email: true,
+    image: true,
+    phoneNumber: true,
+    role: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+const busSelect = {
+    id: true,
+    licensePlate: true,
+    capacity: true,
+    model: true,
+    latitude: true,
+    longitude: true,
+    lastLocationUpdate: true,
+    category: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+const seatSelect = {
+    id: true,
+    seatNumber: true,
+    price: true,
+    row: true,
+    column: true,
+    category: true,
+    status: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+const tripSelect = {
+    id: true,
+    busId: true,
+    routeId: true,
+    destinationIndex: true,
+    departureTime: true,
+    arrivalTime: true,
+    status: true,
+    isFullyBooked: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+const reservationSelect = {
+    id: true,
+    userId: true,
+    tripId: true,
+    seatId: true,
+    status: true,
+    bookedAt: true,
+    updatedAt: true,
+    successfulPaymentId: true,
+};
+
+const notificationSelect = {
+    id: true,
+    type: true,
+    message: true,
+    status: true,
+    createdAt: true,
+    sentAt: true,
+    subject: true,
+};
+
+const messageSelect = {
+    id: true,
+    reservationId: true,
+    tripId: true,
+    content: true,
+    timestamp: true,
+};
+
+const paymentSelect = {
+    id: true,
+    reservationId: true,
+    amount: true,
+    status: true,
+    mPesaReceiptNumber: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+const geofenceSelect = {
+    id: true,
+    name: true,
+    h3Index: true,
+    resolution: true,
+    geoJson: true,
+    color: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+const ownerSelect = {
+    id: true,
+    userId: true,
+    organizationId: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+const organizationSelect = {
+    id: true,
+    userId: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+const driverSelect = {
+    id: true,
+    userId: true,
+    busId: true,
+    licenseNumber: true,
+    status: true,
+    hireDate: true,
+    rating: true,
+    profileImageUrl: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+const passengerSelect = {
+    id: true,
+    userId: true,
+    busId: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
+// Type Definitions
 export type UserWithRelations = Prisma.UserGetPayload<{
     select: {
         id: true;
@@ -42,62 +181,16 @@ export type UserWithRelations = Prisma.UserGetPayload<{
         role: true;
         createdAt: true;
         updatedAt: true;
-        passenger: { select: { id: true; userId: true; busId: true; createdAt: true; updatedAt: true } };
-        driver: {
-            select: {
-                id: true;
-                userId: true;
-                busId: true;
-                licenseNumber: true;
-                status: true;
-                hireDate: true;
-                rating: true;
-                profileImageUrl: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        owner: { select: { id: true; userId: true; organizationId: true; createdAt: true; updatedAt: true } };
-        organization: { select: { id: true; userId: true; createdAt: true; updatedAt: true } };
-        notifications: {
-            select: { id: true; type: true; message: true; status: true; createdAt: true; sentAt: true; subject: true };
-        };
-        sentMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
-        receivedMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
-        payments: {
-            select: {
-                id: true;
-                reservationId: true;
-                amount: true;
-                status: true;
-                mPesaReceiptNumber: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        reservations: {
-            select: {
-                id: true;
-                tripId: true;
-                seatId: true;
-                status: true;
-                bookedAt: true;
-                updatedAt: true;
-                successfulPaymentId: true;
-            };
-        };
-        geofences: {
-            select: {
-                id: true;
-                name: true;
-                h3Index: true;
-                resolution: true;
-                geoJson: true;
-                color: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        passenger: { select: typeof passengerSelect };
+        driver: { select: typeof driverSelect };
+        owner: { select: typeof ownerSelect };
+        organization: { select: typeof organizationSelect };
+        notifications: { select: typeof notificationSelect };
+        sentMessages: { select: typeof messageSelect };
+        receivedMessages: { select: typeof messageSelect };
+        payments: { select: typeof paymentSelect };
+        reservations: { select: typeof reservationSelect };
+        geofences: { select: typeof geofenceSelect };
     };
 }>;
 
@@ -113,63 +206,28 @@ export type PassengerUserWithRelations = {
     createdAt: Date;
     updatedAt: Date;
     passenger: { id: string; userId: string; busId: string | null; createdAt: Date; updatedAt: Date } | null;
-    reservations: {
-        id: string;
-        status: ReservationStatus;
-        updatedAt: Date;
-        tripId: string;
-        userId: string;
-        seatId: string;
-        bookedAt: Date;
-        successfulPaymentId: string | null;
-    }[];
-    notifications: any[];
-    sentMessages: any[];
-    receivedMessages: any[];
-    payments: any[];
+    reservations: ReservationWithRelations[];
+    notifications: NotificationWithRelations[];
+    sentMessages: MessageWithRelations[];
+    receivedMessages: MessageWithRelations[];
+    payments: PaymentWithRelations[];
 };
 
 export type OwnerWithRelations = Prisma.OwnerGetPayload<{
     include: {
         user: { select: { id: true; name: true; email: true; image: true; role: true } };
-        buses: {
-            select: {
-                id: true;
-                licensePlate: true;
-                capacity: true;
-                model: true;
-                latitude: true;
-                longitude: true;
-                lastLocationUpdate: true;
-                category: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        geofences: {
-            select: {
-                id: true;
-                name: true;
-                h3Index: true;
-                resolution: true;
-                geoJson: true;
-                color: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        buses: { select: typeof busSelect };
+        geofences: { select: typeof geofenceSelect };
         incomeExpenses: {
             select: { id: true; type: true; amount: true; description: true; recordedAt: true; updatedAt: true };
         };
         reports: {
             select: { id: true; title: true; description: true; type: true; generatedAt: true; updatedAt: true };
         };
-        notifications: {
-            select: { id: true; type: true; message: true; status: true; createdAt: true; sentAt: true; subject: true };
-        };
-        sentMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
-        receivedMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
-        organization: { select: { id: true; userId: true; createdAt: true; updatedAt: true } };
+        notifications: { select: typeof notificationSelect };
+        sentMessages: { select: typeof messageSelect };
+        receivedMessages: { select: typeof messageSelect };
+        organization: { select: typeof organizationSelect };
     };
 }>;
 
@@ -186,74 +244,23 @@ export type OrganizationWithRelations = Prisma.OrganizationGetPayload<{
                 phoneNumber: true;
             };
         };
-        buses: {
-            select: {
-                id: true;
-                licensePlate: true;
-                capacity: true;
-                model: true;
-                latitude: true;
-                longitude: true;
-                lastLocationUpdate: true;
-                category: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        owners: { select: { id: true; userId: true; organizationId: true; createdAt: true; updatedAt: true } };
-        notifications: {
-            select: { id: true; type: true; message: true; status: true; createdAt: true; sentAt: true; subject: true };
-        };
-        sentMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
-        receivedMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
+        buses: { select: typeof busSelect };
+        owners: { select: typeof ownerSelect };
+        notifications: { select: typeof notificationSelect };
+        sentMessages: { select: typeof messageSelect };
+        receivedMessages: { select: typeof messageSelect };
     };
 }>;
 
 export type BusWithRelations = Prisma.BusGetPayload<{
     include: {
-        owner: { select: { id: true; userId: true; createdAt: true; updatedAt: true } };
-        organization: { select: { id: true; userId: true; createdAt: true; updatedAt: true } };
-        driver: {
-            select: {
-                id: true;
-                userId: true;
-                licenseNumber: true;
-                status: true;
-                hireDate: true;
-                rating: true;
-                profileImageUrl: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        passengers: { select: { id: true; userId: true; busId: true; createdAt: true; updatedAt: true } };
+        owner: { select: typeof ownerSelect };
+        organization: { select: typeof organizationSelect };
+        driver: { select: typeof driverSelect };
+        passengers: { select: typeof passengerSelect };
         images: { select: { id: true; src: true; blurDataURL: true; alt: true } };
-        seats: {
-            select: {
-                id: true;
-                seatNumber: true;
-                price: true;
-                row: true;
-                column: true;
-                category: true;
-                status: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        trips: {
-            select: {
-                id: true;
-                routeId: true;
-                destinationIndex: true;
-                departureTime: true;
-                arrivalTime: true;
-                status: true;
-                isFullyBooked: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        seats: { select: typeof seatSelect };
+        trips: { select: typeof tripSelect };
         fuelRecords: {
             select: {
                 id: true;
@@ -313,85 +320,23 @@ export type BusWithRelations = Prisma.BusGetPayload<{
 export type DriverWithRelations = Prisma.DriverGetPayload<{
     include: {
         user: { select: { id: true; name: true; email: true; image: true; role: true } };
-        bus: {
-            select: {
-                id: true;
-                licensePlate: true;
-                capacity: true;
-                model: true;
-                latitude: true;
-                longitude: true;
-                lastLocationUpdate: true;
-                category: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        notifications: {
-            select: { id: true; type: true; message: true; status: true; createdAt: true; sentAt: true; subject: true };
-        };
-        trips: {
-            select: {
-                id: true;
-                routeId: true;
-                destinationIndex: true;
-                departureTime: true;
-                arrivalTime: true;
-                status: true;
-                isFullyBooked: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        sentMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
-        receivedMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
+        bus: { select: typeof busSelect };
+        notifications: { select: typeof notificationSelect };
+        trips: { select: typeof tripSelect };
+        sentMessages: { select: typeof messageSelect };
+        receivedMessages: { select: typeof messageSelect };
     };
 }>;
 
 export type PassengerWithRelations = Prisma.PassengerGetPayload<{
     include: {
         user: { select: { id: true; name: true; email: true; image: true; role: true } };
-        bus: {
-            select: {
-                id: true;
-                licensePlate: true;
-                capacity: true;
-                model: true;
-                latitude: true;
-                longitude: true;
-                lastLocationUpdate: true;
-                category: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        payments: {
-            select: {
-                id: true;
-                reservationId: true;
-                amount: true;
-                status: true;
-                mPesaReceiptNumber: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        reservations: {
-            select: {
-                id: true;
-                tripId: true;
-                seatId: true;
-                status: true;
-                bookedAt: true;
-                updatedAt: true;
-                successfulPaymentId: true;
-            };
-        };
-        notifications: {
-            select: { id: true; type: true; message: true; status: true; createdAt: true; sentAt: true; subject: true };
-        };
-        sentMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
-        receivedMessages: { select: { id: true; reservationId: true; tripId: true; content: true; timestamp: true } };
+        bus: { select: typeof busSelect };
+        payments: { select: typeof paymentSelect };
+        reservations: { select: typeof reservationSelect };
+        notifications: { select: typeof notificationSelect };
+        sentMessages: { select: typeof messageSelect };
+        receivedMessages: { select: typeof messageSelect };
     };
 }>;
 
@@ -410,19 +355,7 @@ export type TripWithRelations = Prisma.TripGetPayload<{
                 images: { select: { id: true; src: true; blurDataURL: true; alt: true } };
             };
         };
-        driver: {
-            select: {
-                id: true;
-                userId: true;
-                licenseNumber: true;
-                status: true;
-                hireDate: true;
-                rating: true;
-                profileImageUrl: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        driver: { select: typeof driverSelect };
         route: {
             select: {
                 id: true;
@@ -434,20 +367,8 @@ export type TripWithRelations = Prisma.TripGetPayload<{
                 updatedAt: true;
             };
         };
-        reservations: {
-            select: {
-                id: true;
-                userId: true;
-                seatId: true;
-                status: true;
-                bookedAt: true;
-                updatedAt: true;
-                successfulPaymentId: true;
-            };
-        };
-        notifications: {
-            select: { id: true; type: true; message: true; status: true; createdAt: true; sentAt: true; subject: true };
-        };
+        reservations: { select: typeof reservationSelect };
+        notifications: { select: typeof notificationSelect };
         messages: {
             select: { id: true; reservationId: true; senderId: true; receiverId: true; content: true; timestamp: true };
         };
@@ -470,223 +391,114 @@ export type TripWithRelations = Prisma.TripGetPayload<{
     };
 }>;
 
-export interface ReservationWithRelations {
-    id: string;
-    status: ReservationStatus;
-    updatedAt: Date;
-    tripId: string;
-    userId: string;
-    seatId: string;
-    bookedAt: Date;
-    successfulPaymentId: string | null;
-    user: {
-        id: string;
-        clerkId: string;
-        firstName: string;
-        lastName: string;
-        email: string;
-        image: string;
-        role: string;
-        phoneNumber: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-    };
-    seat: {
-        id: string;
-        seatNumber: string;
-        price: number;
-        row: number;
-        column: number;
-        category: string;
-        status: SeatStatus;
-        busId: string;
-        bus: {
-            id: string;
-            licensePlate: string;
-            capacity: number;
-            category: string;
-            createdAt: Date;
-            updatedAt: Date;
-            passengers: {
-                id: string;
-                userId: string;
-                busId: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-                user: {
-                    id: string;
-                    clerkId: string;
-                    firstName: string;
-                    lastName: string;
-                    email: string;
-                    image: string;
-                    role: string;
-                    createdAt: Date;
-                    updatedAt: Date;
-                };
-            }[];
-            images: {
-                id: string;
-                src: string;
-                blurDataURL: string | null;
-                alt: string;
-                busId: string;
-            }[];
-        };
-    };
-    trip: {
-        id: string;
-        busId: string;
-        routeId: string;
-        destinationIndex: number;
-        departureTime: Date;
-        status: TripStatus;
-        isFullyBooked: boolean;
-        driverId: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        bus: {
-            id: string;
-            licensePlate: string;
-            capacity: number;
-            category: string;
-            images: {
-                id: string;
-                src: string;
-                blurDataURL: string | null;
-                alt: string;
-                busId: string;
-            }[];
-        };
-    };
-    payments: {
-        id: string;
-        reservationId: string;
-        userId: string;
-        amount: number;
-        status: PaymentStatus;
-        mPesaReceiptNumber: string | null;
-        phoneNumber: string | null;
-        createdAt: Date;
-        updatedAt: Date;
+export type ReservationWithRelations = Prisma.ReservationGetPayload<{
+    include: {
         user: {
-            id: string;
-            clerkId: string;
-            firstName: string;
-            lastName: string;
-            email: string;
-            image: string;
-            role: string;
-            phoneNumber: string | null;
-            createdAt: Date;
-            updatedAt: Date;
+            select: {
+                id: true;
+                clerkId: true;
+                firstName: true;
+                lastName: true;
+                email: true;
+                image: true;
+                role: true;
+                phoneNumber: true;
+                createdAt: true;
+                updatedAt: true;
+            };
         };
-        reservation: {
-            id: string;
-            userId: string;
-            tripId: string;
-            seatId: string;
-            status: ReservationStatus;
-            bookedAt: Date;
-            updatedAt: Date;
-            successfulPaymentId: string | null;
+        seat: {
+            select: {
+                id: true;
+                seatNumber: true;
+                price: true;
+                row: true;
+                column: true;
+                category: true;
+                status: true;
+                busId: true;
+                bus: {
+                    select: {
+                        id: true;
+                        licensePlate: true;
+                        capacity: true;
+                        category: true;
+                        createdAt: true;
+                        updatedAt: true;
+                        passengers: { select: typeof passengerSelect };
+                        images: { select: { id: true; src: true; blurDataURL: true; alt: true } };
+                    };
+                };
+            };
         };
-    }[];
-}
+        trip: {
+            select: {
+                id: true;
+                busId: true;
+                routeId: true;
+                destinationIndex: true;
+                departureTime: true;
+                status: true;
+                isFullyBooked: true;
+                driverId: true;
+                createdAt: true;
+                updatedAt: true;
+                bus: {
+                    select: {
+                        id: true;
+                        licensePlate: true;
+                        capacity: true;
+                        category: true;
+                        images: { select: { id: true; src: true; blurDataURL: true; alt: true } };
+                    };
+                };
+            };
+        };
+        payments: {
+            select: {
+                id: true;
+                reservationId: true;
+                userId: true;
+                amount: true;
+                status: true;
+                mPesaReceiptNumber: true;
+                phoneNumber: true;
+                createdAt: true;
+                updatedAt: true;
+                user: { select: typeof userSelect };
+                reservation: { select: typeof reservationSelect };
+            };
+        };
+    };
+}>;
 
 export type NotificationWithRelations = Prisma.NotificationGetPayload<{
     include: {
         user: { select: { id: true; name: true; email: true; image: true; role: true } };
-        passenger: { select: { id: true; userId: true; busId: true; createdAt: true; updatedAt: true } };
-        driver: {
-            select: {
-                id: true;
-                userId: true;
-                licenseNumber: true;
-                status: true;
-                hireDate: true;
-                rating: true;
-                profileImageUrl: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        owner: { select: { id: true; userId: true; organizationId: true; createdAt: true; updatedAt: true } };
-        organization: { select: { id: true; userId: true; createdAt: true; updatedAt: true } };
-        trip: {
-            select: {
-                id: true;
-                routeId: true;
-                destinationIndex: true;
-                departureTime: true;
-                arrivalTime: true;
-                status: true;
-                isFullyBooked: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        passenger: { select: typeof passengerSelect };
+        driver: { select: typeof driverSelect };
+        owner: { select: typeof ownerSelect };
+        organization: { select: typeof organizationSelect };
+        trip: { select: typeof tripSelect };
     };
 }>;
 
 export type FuelWithRelations = Prisma.FuelGetPayload<{
     include: {
-        bus: {
-            select: {
-                id: true;
-                licensePlate: true;
-                capacity: true;
-                model: true;
-                category: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        bus: { select: typeof busSelect };
     };
 }>;
 
 export type ReminderWithRelations = Prisma.ReminderGetPayload<{
     include: {
-        bus: {
-            select: {
-                id: true;
-                licensePlate: true;
-                capacity: true;
-                model: true;
-                category: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        bus: { select: typeof busSelect };
     };
 }>;
 
 export type TrackingWithRelations = Prisma.TrackingGetPayload<{
     include: {
-        bus: {
-            select: {
-                id: true;
-                licensePlate: true;
-                capacity: true;
-                model: true;
-                category: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        trip: {
-            select: {
-                id: true;
-                routeId: true;
-                destinationIndex: true;
-                departureTime: true;
-                arrivalTime: true;
-                status: true;
-                isFullyBooked: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        bus: { select: typeof busSelect };
+        trip: { select: typeof tripSelect };
         geofenceEvents: {
             select: {
                 id: true;
@@ -703,7 +515,7 @@ export type TrackingWithRelations = Prisma.TrackingGetPayload<{
 
 export type GeofenceWithRelations = Prisma.GeofenceGetPayload<{
     include: {
-        owner: { select: { id: true; userId: true; organizationId: true; createdAt: true; updatedAt: true } };
+        owner: { select: typeof ownerSelect };
         user: { select: { id: true; name: true; email: true; image: true; role: true } };
         geofenceEvents: {
             select: {
@@ -721,29 +533,8 @@ export type GeofenceWithRelations = Prisma.GeofenceGetPayload<{
 
 export type GeofenceEventWithRelations = Prisma.GeofenceEventGetPayload<{
     include: {
-        bus: {
-            select: {
-                id: true;
-                licensePlate: true;
-                capacity: true;
-                model: true;
-                category: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        geofence: {
-            select: {
-                id: true;
-                name: true;
-                h3Index: true;
-                resolution: true;
-                geoJson: true;
-                color: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        bus: { select: typeof busSelect };
+        geofence: { select: typeof geofenceSelect };
         tracking: {
             select: {
                 id: true;
@@ -765,29 +556,19 @@ export type GeofenceEventWithRelations = Prisma.GeofenceEventGetPayload<{
 
 export type IncomeExpenseWithRelations = Prisma.IncomeExpenseGetPayload<{
     include: {
-        owner: { select: { id: true; userId: true; organizationId: true; createdAt: true; updatedAt: true } };
+        owner: { select: typeof ownerSelect };
     };
 }>;
 
 export type ReportWithRelations = Prisma.ReportGetPayload<{
     include: {
-        owner: { select: { id: true; userId: true; organizationId: true; createdAt: true; updatedAt: true } };
+        owner: { select: typeof ownerSelect };
     };
 }>;
 
 export type ImageWithRelations = Prisma.ImageGetPayload<{
     include: {
-        bus: {
-            select: {
-                id: true;
-                licensePlate: true;
-                capacity: true;
-                model: true;
-                category: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        bus: { select: typeof busSelect };
     };
 }>;
 
@@ -805,110 +586,33 @@ export type SeatWithRelations = Prisma.SeatGetPayload<{
                 ownerId: true;
             };
         };
-        reservations: {
-            select: {
-                id: true;
-                tripId: true;
-                userId: true;
-                status: true;
-                bookedAt: true;
-                updatedAt: true;
-                successfulPaymentId: true;
-            };
-        };
+        reservations: { select: typeof reservationSelect };
     };
 }>;
 
 export type PaymentWithRelations = Prisma.PaymentGetPayload<{
     include: {
         user: { select: { id: true; name: true; email: true; image: true; role: true } };
-        passenger: { select: { id: true; userId: true; busId: true; createdAt: true; updatedAt: true } };
-        reservation: {
-            select: {
-                id: true;
-                userId: true;
-                tripId: true;
-                seatId: true;
-                status: true;
-                bookedAt: true;
-                updatedAt: true;
-                successfulPaymentId: true;
-            };
-        };
-        successfulReservation: {
-            select: {
-                id: true;
-                userId: true;
-                tripId: true;
-                seatId: true;
-                status: true;
-                bookedAt: true;
-                updatedAt: true;
-            };
-        };
+        passenger: { select: typeof passengerSelect };
+        reservation: { select: typeof reservationSelect };
+        successfulReservation: { select: typeof reservationSelect };
     };
 }>;
 
 export type MessageWithRelations = Prisma.MessageGetPayload<{
     include: {
-        reservation: {
-            select: {
-                id: true;
-                tripId: true;
-                userId: true;
-                status: true;
-                bookedAt: true;
-                updatedAt: true;
-                successfulPaymentId: true;
-            };
-        };
-        trip: {
-            select: {
-                id: true;
-                routeId: true;
-                destinationIndex: true;
-                departureTime: true;
-                arrivalTime: true;
-                status: true;
-                isFullyBooked: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
+        reservation: { select: typeof reservationSelect };
+        trip: { select: typeof tripSelect };
         sender: { select: { id: true; name: true; email: true; image: true; role: true } };
         receiver: { select: { id: true; name: true; email: true; image: true; role: true } };
-        senderPassenger: { select: { id: true; userId: true; busId: true; createdAt: true; updatedAt: true } };
-        receiverPassenger: { select: { id: true; userId: true; busId: true; createdAt: true; updatedAt: true } };
-        senderDriver: {
-            select: {
-                id: true;
-                userId: true;
-                licenseNumber: true;
-                status: true;
-                hireDate: true;
-                rating: true;
-                profileImageUrl: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        receiverDriver: {
-            select: {
-                id: true;
-                userId: true;
-                licenseNumber: true;
-                status: true;
-                hireDate: true;
-                rating: true;
-                profileImageUrl: true;
-                createdAt: true;
-                updatedAt: true;
-            };
-        };
-        senderOwner: { select: { id: true; userId: true; organizationId: true; createdAt: true; updatedAt: true } };
-        receiverOwner: { select: { id: true; userId: true; organizationId: true; createdAt: true; updatedAt: true } };
-        senderOrganization: { select: { id: true; userId: true; createdAt: true; updatedAt: true } };
-        receiverOrganization: { select: { id: true; userId: true; createdAt: true; updatedAt: true } };
+        senderPassenger: { select: typeof passengerSelect };
+        receiverPassenger: { select: typeof passengerSelect };
+        senderDriver: { select: typeof driverSelect };
+        receiverDriver: { select: typeof driverSelect };
+        senderOwner: { select: typeof ownerSelect };
+        receiverOwner: { select: typeof ownerSelect };
+        senderOrganization: { select: typeof organizationSelect };
+        receiverOrganization: { select: typeof organizationSelect };
     };
 }>;
 

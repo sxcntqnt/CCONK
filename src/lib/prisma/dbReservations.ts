@@ -1,36 +1,251 @@
 'use server';
 
 import { db } from '@/lib/prisma';
-import { Prisma, ReservationStatus, PaymentStatus, SeatStatus } from '@prisma/client';
-import { User, Bus, Seat, Reservation, Image, Trip, Route, Payment, Message, Passenger } from '@/utils/constants/types';
+import { Prisma, ReservationStatus, PaymentStatus, SeatStatus, MatatuCapacity, Role } from '@prisma/client';
 import { selectSeatForReservation, updateSeat } from './dbSeats';
 import { z } from 'zod';
-import { parseISO, isValid } from 'date-fns';
 import { ReservationWithRelations } from './dbTypes';
 import { ROLES } from '@/utils/constants/roles';
 
+// Types
+type User = {
+    id: string;
+    clerkId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    image: string;
+    role: Role;
+    phoneNumber?: string;
+    createdAt: Date;
+    updatedAt: Date;
+};
+
+type Bus = {
+    id: string;
+    licensePlate: string;
+    capacity: number;
+    category: MatatuCapacity;
+    createdAt: Date;
+    updatedAt: Date;
+    images: Image[];
+    passengers?: Passenger[];
+};
+
+type Seat = {
+    id: string;
+    busId: string;
+    seatNumber: number;
+    price: number;
+    row: number;
+    column: number;
+    category: string;
+    status: SeatStatus;
+    bus: Bus;
+};
+
+type Reservation = {
+    id: string;
+    userId: string;
+    tripId: string;
+    seatId: string;
+    status: ReservationStatus;
+    bookedAt: Date;
+    updatedAt: Date;
+    successfulPaymentId?: string;
+    user: User;
+    seat: Seat;
+    trip: Trip;
+    payments: Payment[];
+    messages: Message[];
+};
+
+type Image = { id: string; src: string; blurDataURL?: string; alt: string; busId: string };
+type Passenger = { id: string; userId: string; busId: string; createdAt: Date; updatedAt: Date; user: User };
+type Trip = {
+    id: string;
+    busId: string;
+    routeId: string;
+    destinationIndex: number;
+    departureTime: Date;
+    status: string;
+    isFullyBooked: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    driverId?: string;
+    bus: Bus;
+    route?: Route;
+};
+type Route = {
+    id: string;
+    route_number: string;
+    pickup_point: any;
+    destinations: any[];
+    helix: any;
+    createdAt: Date;
+    updatedAt: Date;
+};
+type Payment = {
+    id: string;
+    reservationId: string;
+    userId: string;
+    amount: number;
+    status: PaymentStatus;
+    mPesaReceiptNumber?: string;
+    phoneNumber?: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    user: User;
+    reservation: Reservation;
+};
+type Message = any;
+
 // Validation Schemas
-const reservationSchema = z.object({
-    userId: z.string().min(1, 'User ID is required'),
-    tripId: z.string().min(1, 'Trip ID is required'),
-    seatId: z.string().min(1, 'Seat ID is required'),
-    clerkId: z.string().min(1, 'Clerk ID is required'),
-    phoneNumber: z.string().min(1, 'Phone number is required'),
-});
+const schemas = {
+    reservation: z.object({
+        userId: z.string().min(1, 'User ID is required'),
+        tripId: z.string().min(1, 'Trip ID is required'),
+        seatId: z.string().min(1, 'Seat ID is required'),
+        clerkId: z.string().min(1, 'Clerk ID is required'),
+        phoneNumber: z.string().min(1, 'Phone number is required'),
+    }),
+    passengerReservations: z.object({
+        clerkId: z.string().min(1, 'Clerk ID is required'),
+    }),
+    tripSearch: z.object({
+        pickup: z.string().min(1, 'Pickup is required').optional(),
+        destination: z.string().min(1, 'Destination is required').optional(),
+    }),
+    completeTrip: z.object({
+        tripId: z.string().min(1, 'Trip ID is required'),
+        clerkId: z.string().min(1, 'Clerk ID is required'),
+    }),
+};
 
-const passengerReservationsSchema = z.object({
-    clerkId: z.string().min(1, 'Clerk ID is required'),
-});
-
-const tripSearchSchema = z.object({
-    pickup: z.string().min(1, 'Pickup is required').optional(),
-    destination: z.string().min(1, 'Destination is required').optional(),
-});
-
-const completeTripSchema = z.object({
-    tripId: z.string().min(1, 'Trip ID is required'),
-    clerkId: z.string().min(1, 'Clerk ID is required'),
-});
+// Common Prisma Include Configuration
+const reservationInclude: Prisma.ReservationInclude = {
+    user: {
+        select: {
+            id: true,
+            clerkId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            image: true,
+            role: true,
+            phoneNumber: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    },
+    seat: {
+        select: {
+            id: true,
+            seatNumber: true,
+            price: true,
+            row: true,
+            column: true,
+            category: true,
+            status: true,
+            busId: true,
+            bus: {
+                select: {
+                    id: true,
+                    licensePlate: true,
+                    capacity: true,
+                    category: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    passengers: {
+                        select: {
+                            id: true,
+                            userId: true,
+                            busId: true,
+                            createdAt: true,
+                            updatedAt: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    clerkId: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    email: true,
+                                    image: true,
+                                    role: true,
+                                    createdAt: true,
+                                    updatedAt: true,
+                                },
+                            },
+                        },
+                    },
+                    images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
+                },
+            },
+        },
+    },
+    trip: {
+        select: {
+            id: true,
+            busId: true,
+            routeId: true,
+            destinationIndex: true,
+            departureTime: true,
+            status: true,
+            isFullyBooked: true,
+            driverId: true,
+        },
+        include: {
+            bus: {
+                select: {
+                    id: true,
+                    licensePlate: true,
+                    capacity: true,
+                    category: true,
+                    images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
+                },
+            },
+        },
+    },
+    payments: {
+        select: {
+            id: true,
+            reservationId: true,
+            userId: true,
+            amount: true,
+            status: true,
+            mPesaReceiptNumber: true,
+            phoneNumber: true,
+            createdAt: true,
+            updatedAt: true,
+            user: {
+                select: {
+                    id: true,
+                    clerkId: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    image: true,
+                    role: true,
+                    phoneNumber: true,
+                    createdAt: true,
+                    updatedAt: true,
+                },
+            },
+            reservation: {
+                select: {
+                    id: true,
+                    userId: true,
+                    tripId: true,
+                    seatId: true,
+                    status: true,
+                    bookedAt: true,
+                    updatedAt: true,
+                    successfulPaymentId: true,
+                },
+            },
+        },
+    },
+};
 
 // Custom Error
 class ReservationError extends Error {
@@ -40,8 +255,118 @@ class ReservationError extends Error {
     }
 }
 
-// Format Reservation for Response
-function formatReservation(reservation: ReservationWithRelations): Reservation & { user: User; seat: Seat } {
+// Utility Functions
+function handleError(error: unknown, context: string): never {
+    const errorMsg =
+        error instanceof z.ZodError
+            ? error.errors.map((e) => e.message).join(', ')
+            : error instanceof Error
+              ? error.message
+              : String(error);
+    console.error(`${context} error: ${errorMsg}`);
+    throw new ReservationError(`Failed to ${context}: ${errorMsg}`);
+}
+
+function mapImage(img: any): Image {
+    return { id: img.id, src: img.src, blurDataURL: img.blurDataURL ?? undefined, alt: img.alt, busId: img.busId };
+}
+
+function mapUser(user: any): User {
+    return {
+        id: user.id,
+        clerkId: user.clerkId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        image: user.image,
+        role: user.role as Role,
+        phoneNumber: user.phoneNumber ?? undefined,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+    };
+}
+
+function mapBus(bus: any): Bus {
+    return {
+        id: bus.id,
+        licensePlate: bus.licensePlate,
+        capacity: bus.capacity,
+        category: bus.category as MatatuCapacity,
+        createdAt: bus.createdAt,
+        updatedAt: bus.updatedAt,
+        images: bus.images?.map(mapImage) ?? [],
+        passengers: bus.passengers?.map((p: any) => ({
+            id: p.id,
+            userId: p.userId,
+            busId: p.busId,
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+            user: mapUser(p.user),
+        })),
+    };
+}
+
+function mapSeat(seat: any): Seat {
+    return {
+        id: seat.id,
+        busId: seat.busId,
+        seatNumber: Number(seat.seatNumber),
+        price: seat.price,
+        row: seat.row,
+        column: seat.column,
+        category: seat.category,
+        status: seat.status,
+        bus: mapBus(seat.bus),
+    };
+}
+
+function mapTrip(trip: any): Trip {
+    return {
+        id: trip.id,
+        busId: trip.busId,
+        routeId: trip.routeId,
+        destinationIndex: trip.destinationIndex,
+        departureTime: trip.departureTime,
+        status: trip.status,
+        isFullyBooked: trip.isFullyBooked,
+        createdAt: trip.createdAt,
+        updatedAt: trip.updatedAt,
+        driverId: trip.driverId ?? undefined,
+        bus: mapBus(trip.bus),
+    };
+}
+
+function mapPayment(payment: any): Payment {
+    return {
+        id: payment.id,
+        reservationId: payment.reservationId,
+        userId: payment.userId,
+        amount: payment.amount,
+        status: payment.status,
+        mPesaReceiptNumber: payment.mPesaReceiptNumber ?? undefined,
+        phoneNumber: payment.phoneNumber ?? null,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+        user: mapUser(payment.user),
+        reservation: {
+            id: payment.reservation.id,
+            userId: payment.reservation.userId,
+            tripId: payment.reservation.tripId,
+            seatId: payment.reservation.seatId,
+            status: payment.reservation.status,
+            bookedAt: payment.reservation.bookedAt,
+            updatedAt: payment.reservation.updatedAt,
+            successfulPaymentId: payment.reservation.successfulPaymentId ?? undefined,
+            user: mapUser(payment.reservation.user),
+            seat: mapSeat(payment.reservation.seat),
+            trip: mapTrip(payment.reservation.trip),
+            payments: [],
+            messages: [],
+        },
+    };
+}
+
+function formatReservation(reservation: ReservationWithRelations): Reservation {
     return {
         id: reservation.id,
         userId: reservation.userId,
@@ -51,93 +376,10 @@ function formatReservation(reservation: ReservationWithRelations): Reservation &
         bookedAt: reservation.bookedAt,
         updatedAt: reservation.updatedAt,
         successfulPaymentId: reservation.successfulPaymentId ?? undefined,
-        trip: {
-            id: reservation.trip.id,
-            busId: reservation.trip.busId,
-            routeId: reservation.trip.routeId,
-            destinationIndex: reservation.trip.destinationIndex,
-            departureTime: reservation.trip.departureTime,
-            status: reservation.trip.status,
-            isFullyBooked: reservation.trip.isFullyBooked,
-            createdAt: new Date(), // Placeholder
-            updatedAt: new Date(), // Placeholder
-            driverId: reservation.trip.driverId ?? undefined,
-            bus: {
-                id: reservation.trip.bus.id,
-                licensePlate: reservation.trip.bus.licensePlate,
-                capacity: reservation.trip.bus.capacity,
-                category: reservation.trip.bus.category,
-                images: reservation.trip.bus.images.map((img) => ({
-                    id: img.id,
-                    src: img.src,
-                    blurDataURL: img.blurDataURL ?? undefined,
-                    alt: img.alt,
-                    busId: img.busId,
-                })),
-            },
-        },
-        seat: {
-            id: reservation.seat.id,
-            busId: reservation.seat.busId,
-            seatNumber: reservation.seat.seatNumber,
-            price: reservation.seat.price,
-            row: reservation.seat.row,
-            column: reservation.seat.column,
-            category: reservation.seat.category,
-            status: reservation.seat.status,
-            bus: {
-                id: reservation.seat.bus.id,
-                licensePlate: reservation.seat.bus.licensePlate,
-                capacity: reservation.seat.bus.capacity,
-                category: reservation.seat.bus.category,
-                createdAt: reservation.seat.bus.createdAt,
-                updatedAt: reservation.seat.bus.updatedAt,
-                passengers: reservation.seat.bus.passengers.map((p) => ({
-                    id: p.id,
-                    userId: p.userId,
-                    busId: p.busId, // string | null
-                    createdAt: p.createdAt,
-                    updatedAt: p.updatedAt,
-                    user: {
-                        id: p.user.id,
-                        clerkId: p.user.clerkId,
-                        name: p.user.name,
-                        email: p.user.email,
-                        image: p.user.image,
-                        role: p.user.role,
-                        createdAt: p.user.createdAt,
-                        updatedAt: p.user.updatedAt,
-                    },
-                })),
-                images: reservation.seat.bus.images.map((img) => ({
-                    id: img.id,
-                    src: img.src,
-                    blurDataURL: img.blurDataURL ?? undefined,
-                    alt: img.alt,
-                    busId: img.busId,
-                })),
-            },
-        },
-        user: {
-            id: reservation.user.id,
-            clerkId: reservation.user.clerkId,
-            name: reservation.user.name,
-            email: reservation.user.email,
-            image: reservation.user.image,
-            role: reservation.user.role,
-            phoneNumber: reservation.user.phoneNumber ?? undefined,
-            createdAt: reservation.user.createdAt,
-            updatedAt: reservation.user.updatedAt,
-        },
-        payments: reservation.payments.map((payment) => ({
-            id: payment.id,
-            amount: payment.amount,
-            status: payment.status,
-            mPesaReceiptNumber: payment.mPesaReceiptNumber ?? undefined, // Explicit coercion
-            phoneNumber: payment.phoneNumber,
-            createdAt: payment.createdAt,
-            updatedAt: payment.updatedAt,
-        })),
+        user: mapUser(reservation.user),
+        seat: mapSeat(reservation.seat),
+        trip: mapTrip(reservation.trip),
+        payments: reservation.payments.map(mapPayment),
         messages: [],
     };
 }
@@ -155,12 +397,11 @@ export async function createReservation({
     seatId: string;
     clerkId: string;
     phoneNumber: string;
-}): Promise<Reservation & { user: User; seat: Seat }> {
+}): Promise<Reservation> {
     return await db.$transaction(async (tx) => {
         try {
-            const validatedData = reservationSchema.parse({ userId, tripId, seatId, clerkId, phoneNumber });
+            const validatedData = schemas.reservation.parse({ userId, tripId, seatId, clerkId, phoneNumber });
 
-            // Verify user exists with the provided phoneNumber
             const user = await tx.user.findFirst({
                 where: { phoneNumber: validatedData.phoneNumber },
                 select: { id: true },
@@ -168,22 +409,16 @@ export async function createReservation({
             if (!user) throw new ReservationError('No user found with the provided phone number');
             if (user.id !== validatedData.userId) throw new ReservationError('Phone number does not match user');
 
-            // Use selectSeatForReservation to handle seat selection and reservation creation
             const seatData = await selectSeatForReservation({
                 seatId: validatedData.seatId,
                 tripId: validatedData.tripId,
                 clerkId: validatedData.clerkId,
             });
 
-            // Fetch seat price for payment
-            const seat = await tx.seat.findUnique({
-                where: { id: validatedData.seatId },
-                select: { price: true },
-            });
+            const seat = await tx.seat.findUnique({ where: { id: validatedData.seatId }, select: { price: true } });
             if (!seat) throw new ReservationError('Seat not found');
 
-            // Create payment using phoneNumber-verified userId
-            const payment = await tx.payment.create({
+            await tx.payment.create({
                 data: {
                     reservationId: seatData.reservation!.id,
                     userId: user.id,
@@ -195,300 +430,31 @@ export async function createReservation({
                 },
             });
 
-            // Fetch the full reservation with relations for response
             const reservation = await tx.reservation.findUnique({
                 where: { id: seatData.reservation!.id },
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            clerkId: true,
-                            name: true,
-                            email: true,
-                            image: true,
-                            role: true,
-                            phoneNumber: true,
-                            createdAt: true,
-                            updatedAt: true,
-                        },
-                    },
-                    seat: {
-                        select: {
-                            id: true,
-                            seatNumber: true,
-                            price: true,
-                            row: true,
-                            column: true,
-                            category: true,
-                            status: true,
-                            busId: true,
-                            bus: {
-                                select: {
-                                    id: true,
-                                    licensePlate: true,
-                                    capacity: true,
-                                    category: true,
-                                    createdAt: true,
-                                    updatedAt: true,
-                                    passengers: {
-                                        select: {
-                                            id: true,
-                                            userId: true,
-                                            busId: true,
-                                            createdAt: true,
-                                            updatedAt: true,
-                                            user: {
-                                                select: {
-                                                    id: true,
-                                                    clerkId: true,
-                                                    name: true,
-                                                    email: true,
-                                                    image: true,
-                                                    role: true,
-                                                    createdAt: true,
-                                                    updatedAt: true,
-                                                },
-                                            },
-                                        },
-                                    },
-                                    images: {
-                                        select: { id: true, src: true, blurDataURL: true, alt: true, busId: true },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    trip: {
-                        select: {
-                            id: true,
-                            busId: true,
-                            routeId: true,
-                            destinationIndex: true,
-                            departureTime: true,
-                            status: true,
-                            isFullyBooked: true,
-                            driverId: true,
-                        },
-                        include: {
-                            bus: {
-                                select: {
-                                    id: true,
-                                    licensePlate: true,
-                                    capacity: true,
-                                    category: true,
-                                    images: {
-                                        select: { id: true, src: true, blurDataURL: true, alt: true, busId: true },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    payments: {
-                        select: {
-                            id: true,
-                            reservationId: true,
-                            userId: true,
-                            amount: true,
-                            status: true,
-                            mPesaReceiptNumber: true,
-                            phoneNumber: true,
-                            createdAt: true,
-                            updatedAt: true,
-                            user: {
-                                select: {
-                                    id: true,
-                                    clerkId: true,
-                                    name: true,
-                                    email: true,
-                                    image: true,
-                                    role: true,
-                                    phoneNumber: true,
-                                    createdAt: true,
-                                    updatedAt: true,
-                                },
-                            },
-                            reservation: {
-                                select: {
-                                    id: true,
-                                    userId: true,
-                                    tripId: true,
-                                    seatId: true,
-                                    status: true,
-                                    bookedAt: true,
-                                    updatedAt: true,
-                                    successfulPaymentId: true,
-                                },
-                            },
-                        },
-                    },
-                },
+                include: reservationInclude,
             });
-
             if (!reservation) throw new ReservationError('Failed to fetch created reservation');
 
             return formatReservation(reservation);
         } catch (error) {
-            const errorMsg =
-                error instanceof z.ZodError
-                    ? error.errors.map((e) => e.message).join(', ')
-                    : error instanceof Error
-                      ? error.message
-                      : String(error);
-            console.error(`createReservation error: ${errorMsg}`);
-            throw new ReservationError(`Failed to create reservation: ${errorMsg}`);
+            handleError(error, 'createReservation');
         }
     });
 }
 
 // Read Reservations (Passenger)
-export async function getPassengerReservations({
-    clerkId,
-}: {
-    clerkId: string;
-}): Promise<(Reservation & { user: User; seat: Seat })[]> {
+export async function getPassengerReservations({ clerkId }: { clerkId: string }): Promise<Reservation[]> {
     try {
-        const validatedData = passengerReservationsSchema.parse({ clerkId });
+        const validatedData = schemas.passengerReservations.parse({ clerkId });
 
-        const user = await db.user.findUnique({
-            where: { clerkId: validatedData.clerkId },
-            select: { id: true },
-        });
+        const user = await db.user.findUnique({ where: { clerkId: validatedData.clerkId }, select: { id: true } });
         if (!user) throw new ReservationError('User not found');
 
-        const reservations = await db.reservation.findMany({
-            where: { userId: user.id },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        clerkId: true,
-                        name: true,
-                        email: true,
-                        image: true,
-                        role: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                    },
-                },
-                seat: {
-                    select: {
-                        id: true,
-                        seatNumber: true,
-                        price: true,
-                        row: true,
-                        column: true,
-                        category: true,
-                        status: true,
-                        busId: true,
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                createdAt: true,
-                                updatedAt: true,
-                                passengers: {
-                                    select: {
-                                        id: true,
-                                        userId: true,
-                                        busId: true,
-                                        createdAt: true,
-                                        updatedAt: true,
-                                        user: {
-                                            select: {
-                                                id: true,
-                                                clerkId: true,
-                                                name: true,
-                                                email: true,
-                                                image: true,
-                                                role: true,
-                                                createdAt: true,
-                                                updatedAt: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                trip: {
-                    select: {
-                        id: true,
-                        busId: true,
-                        routeId: true,
-                        destinationIndex: true,
-                        departureTime: true,
-                        status: true,
-                        isFullyBooked: true,
-                        driverId: true,
-                    },
-                    include: {
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                payments: {
-                    select: {
-                        id: true,
-                        reservationId: true,
-                        userId: true,
-                        amount: true,
-                        status: true,
-                        mPesaReceiptNumber: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                        user: {
-                            select: {
-                                id: true,
-                                clerkId: true,
-                                name: true,
-                                email: true,
-                                image: true,
-                                role: true,
-                                phoneNumber: true,
-                                createdAt: true,
-                                updatedAt: true,
-                            },
-                        },
-                        reservation: {
-                            select: {
-                                id: true,
-                                userId: true,
-                                tripId: true,
-                                seatId: true,
-                                status: true,
-                                bookedAt: true,
-                                updatedAt: true,
-                                successfulPaymentId: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
-
+        const reservations = await db.reservation.findMany({ where: { userId: user.id }, include: reservationInclude });
         return reservations.map(formatReservation);
     } catch (error) {
-        const errorMsg =
-            error instanceof z.ZodError
-                ? error.errors.map((e) => e.message).join(', ')
-                : error instanceof Error
-                  ? error.message
-                  : String(error);
-        console.error(`getPassengerReservations error: ${errorMsg}`);
-        throw new ReservationError(`Failed to fetch reservations: ${errorMsg}`);
+        handleError(error, 'getPassengerReservations');
     }
 }
 
@@ -501,7 +467,7 @@ export async function getAvailableTrips({
     destination?: string;
 }): Promise<Trip[]> {
     try {
-        const validatedData = tripSearchSchema.parse({ pickup, destination });
+        const validatedData = schemas.tripSearch.parse({ pickup, destination });
 
         const where: Prisma.TripWhereInput = {
             status: { in: ['SCHEDULED', 'IN_PROGRESS'] },
@@ -521,11 +487,7 @@ export async function getAvailableTrips({
                           }
                         : {},
                     validatedData.destination
-                        ? {
-                              destinations: {
-                                  has: { destination: validatedData.destination },
-                              },
-                          }
+                        ? { destinations: { has: { destination: validatedData.destination } } }
                         : {},
                 ],
             };
@@ -544,13 +506,7 @@ export async function getAvailableTrips({
                     },
                 },
                 route: {
-                    select: {
-                        id: true,
-                        route_number: true,
-                        pickup_point: true,
-                        destinations: true,
-                        helix: true,
-                    },
+                    select: { id: true, route_number: true, pickup_point: true, destinations: true, helix: true },
                 },
             },
         });
@@ -566,19 +522,7 @@ export async function getAvailableTrips({
             createdAt: trip.createdAt,
             updatedAt: trip.updatedAt,
             driverId: trip.driverId ?? undefined,
-            bus: {
-                id: trip.bus.id,
-                licensePlate: trip.bus.licensePlate,
-                capacity: trip.bus.capacity,
-                category: trip.bus.category,
-                images: trip.bus.images.map((img) => ({
-                    id: img.id,
-                    src: img.src,
-                    blurDataURL: img.blurDataURL ?? undefined,
-                    alt: img.alt,
-                    busId: img.busId,
-                })),
-            },
+            bus: mapBus(trip.bus),
             route: {
                 id: trip.route.id,
                 route_number: trip.route.route_number,
@@ -590,427 +534,43 @@ export async function getAvailableTrips({
             },
         }));
     } catch (error) {
-        const errorMsg =
-            error instanceof z.ZodError
-                ? error.errors.map((e) => e.message).join(', ')
-                : error instanceof Error
-                  ? error.message
-                  : String(error);
-        console.error(`getAvailableTrips error: ${errorMsg}`);
-        throw new ReservationError(`Failed to fetch available trips: ${errorMsg}`);
+        handleError(error, 'getAvailableTrips');
     }
 }
 
 // Update Reservation (Confirm)
-export async function confirmReservation(reservationId: string): Promise<Reservation & { user: User; seat: Seat }> {
+export async function confirmReservation(reservationId: string): Promise<Reservation> {
     try {
         const reservation = await db.reservation.findUnique({
             where: { id: reservationId },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        clerkId: true,
-                        name: true,
-                        email: true,
-                        image: true,
-                        role: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                    },
-                },
-                seat: {
-                    select: {
-                        id: true,
-                        seatNumber: true,
-                        price: true,
-                        row: true,
-                        column: true,
-                        category: true,
-                        status: true,
-                        busId: true,
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                createdAt: true,
-                                updatedAt: true,
-                                passengers: {
-                                    select: {
-                                        id: true,
-                                        userId: true,
-                                        busId: true,
-                                        createdAt: true,
-                                        updatedAt: true,
-                                        user: {
-                                            select: {
-                                                id: true,
-                                                clerkId: true,
-                                                name: true,
-                                                email: true,
-                                                image: true,
-                                                role: true,
-                                                createdAt: true,
-                                                updatedAt: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                trip: {
-                    select: {
-                        id: true,
-                        busId: true,
-                        routeId: true,
-                        destinationIndex: true,
-                        departureTime: true,
-                        status: true,
-                        isFullyBooked: true,
-                        driverId: true,
-                    },
-                    include: {
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                payments: {
-                    select: {
-                        id: true,
-                        reservationId: true,
-                        userId: true,
-                        amount: true,
-                        status: true,
-                        mPesaReceiptNumber: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                        user: {
-                            select: {
-                                id: true,
-                                clerkId: true,
-                                name: true,
-                                email: true,
-                                image: true,
-                                role: true,
-                                phoneNumber: true,
-                                createdAt: true,
-                                updatedAt: true,
-                            },
-                        },
-                        reservation: {
-                            select: {
-                                id: true,
-                                userId: true,
-                                tripId: true,
-                                seatId: true,
-                                status: true,
-                                bookedAt: true,
-                                updatedAt: true,
-                                successfulPaymentId: true,
-                            },
-                        },
-                    },
-                },
-            },
+            include: reservationInclude,
         });
-
         if (!reservation) throw new ReservationError('Reservation not found');
         if (reservation.status !== ReservationStatus.PENDING) throw new ReservationError('Reservation is not pending');
 
         const updatedReservation = await db.reservation.update({
             where: { id: reservationId },
-            data: {
-                status: ReservationStatus.CONFIRMED,
-                updatedAt: new Date(),
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        clerkId: true,
-                        name: true,
-                        email: true,
-                        image: true,
-                        role: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                    },
-                },
-                seat: {
-                    select: {
-                        id: true,
-                        seatNumber: true,
-                        price: true,
-                        row: true,
-                        column: true,
-                        category: true,
-                        status: true,
-                        busId: true,
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                createdAt: true,
-                                updatedAt: true,
-                                passengers: {
-                                    select: {
-                                        id: true,
-                                        userId: true,
-                                        busId: true,
-                                        createdAt: true,
-                                        updatedAt: true,
-                                        user: {
-                                            select: {
-                                                id: true,
-                                                clerkId: true,
-                                                name: true,
-                                                email: true,
-                                                image: true,
-                                                role: true,
-                                                createdAt: true,
-                                                updatedAt: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                trip: {
-                    select: {
-                        id: true,
-                        busId: true,
-                        routeId: true,
-                        destinationIndex: true,
-                        departureTime: true,
-                        status: true,
-                        isFullyBooked: true,
-                        driverId: true,
-                    },
-                    include: {
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                payments: {
-                    select: {
-                        id: true,
-                        reservationId: true,
-                        userId: true,
-                        amount: true,
-                        status: true,
-                        mPesaReceiptNumber: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                        user: {
-                            select: {
-                                id: true,
-                                clerkId: true,
-                                name: true,
-                                email: true,
-                                image: true,
-                                role: true,
-                                phoneNumber: true,
-                                createdAt: true,
-                                updatedAt: true,
-                            },
-                        },
-                        reservation: {
-                            select: {
-                                id: true,
-                                userId: true,
-                                tripId: true,
-                                seatId: true,
-                                status: true,
-                                bookedAt: true,
-                                updatedAt: true,
-                                successfulPaymentId: true,
-                            },
-                        },
-                    },
-                },
-            },
+            data: { status: ReservationStatus.CONFIRMED, updatedAt: new Date() },
+            include: reservationInclude,
         });
 
-        // Update seat status to RESERVED
-        await updateSeat(updatedReservation.seatId, { status: SeatStatus.RESERVED }, updatedReservation.user.clerkId);
-
+        await updateSeat(updatedReservation.seatId, { status: SeatStatus.RESERVED }, reservation.user.clerkId);
         return formatReservation(updatedReservation);
     } catch (error) {
-        const errorMsg =
-            error instanceof z.ZodError
-                ? error.errors.map((e) => e.message).join(', ')
-                : error instanceof Error
-                  ? error.message
-                  : String(error);
-        console.error(`confirmReservation error: ${errorMsg}`);
-        throw new ReservationError(`Failed to confirm reservation: ${errorMsg}`);
+        handleError(error, 'confirmReservation');
     }
 }
 
 // Update Reservation (Cancel)
-export async function cancelReservation(
-    reservationId: string,
-    clerkId: string,
-): Promise<Reservation & { user: User; seat: Seat }> {
+export async function cancelReservation(reservationId: string, clerkId: string): Promise<Reservation> {
     try {
-        const user = await db.user.findUnique({
-            where: { clerkId },
-            select: { id: true },
-        });
+        const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } });
         if (!user) throw new ReservationError('User not found');
 
         const reservation = await db.reservation.findUnique({
             where: { id: reservationId },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        clerkId: true,
-                        name: true,
-                        email: true,
-                        image: true,
-                        role: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                    },
-                },
-                seat: {
-                    select: {
-                        id: true,
-                        seatNumber: true,
-                        price: true,
-                        row: true,
-                        column: true,
-                        category: true,
-                        status: true,
-                        busId: true,
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                createdAt: true,
-                                updatedAt: true,
-                                passengers: {
-                                    select: {
-                                        id: true,
-                                        userId: true,
-                                        busId: true,
-                                        createdAt: true,
-                                        updatedAt: true,
-                                        user: {
-                                            select: {
-                                                id: true,
-                                                clerkId: true,
-                                                name: true,
-                                                email: true,
-                                                image: true,
-                                                role: true,
-                                                createdAt: true,
-                                                updatedAt: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                trip: {
-                    select: {
-                        id: true,
-                        busId: true,
-                        routeId: true,
-                        destinationIndex: true,
-                        departureTime: true,
-                        status: true,
-                        isFullyBooked: true,
-                        driverId: true,
-                    },
-                    include: {
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                payments: {
-                    select: {
-                        id: true,
-                        reservationId: true,
-                        userId: true,
-                        amount: true,
-                        status: true,
-                        mPesaReceiptNumber: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                        user: {
-                            select: {
-                                id: true,
-                                clerkId: true,
-                                name: true,
-                                email: true,
-                                image: true,
-                                role: true,
-                                phoneNumber: true,
-                                createdAt: true,
-                                updatedAt: true,
-                            },
-                        },
-                        reservation: {
-                            select: {
-                                id: true,
-                                userId: true,
-                                tripId: true,
-                                seatId: true,
-                                status: true,
-                                bookedAt: true,
-                                updatedAt: true,
-                                successfulPaymentId: true,
-                            },
-                        },
-                    },
-                },
-            },
+            include: reservationInclude,
         });
-
         if (!reservation) throw new ReservationError('Reservation not found');
         if (reservation.userId !== user.id) throw new ReservationError('Unauthorized to cancel this reservation');
         if (reservation.status === ReservationStatus.CANCELLED)
@@ -1018,146 +578,14 @@ export async function cancelReservation(
 
         const updatedReservation = await db.reservation.update({
             where: { id: reservationId },
-            data: {
-                status: ReservationStatus.CANCELLED,
-                successfulPaymentId: null,
-                updatedAt: new Date(),
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        clerkId: true,
-                        name: true,
-                        email: true,
-                        image: true,
-                        role: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                    },
-                },
-                seat: {
-                    select: {
-                        id: true,
-                        seatNumber: true,
-                        price: true,
-                        row: true,
-                        column: true,
-                        category: true,
-                        status: true,
-                        busId: true,
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                createdAt: true,
-                                updatedAt: true,
-                                passengers: {
-                                    select: {
-                                        id: true,
-                                        userId: true,
-                                        busId: true,
-                                        createdAt: true,
-                                        updatedAt: true,
-                                        user: {
-                                            select: {
-                                                id: true,
-                                                clerkId: true,
-                                                name: true,
-                                                email: true,
-                                                image: true,
-                                                role: true,
-                                                createdAt: true,
-                                                updatedAt: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                trip: {
-                    select: {
-                        id: true,
-                        busId: true,
-                        routeId: true,
-                        destinationIndex: true,
-                        departureTime: true,
-                        status: true,
-                        isFullyBooked: true,
-                        driverId: true,
-                    },
-                    include: {
-                        bus: {
-                            select: {
-                                id: true,
-                                licensePlate: true,
-                                capacity: true,
-                                category: true,
-                                images: { select: { id: true, src: true, blurDataURL: true, alt: true, busId: true } },
-                            },
-                        },
-                    },
-                },
-                payments: {
-                    select: {
-                        id: true,
-                        reservationId: true,
-                        userId: true,
-                        amount: true,
-                        status: true,
-                        mPesaReceiptNumber: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                        user: {
-                            select: {
-                                id: true,
-                                clerkId: true,
-                                name: true,
-                                email: true,
-                                image: true,
-                                role: true,
-                                phoneNumber: true,
-                                createdAt: true,
-                                updatedAt: true,
-                            },
-                        },
-                        reservation: {
-                            select: {
-                                id: true,
-                                userId: true,
-                                tripId: true,
-                                seatId: true,
-                                status: true,
-                                bookedAt: true,
-                                updatedAt: true,
-                                successfulPaymentId: true,
-                            },
-                        },
-                    },
-                },
-            },
+            data: { status: ReservationStatus.CANCELLED, successfulPaymentId: null, updatedAt: new Date() },
+            include: reservationInclude,
         });
 
-        // Update seat status to AVAILABLE
         await updateSeat(updatedReservation.seatId, { status: SeatStatus.AVAILABLE }, clerkId);
-
         return formatReservation(updatedReservation);
     } catch (error) {
-        const errorMsg =
-            error instanceof z.ZodError
-                ? error.errors.map((e) => e.message).join(', ')
-                : error instanceof Error
-                  ? error.message
-                  : String(error);
-        console.error(`cancelReservation error: ${errorMsg}`);
-        throw new ReservationError(`Failed to cancel reservation: ${errorMsg}`);
+        handleError(error, 'cancelReservation');
     }
 }
 
@@ -1168,25 +596,19 @@ export async function completeTripReservations({
 }: {
     tripId: string;
     clerkId: string;
-}): Promise<(Reservation & { user: User; seat: Seat })[]> {
+}): Promise<Reservation[]> {
     return await db.$transaction(async (tx) => {
         try {
-            const validatedData = completeTripSchema.parse({ tripId, clerkId });
+            const validatedData = schemas.completeTrip.parse({ tripId, clerkId });
 
-            // Verify user authorization (driver or organization)
             const user = await tx.user.findUnique({
                 where: { clerkId: validatedData.clerkId },
-                select: {
-                    id: true,
-                    role: true,
-                    driver: { select: { id: true } },
-                },
+                select: { id: true, role: true, driver: { select: { id: true } } },
             });
             if (!user || (user.role !== ROLES.DRIVER && user.role !== ROLES.ORGANIZATION)) {
                 throw new ReservationError('User is not authorized to complete trip reservations');
             }
 
-            // Fetch trip and verify driver ownership (if driver)
             const trip = await tx.trip.findUnique({
                 where: { id: validatedData.tripId },
                 select: { driverId: true, status: true },
@@ -1199,301 +621,30 @@ export async function completeTripReservations({
                 throw new ReservationError('Trip is not in progress');
             }
 
-            // Find all CONFIRMED reservations for the trip
             const reservations = await tx.reservation.findMany({
-                where: {
-                    tripId: validatedData.tripId,
-                    status: ReservationStatus.CONFIRMED,
-                },
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            clerkId: true,
-                            name: true,
-                            email: true,
-                            image: true,
-                            role: true,
-                            phoneNumber: true,
-                            createdAt: true,
-                            updatedAt: true,
-                        },
-                    },
-                    seat: {
-                        select: {
-                            id: true,
-                            seatNumber: true,
-                            price: true,
-                            row: true,
-                            column: true,
-                            category: true,
-                            status: true,
-                            busId: true,
-                            bus: {
-                                select: {
-                                    id: true,
-                                    licensePlate: true,
-                                    capacity: true,
-                                    category: true,
-                                    createdAt: true,
-                                    updatedAt: true,
-                                    passengers: {
-                                        select: {
-                                            id: true,
-                                            userId: true,
-                                            busId: true,
-                                            createdAt: true,
-                                            updatedAt: true,
-                                            user: {
-                                                select: {
-                                                    id: true,
-                                                    clerkId: true,
-                                                    name: true,
-                                                    email: true,
-                                                    image: true,
-                                                    role: true,
-                                                    createdAt: true,
-                                                    updatedAt: true,
-                                                },
-                                            },
-                                        },
-                                    },
-                                    images: {
-                                        select: { id: true, src: true, blurDataURL: true, alt: true, busId: true },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    trip: {
-                        select: {
-                            id: true,
-                            busId: true,
-                            routeId: true,
-                            destinationIndex: true,
-                            departureTime: true,
-                            status: true,
-                            isFullyBooked: true,
-                            driverId: true,
-                        },
-                        include: {
-                            bus: {
-                                select: {
-                                    id: true,
-                                    licensePlate: true,
-                                    capacity: true,
-                                    category: true,
-                                    images: {
-                                        select: { id: true, src: true, blurDataURL: true, alt: true, busId: true },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    payments: {
-                        select: {
-                            id: true,
-                            reservationId: true,
-                            userId: true,
-                            amount: true,
-                            status: true,
-                            mPesaReceiptNumber: true,
-                            phoneNumber: true,
-                            createdAt: true,
-                            updatedAt: true,
-                            user: {
-                                select: {
-                                    id: true,
-                                    clerkId: true,
-                                    name: true,
-                                    email: true,
-                                    image: true,
-                                    role: true,
-                                    phoneNumber: true,
-                                    createdAt: true,
-                                    updatedAt: true,
-                                },
-                            },
-                            reservation: {
-                                select: {
-                                    id: true,
-                                    userId: true,
-                                    tripId: true,
-                                    seatId: true,
-                                    status: true,
-                                    bookedAt: true,
-                                    updatedAt: true,
-                                    successfulPaymentId: true,
-                                },
-                            },
-                        },
-                    },
-                },
+                where: { tripId: validatedData.tripId, status: ReservationStatus.CONFIRMED },
+                include: reservationInclude,
             });
 
-            if (reservations.length === 0) {
-                return [];
-            }
+            if (reservations.length === 0) return [];
 
-            // Update reservations to COMPLETED
             await tx.reservation.updateMany({
-                where: {
-                    tripId: validatedData.tripId,
-                    status: ReservationStatus.CONFIRMED,
-                },
-                data: {
-                    status: ReservationStatus.COMPLETED,
-                    updatedAt: new Date(),
-                },
+                where: { tripId: validatedData.tripId, status: ReservationStatus.CONFIRMED },
+                data: { status: ReservationStatus.COMPLETED, updatedAt: new Date() },
             });
 
-            // Update seats to AVAILABLE using updateSeat
             for (const reservation of reservations) {
                 await updateSeat(reservation.seatId, { status: SeatStatus.AVAILABLE }, validatedData.clerkId);
             }
 
-            // Fetch updated reservations
             const updatedReservations = await tx.reservation.findMany({
-                where: {
-                    tripId: validatedData.tripId,
-                    status: ReservationStatus.COMPLETED,
-                },
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            clerkId: true,
-                            name: true,
-                            email: true,
-                            image: true,
-                            role: true,
-                            phoneNumber: true,
-                            createdAt: true,
-                            updatedAt: true,
-                        },
-                    },
-                    seat: {
-                        select: {
-                            id: true,
-                            seatNumber: true,
-                            price: true,
-                            row: true,
-                            column: true,
-                            category: true,
-                            status: true,
-                            busId: true,
-                            bus: {
-                                select: {
-                                    id: true,
-                                    licensePlate: true,
-                                    capacity: true,
-                                    category: true,
-                                    createdAt: true,
-                                    updatedAt: true,
-                                    passengers: {
-                                        select: {
-                                            id: true,
-                                            userId: true,
-                                            busId: true,
-                                            createdAt: true,
-                                            updatedAt: true,
-                                            user: {
-                                                select: {
-                                                    id: true,
-                                                    clerkId: true,
-                                                    name: true,
-                                                    email: true,
-                                                    image: true,
-                                                    role: true,
-                                                    createdAt: true,
-                                                    updatedAt: true,
-                                                },
-                                            },
-                                        },
-                                    },
-                                    images: {
-                                        select: { id: true, src: true, blurDataURL: true, alt: true, busId: true },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    trip: {
-                        select: {
-                            id: true,
-                            busId: true,
-                            routeId: true,
-                            destinationIndex: true,
-                            departureTime: true,
-                            status: true,
-                            isFullyBooked: true,
-                            driverId: true,
-                        },
-                        include: {
-                            bus: {
-                                select: {
-                                    id: true,
-                                    licensePlate: true,
-                                    capacity: true,
-                                    category: true,
-                                    images: {
-                                        select: { id: true, src: true, blurDataURL: true, alt: true, busId: true },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    payments: {
-                        select: {
-                            id: true,
-                            reservationId: true,
-                            userId: true,
-                            amount: true,
-                            status: true,
-                            mPesaReceiptNumber: true,
-                            phoneNumber: true,
-                            createdAt: true,
-                            updatedAt: true,
-                            user: {
-                                select: {
-                                    id: true,
-                                    clerkId: true,
-                                    name: true,
-                                    email: true,
-                                    image: true,
-                                    role: true,
-                                    phoneNumber: true,
-                                    createdAt: true,
-                                    updatedAt: true,
-                                },
-                            },
-                            reservation: {
-                                select: {
-                                    id: true,
-                                    userId: true,
-                                    tripId: true,
-                                    seatId: true,
-                                    status: true,
-                                    bookedAt: true,
-                                    updatedAt: true,
-                                    successfulPaymentId: true,
-                                },
-                            },
-                        },
-                    },
-                },
+                where: { tripId: validatedData.tripId, status: ReservationStatus.COMPLETED },
+                include: reservationInclude,
             });
 
             return updatedReservations.map(formatReservation);
         } catch (error) {
-            const errorMsg =
-                error instanceof z.ZodError
-                    ? error.errors.map((e) => e.message).join(', ')
-                    : error instanceof Error
-                      ? error.message
-                      : String(error);
-            console.error(`completeTripReservations error: ${errorMsg}`);
-            throw new ReservationError(`Failed to complete trip reservations: ${errorMsg}`);
+            handleError(error, 'completeTripReservations');
         }
     });
 }

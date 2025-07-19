@@ -3,13 +3,11 @@
 import { db } from '@/lib/prisma';
 import { Knock } from '@knocklabs/node';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, NotificationStatus } from '@prisma/client';
 import { NotificationWithRelations } from './dbTypes';
 import { Notification, Role, Trip } from '@/utils';
 
-// Initialize Knock instance
-const knock = new Knock(process.env.KNOCK_API_SECRET!);
-
+// Types
 interface Recipient {
     id: string;
     name: string;
@@ -27,27 +25,46 @@ interface NotificationData {
     licensePlate?: string;
 }
 
+// Environment Variables
+const KNOCK_API_SECRET = process.env.KNOCK_API_SECRET;
+if (!KNOCK_API_SECRET) {
+    throw new Error('KNOCK_API_SECRET is not set in environment variables');
+}
+
+// Initialize Knock instance
+const knock = new Knock(KNOCK_API_SECRET);
+
 // Validation Schemas
-const paginationSchema = z.object({
-    page: z.number().min(1).default(1),
-    pageSize: z.number().min(1).max(100).default(10),
-});
-
-const filterSchema = z.object({
-    type: z.string().optional(),
-    status: z.string().optional(),
-});
-
-const notificationInputSchema = z.object({
-    destination: z.string().min(2).max(100).optional(),
-    message: z.string().max(500).optional(),
-});
-
-const updateNotificationSchema = z.object({
-    message: z.string().max(500).optional(),
-    status: z.enum(['pending', 'sent', 'read']).optional(),
-    subject: z.string().max(100).optional(),
-});
+const schemas = {
+    pagination: z.object({
+        page: z.number().int().min(1, 'Page must be a positive integer').default(1),
+        pageSize: z
+            .number()
+            .int()
+            .min(1, 'PageSize must be a positive integer')
+            .max(100, 'PageSize cannot exceed 100')
+            .default(10),
+    }),
+    filter: z.object({
+        type: z.string().optional(),
+        status: z.string().optional(),
+    }),
+    notificationInput: z.object({
+        destination: z
+            .string()
+            .min(2, 'Destination must be at least 2 characters')
+            .max(100, 'Destination cannot exceed 100 characters')
+            .optional(),
+        message: z.string().max(500, 'Message cannot exceed 500 characters').optional(),
+    }),
+    updateNotification: z.object({
+        message: z.string().max(500, 'Message cannot exceed 500 characters').optional(),
+        status: z.enum(['pending', 'sent', 'read']).optional(),
+        subject: z.string().max(100, 'Subject cannot exceed 100 characters').optional(),
+    }),
+    clerkId: z.string().min(1, 'Invalid clerk ID'),
+    notificationId: z.string().min(1, 'Invalid notification ID'),
+};
 
 // Custom Error
 class NotificationError extends Error {
@@ -57,358 +74,93 @@ class NotificationError extends Error {
     }
 }
 
-// Common Notification Fetcher
-async function fetchNotifications<T extends Prisma.NotificationWhereInput>(
-    whereClause: T,
-    pagination: { page: number; pageSize: number },
-    filters: { type?: string; status?: string },
-): Promise<{ notifications: Notification[]; total: number }> {
-    const { page, pageSize } = paginationSchema.parse(pagination);
-    const { type, status } = filterSchema.parse(filters);
-    const skip = (page - 1) * pageSize;
-
-    if (!Number.isFinite(skip) || skip < 0) {
-        throw new NotificationError(`Invalid pagination: page=${page}, pageSize=${pageSize}`);
-    }
-
-    try {
-        const where: Prisma.NotificationWhereInput = {
-            ...whereClause,
-            ...(type && { type }),
-            ...(status && { status }),
-        };
-
-        const [notifications, total] = await Promise.all([
-            db.notification.findMany({
-                where,
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            email: true,
-                            clerkId: true,
-                            name: true,
-                            image: true,
-                            role: true,
-                            phoneNumber: true,
-                            createdAt: true,
-                            updatedAt: true,
-                        },
-                    },
-                },
-                skip,
-                take: pageSize,
-                orderBy: { createdAt: 'desc' },
-            }),
-            db.notification.count({
-                where,
-            }),
-        ]);
-
-        return {
-            notifications: notifications.map((n) => ({
-                id: n.id,
-                userId: n.userId,
-                tripId: n.tripId ?? undefined,
-                type: n.type,
-                message: n.message,
-                subject: n.subject,
-                status: n.status,
-                createdAt: n.createdAt,
-                sentAt: n.sentAt,
-                driverId: n.driverId ?? undefined,
-                user: {
-                    id: n.user.id,
-                    email: n.user.email,
-                    clerkId: n.user.clerkId,
-                    name: n.user.name,
-                    image: n.user.image,
-                    role: n.user.role,
-                    phoneNumber: n.user.phoneNumber,
-                    createdAt: n.user.createdAt,
-                    updatedAt: n.user.updatedAt,
-                },
-            })),
-            total,
-        };
-    } catch (error) {
-        throw new NotificationError(
-            `Failed to fetch notifications: ${error instanceof Error ? error.message : String(error)}`,
-        );
-    }
+// Utility Functions
+function handleError(error: unknown, context: string): never {
+    const errorMsg =
+        error instanceof z.ZodError
+            ? error.errors.map((e) => e.message).join(', ')
+            : error instanceof Error
+              ? error.message
+              : String(error);
+    console.error(`${context} error: ${errorMsg}`);
+    throw new NotificationError(`Failed to ${context}: ${errorMsg}`);
 }
 
-// Public API Functions
-export async function getNotifications({
-    ownerId,
-    page = 1,
-    pageSize = 10,
-    filters = {},
-}: {
-    ownerId: string;
-    page?: number;
-    pageSize?: number;
-    filters?: { type?: string; status?: string };
-}) {
-    return fetchNotifications({ trip: { bus: { ownerId } } }, { page, pageSize }, filters);
-}
-
-export async function getDriverNotifications({
-    driverId,
-    page = 1,
-    pageSize = 10,
-    filters = {},
-}: {
-    driverId: string;
-    page?: number;
-    pageSize?: number;
-    filters?: { type?: string; status?: string };
-}) {
-    return fetchNotifications({ driverId, trip: { status: { not: 'COMPLETED' } } }, { page, pageSize }, filters);
-}
-
-export async function getUserNotifications({
-    clerkId,
-    page = 1,
-    pageSize = 10,
-    filters = {},
-}: {
-    clerkId: string;
-    page?: number;
-    pageSize?: number;
-    filters?: { type?: string; status?: string };
-}) {
-    try {
-        const user = await db.user.findUnique({
-            where: { clerkId },
-            select: { id: true },
-        });
-
-        if (!user) {
-            throw new NotificationError('User not found');
-        }
-
-        return fetchNotifications({ userId: user.id }, { page, pageSize }, filters);
-    } catch (error) {
-        throw new NotificationError(
-            `Failed to fetch user notifications: ${error instanceof Error ? error.message : String(error)}`,
-        );
-    }
-}
-
-export async function notifyDriverArrival(
-    clerkId: string,
-    destination: string,
-    message?: string,
-): Promise<Notification> {
-    const { destination: sanitizedDestination, message: sanitizedMessage } = notificationInputSchema.parse({
-        destination,
-        message,
-    });
-    const driver = await getAuthenticatedDriver(clerkId);
-    const trip = await fetchDriverTrip(driver.prismaDriver.driver!.id);
-    const recipients = await fetchPassengers(trip.id);
-
-    return sendNotification(driver, 'arrival', trip, sanitizedDestination, sanitizedMessage, recipients);
-}
-
-export async function notifyDriverOffline(clerkId: string, message?: string): Promise<Notification> {
-    const { message: sanitizedMessage } = notificationInputSchema.parse({ message });
-    const driver = await getAuthenticatedDriver(clerkId);
-    const recipients = await fetchOwners();
-
-    return sendNotification(driver, 'offline', null, undefined, sanitizedMessage, recipients);
-}
-
-export async function notifyDriverInTransit(clerkId: string, message?: string): Promise<Notification> {
-    const { message: sanitizedMessage } = notificationInputSchema.parse({ message });
-    const driver = await getAuthenticatedDriver(clerkId);
-    const trip = await fetchDriverTrip(driver.prismaDriver.driver!.id);
-    const recipients = await fetchPassengers(trip.id);
-
-    return sendNotification(driver, 'in-transit', trip, undefined, sanitizedMessage, recipients);
-}
-
-export async function updateNotification(
-    clerkId: string,
-    notificationId: string,
-    data: {
-        message?: string;
-        status?: 'pending' | 'sent' | 'read';
-        subject?: string;
+const notificationInclude: Prisma.NotificationInclude = {
+    user: {
+        select: {
+            id: true,
+            email: true,
+            clerkId: true,
+            name: true,
+            image: true,
+            role: true,
+            phoneNumber: true,
+            createdAt: true,
+            updatedAt: true,
+        },
     },
-): Promise<Notification> {
-    const { message, status, subject } = updateNotificationSchema.parse(data);
+};
 
-    try {
-        const user = await db.user.findUnique({
-            where: { clerkId },
-            include: { driver: true, owner: true },
-        });
-
-        if (!user || (user.role !== Role.DRIVER && user.role !== Role.OWNER)) {
-            throw new NotificationError('User is not authorized to update notifications');
-        }
-
-        const notification = await db.notification.findUnique({
-            where: { id: notificationId },
-            include: {
-                trip: {
-                    include: {
-                        bus: { select: { ownerId: true } },
-                    },
-                },
-                driver: { select: { id: true } },
-            },
-        });
-
-        if (!notification) {
-            throw new NotificationError('Notification not found');
-        }
-
-        if (
-            (user.role === Role.OWNER &&
-                (!notification.trip?.bus.ownerId || notification.trip.bus.ownerId !== user.owner?.id)) ||
-            (user.role === Role.DRIVER && (!notification.driverId || notification.driverId !== user.driver?.id))
-        ) {
-            throw new NotificationError('User is not authorized to update this notification');
-        }
-
-        const updatedNotification = await db.notification.update({
-            where: { id: notificationId },
-            data: {
-                message: message ?? undefined,
-                status: status ?? undefined,
-                subject: subject ?? undefined,
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        email: true,
-                        clerkId: true,
-                        name: true,
-                        image: true,
-                        role: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                    },
-                },
-            },
-        });
-
-        return {
-            id: updatedNotification.id,
-            userId: updatedNotification.userId,
-            tripId: updatedNotification.tripId ?? undefined,
-            type: updatedNotification.type,
-            message: updatedNotification.message,
-            subject: updatedNotification.subject,
-            status: updatedNotification.status,
-            createdAt: updatedNotification.createdAt,
-            sentAt: updatedNotification.sentAt,
-            driverId: updatedNotification.driverId ?? undefined,
-            user: {
-                id: updatedNotification.user.id,
-                email: updatedNotification.user.email,
-                clerkId: updatedNotification.user.clerkId,
-                name: updatedNotification.user.name,
-                image: updatedNotification.user.image,
-                role: updatedNotification.user.role,
-                phoneNumber: updatedNotification.user.phoneNumber,
-                createdAt: updatedNotification.user.createdAt,
-                updatedAt: updatedNotification.user.updatedAt,
-            },
-        };
-    } catch (error) {
-        throw new NotificationError(
-            `Failed to update notification: ${error instanceof Error ? error.message : String(error)}`,
-        );
-    }
-}
-
-export async function deleteNotification(clerkId: string, notificationId: string): Promise<void> {
-    try {
-        const user = await db.user.findUnique({
-            where: { clerkId },
-            include: { driver: true, owner: true },
-        });
-
-        if (!user || (user.role !== Role.DRIVER && user.role !== Role.OWNER)) {
-            throw new NotificationError('User is not authorized to delete notifications');
-        }
-
-        const notification = await db.notification.findUnique({
-            where: { id: notificationId },
-            include: {
-                trip: {
-                    include: {
-                        bus: { select: { ownerId: true } },
-                    },
-                },
-                driver: { select: { id: true } },
-            },
-        });
-
-        if (!notification) {
-            throw new NotificationError('Notification not found');
-        }
-
-        if (
-            (user.role === Role.OWNER &&
-                (!notification.trip?.bus.ownerId || notification.trip.bus.ownerId !== user.owner?.id)) ||
-            (user.role === Role.DRIVER && (!notification.driverId || notification.driverId !== user.driver?.id))
-        ) {
-            throw new NotificationError('User is not authorized to delete this notification');
-        }
-
-        await db.notification.delete({
-            where: { id: notificationId },
-        });
-    } catch (error) {
-        throw new NotificationError(
-            `Failed to delete notification: ${error instanceof Error ? error.message : String(error)}`,
-        );
-    }
-}
-
-// Helper Functions
-async function getAuthenticatedDriver(clerkId: string): Promise<{
-    clerkUser: {
-        id: string;
-        firstName: string;
-        emailAddresses: { id: string; emailAddress: string }[];
-        primaryEmailAddressId: string;
-    };
-    prismaDriver: { id: string; role: Role; driver?: { id: string } };
-}> {
-    const driver = await db.user.findUnique({
-        where: { clerkId },
-        include: { driver: true },
-    });
-
-    if (
-        !driver ||
-        (driver.role !== Role.DRIVER && driver.role !== Role.OWNER) ||
-        (!driver.driver && driver.role === Role.DRIVER)
-    ) {
-        throw new NotificationError('Authenticated user is not authorized to send notifications');
-    }
-
+function formatNotification(notification: NotificationWithRelations): Notification {
     return {
-        clerkUser: {
-            id: clerkId,
-            firstName: driver.name?.split(' ')[0] || 'Driver',
-            emailAddresses: [{ id: driver.id, emailAddress: driver.email }],
-            primaryEmailAddressId: driver.id,
-        },
-        prismaDriver: {
-            id: driver.id,
-            role: driver.role,
-            driver: driver.driver ? { id: driver.driver.id } : undefined,
+        id: notification.id,
+        userId: notification.userId,
+        tripId: notification.tripId ?? undefined,
+        type: notification.type,
+        message: notification.message,
+        subject: notification.subject,
+        status: notification.status,
+        createdAt: notification.createdAt,
+        sentAt: notification.sentAt,
+        driverId: notification.driverId ?? undefined,
+        user: {
+            id: notification.user.id,
+            email: notification.user.email,
+            clerkId: notification.user.clerkId,
+            name: notification.user.name,
+            image: notification.user.image,
+            role: notification.user.role,
+            phoneNumber: notification.user.phoneNumber,
+            createdAt: notification.user.createdAt,
+            updatedAt: notification.user.updatedAt,
         },
     };
+}
+
+async function checkAuthorization(
+    clerkId: string,
+    roleRequired: Role | Role[],
+    notification?: { trip?: { bus: { ownerId: string } }; driverId?: string },
+    driverId?: string,
+    ownerId?: string,
+): Promise<{ user: any; driver?: any; owner?: any }> {
+    const user = await db.user.findUnique({ where: { clerkId }, include: { driver: true, owner: true } });
+    if (!user) throw new NotificationError('User not found');
+
+    const roles = Array.isArray(roleRequired) ? roleRequired : [roleRequired];
+    if (!roles.includes(user.role)) throw new NotificationError('User is not authorized');
+
+    if (user.role === Role.DRIVER && !user.driver) throw new NotificationError('User is not a driver');
+    if (notification) {
+        if (
+            user.role === Role.OWNER &&
+            (!notification.trip?.bus.ownerId || notification.trip.bus.ownerId !== user.owner?.id)
+        ) {
+            throw new NotificationError('User does not own this notification');
+        }
+        if (user.role === Role.DRIVER && (!notification.driverId || notification.driverId !== user.driver?.id)) {
+            throw new NotificationError('User is not authorized for this notification');
+        }
+    }
+    if (driverId && user.role === Role.DRIVER && user.driver?.id !== driverId) {
+        throw new NotificationError('User is not the driver for this trip');
+    }
+    if (ownerId && user.role === Role.OWNER && user.owner?.id !== ownerId) {
+        throw new NotificationError('User does not own this resource');
+    }
+
+    return { user, driver: user.driver, owner: user.owner };
 }
 
 async function fetchDriverTrip(driverId: string): Promise<Trip> {
@@ -424,12 +176,7 @@ async function fetchDriverTrip(driverId: string): Promise<Trip> {
                     images: { select: { id: true, busId: true, src: true, blurDataURL: true, alt: true } },
                 },
             },
-            route: {
-                select: {
-                    pickup_point: true,
-                    destinations: true,
-                },
-            },
+            route: { select: { pickup_point: true, destinations: true } },
         },
         orderBy: { departureTime: 'desc' },
     });
@@ -483,17 +230,7 @@ async function fetchDriverTrip(driverId: string): Promise<Trip> {
 async function fetchPassengers(tripId: string): Promise<Recipient[]> {
     const reservations = await db.reservation.findMany({
         where: { tripId, status: 'CONFIRMED' },
-        include: {
-            user: {
-                select: {
-                    id: true,
-                    clerkId: true,
-                    name: true,
-                    email: true,
-                    role: true,
-                },
-            },
-        },
+        include: { user: { select: { id: true, clerkId: true, name: true, email: true, role: true } } },
     });
 
     if (!reservations.length) throw new NotificationError('No confirmed passengers found for this trip');
@@ -513,13 +250,69 @@ async function fetchOwners(): Promise<Recipient[]> {
         where: { role: Role.OWNER },
         select: { id: true, clerkId: true, name: true, email: true },
     });
-
     return owners.map((owner) => ({
         id: owner.clerkId,
         name: owner.name || 'Owner',
         email: owner.email || 'owner@example.com',
         userId: owner.id,
     }));
+}
+
+async function sendKnockNotification(status: string, data: NotificationData, recipients: Recipient[]): Promise<void> {
+    try {
+        await knock.workflows.trigger(`driver-${status}`, { data, recipients });
+    } catch (error) {
+        handleError(error, `send ${status} notification via Knock`);
+    }
+}
+
+async function createDbNotifications(
+    recipients: Recipient[],
+    driverId: string | undefined,
+    tripId: string | undefined,
+    type: string,
+    message: string,
+    subject: string,
+): Promise<NotificationWithRelations> {
+    try {
+        await db.notification.createMany({
+            data: recipients.map((recipient) => ({
+                userId: recipient.userId || '',
+                tripId,
+                type,
+                message,
+                status: 'sent' as NotificationStatus,
+                driverId,
+                sentAt: new Date(),
+                createdAt: new Date(),
+                subject,
+            })),
+        });
+
+        const createdNotification = await db.notification.findFirst({
+            where: {
+                userId: recipients.find((r) => r.id === driverId)?.userId,
+                type,
+                sentAt: { gte: new Date(Date.now() - 1000) },
+            },
+            include: notificationInclude,
+        });
+
+        if (!createdNotification) throw new NotificationError('Failed to retrieve created notification');
+        return createdNotification;
+    } catch (error) {
+        handleError(error, 'create database notifications');
+    }
+}
+
+async function updateTripStatus(trip: Trip | null, status: 'arrival' | 'in-transit'): Promise<void> {
+    if (!trip) return;
+    try {
+        const newStatus = status === 'arrival' ? 'COMPLETED' : 'IN_PROGRESS';
+        await db.trip.update({ where: { id: trip.id }, data: { status: newStatus, updatedAt: new Date() } });
+    } catch (error) {
+        handleError(error, `update trip status to ${status}`);
+    }
 }
 
 async function sendNotification(
@@ -563,91 +356,204 @@ async function sendNotification(
         message ||
         `${notificationData.driverName} is ${notificationData.status}${status === 'arrival' && trip ? ` with bus ${trip.bus.licensePlate}` : ''}.`;
 
+    await sendKnockNotification(status, notificationData, [...recipients, driverRecipient]);
+    const createdNotification = await createDbNotifications(
+        [...recipients, driverRecipient],
+        driver.prismaDriver.driver?.id,
+        trip?.id,
+        notificationType,
+        messageContent,
+        subject,
+    );
+    await updateTripStatus(trip, status);
+
+    return formatNotification(createdNotification);
+}
+
+// Public API Functions
+export async function getNotifications({
+    ownerId,
+    page = 1,
+    pageSize = 10,
+    filters = {},
+}: {
+    ownerId: string;
+    page?: number;
+    pageSize?: number;
+    filters?: { type?: string; status?: string };
+}): Promise<{ notifications: Notification[]; total: number }> {
     try {
-        await knock.workflows.trigger(`driver-${status}`, {
-            data: notificationData,
-            recipients: [...recipients, driverRecipient],
-        });
-
-        await db.notification.createMany({
-            data: [...recipients, driverRecipient].map((recipient) => ({
-                userId: recipient.userId || '',
-                tripId: trip?.id,
-                type: notificationType,
-                message: messageContent,
-                status: 'sent',
-                driverId: driver.prismaDriver.driver?.id,
-                sentAt: new Date(),
-                createdAt: new Date(),
-                subject,
-            })),
-        });
-
-        const createdNotification = await db.notification.findFirst({
-            where: {
-                userId: driverRecipient.userId,
-                type: notificationType,
-                sentAt: { gte: new Date(Date.now() - 1000) },
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        email: true,
-                        clerkId: true,
-                        name: true,
-                        image: true,
-                        role: true,
-                        phoneNumber: true,
-                        createdAt: true,
-                        updatedAt: true,
-                    },
-                },
-            },
-        });
-
-        if (!createdNotification) {
-            throw new NotificationError('Failed to retrieve created notification');
-        }
-
-        if (status === 'arrival' && trip) {
-            await db.trip.update({
-                where: { id: trip.id },
-                data: { status: 'COMPLETED', updatedAt: new Date() },
-            });
-        } else if (status === 'in-transit' && trip) {
-            await db.trip.update({
-                where: { id: trip.id },
-                data: { status: 'IN_PROGRESS', updatedAt: new Date() },
-            });
-        }
-
-        return {
-            id: createdNotification.id,
-            userId: createdNotification.userId,
-            tripId: createdNotification.tripId ?? undefined,
-            type: createdNotification.type,
-            message: createdNotification.message,
-            subject: createdNotification.subject,
-            status: createdNotification.status,
-            createdAt: createdNotification.createdAt,
-            sentAt: createdNotification.sentAt,
-            driverId: createdNotification.driverId ?? undefined,
-            user: {
-                id: createdNotification.user.id,
-                email: createdNotification.user.email,
-                clerkId: createdNotification.user.clerkId,
-                name: createdNotification.user.name,
-                image: createdNotification.user.image,
-                role: createdNotification.user.role,
-                phoneNumber: createdNotification.user.phoneNumber,
-                createdAt: createdNotification.user.createdAt,
-                updatedAt: createdNotification.user.updatedAt,
-            },
-        };
+        await checkAuthorization(ownerId, Role.OWNER, undefined, undefined, ownerId);
+        return fetchNotifications({ trip: { bus: { ownerId } } }, { page, pageSize }, filters);
     } catch (error) {
-        throw new NotificationError(
-            `Failed to send ${status} notification: ${error instanceof Error ? error.message : String(error)}`,
+        handleError(error, 'getNotifications');
+    }
+}
+
+export async function getDriverNotifications({
+    driverId,
+    page = 1,
+    pageSize = 10,
+    filters = {},
+}: {
+    driverId: string;
+    page?: number;
+    pageSize?: number;
+    filters?: { type?: string; status?: string };
+}): Promise<{ notifications: Notification[]; total: number }> {
+    try {
+        await checkAuthorization(driverId, Role.DRIVER, undefined, driverId);
+        return fetchNotifications({ driverId, trip: { status: { not: 'COMPLETED' } } }, { page, pageSize }, filters);
+    } catch (error) {
+        handleError(error, 'getDriverNotifications');
+    }
+}
+
+export async function getUserNotifications({
+    clerkId,
+    page = 1,
+    pageSize = 10,
+    filters = {},
+}: {
+    clerkId: string;
+    page?: number;
+    pageSize?: number;
+    filters?: { type?: string; status?: string };
+}): Promise<{ notifications: Notification[]; total: number }> {
+    try {
+        const { user } = await checkAuthorization(clerkId, [Role.DRIVER, Role.OWNER, Role.PASSENGER]);
+        return fetchNotifications({ userId: user.id }, { page, pageSize }, filters);
+    } catch (error) {
+        handleError(error, 'getUserNotifications');
+    }
+}
+
+export async function notifyDriverArrival(
+    clerkId: string,
+    destination: string,
+    message?: string,
+): Promise<Notification> {
+    try {
+        const validatedData = schemas.notificationInput.parse({ destination, message });
+        const driver = await checkAuthorization(clerkId, Role.DRIVER);
+        const trip = await fetchDriverTrip(driver.driver!.id);
+        const recipients = await fetchPassengers(trip.id);
+        return sendNotification(
+            {
+                clerkUser: {
+                    id: clerkId,
+                    firstName: driver.user.name?.split(' ')[0] || 'Driver',
+                    emailAddresses: [{ id: driver.user.id, emailAddress: driver.user.email }],
+                    primaryEmailAddressId: driver.user.id,
+                },
+                prismaDriver: driver,
+            },
+            'arrival',
+            trip,
+            validatedData.destination,
+            validatedData.message,
+            recipients,
         );
+    } catch (error) {
+        handleError(error, 'notifyDriverArrival');
+    }
+}
+
+export async function notifyDriverOffline(clerkId: string, message?: string): Promise<Notification> {
+    try {
+        const validatedData = schemas.notificationInput.parse({ message });
+        const driver = await checkAuthorization(clerkId, Role.DRIVER);
+        const recipients = await fetchOwners();
+        return sendNotification(
+            {
+                clerkUser: {
+                    id: clerkId,
+                    firstName: driver.user.name?.split(' ')[0] || 'Driver',
+                    emailAddresses: [{ id: driver.user.id, emailAddress: driver.user.email }],
+                    primaryEmailAddressId: driver.user.id,
+                },
+                prismaDriver: driver,
+            },
+            'offline',
+            null,
+            undefined,
+            validatedData.message,
+            recipients,
+        );
+    } catch (error) {
+        handleError(error, 'notifyDriverOffline');
+    }
+}
+
+export async function notifyDriverInTransit(clerkId: string, message?: string): Promise<Notification> {
+    try {
+        const validatedData = schemas.notificationInput.parse({ message });
+        const driver = await checkAuthorization(clerkId, Role.DRIVER);
+        const trip = await fetchDriverTrip(driver.driver!.id);
+        const recipients = await fetchPassengers(trip.id);
+        return sendNotification(
+            {
+                clerkUser: {
+                    id: clerkId,
+                    firstName: driver.user.name?.split(' ')[0] || 'Driver',
+                    emailAddresses: [{ id: driver.user.id, emailAddress: driver.user.email }],
+                    primaryEmailAddressId: driver.user.id,
+                },
+                prismaDriver: driver,
+            },
+            'in-transit',
+            trip,
+            undefined,
+            validatedData.message,
+            recipients,
+        );
+    } catch (error) {
+        handleError(error, 'notifyDriverInTransit');
+    }
+}
+
+export async function updateNotification(
+    clerkId: string,
+    notificationId: string,
+    data: { message?: string; status?: 'pending' | 'sent' | 'read'; subject?: string },
+): Promise<Notification> {
+    try {
+        const validatedData = schemas.updateNotification.parse(data);
+        const notification = await db.notification.findUnique({
+            where: { id: notificationId },
+            include: { trip: { include: { bus: { select: { ownerId: true } } } }, driver: { select: { id: true } } },
+        });
+        if (!notification) throw new NotificationError('Notification not found');
+
+        const { user } = await checkAuthorization(clerkId, [Role.DRIVER, Role.OWNER], notification);
+
+        const updatedNotification = await db.notification.update({
+            where: { id: notificationId },
+            data: {
+                message: validatedData.message ?? undefined,
+                status: validatedData.status ?? undefined,
+                subject: validatedData.subject ?? undefined,
+            },
+            include: notificationInclude,
+        });
+
+        return formatNotification(updatedNotification);
+    } catch (error) {
+        handleError(error, 'updateNotification');
+    }
+}
+
+export async function deleteNotification(clerkId: string, notificationId: string): Promise<void> {
+    try {
+        const notification = await db.notification.findUnique({
+            where: { id: notificationId },
+            include: { trip: { include: { bus: { select: { ownerId: true } } } }, driver: { select: { id: true } } },
+        });
+        if (!notification) throw new NotificationError('Notification not found');
+
+        await checkAuthorization(clerkId, [Role.DRIVER, Role.OWNER], notification);
+        await db.notification.delete({ where: { id: notificationId } });
+    } catch (error) {
+        handleError(error, 'deleteNotification');
     }
 }

@@ -3,7 +3,9 @@
 import { db } from '@/lib/prisma';
 import { Role } from '@/utils';
 import { Tile38 } from '@iwpnd/tile38-ts';
+import { z } from 'zod';
 
+// Types
 interface Geofence {
     id: string;
     ownerId: string | null;
@@ -12,22 +14,117 @@ interface Geofence {
     createdAt: string;
 }
 
-const TILE38_HOST = process.env.TILE38_HOST || 'localhost:9851';
-const WEBHOOK_URL = process.env.GEOFENCE_WEBHOOK_URL || 'http://localhost:3000/api/geofence-webhook';
-const TILE38_WEBHOOK_SECRET = process.env.TILE38_WEBHOOK_SECRET || '';
+// Environment Variables
+const config = {
+    TILE38_HOST: process.env.TILE38_HOST || 'localhost:9851',
+    WEBHOOK_URL: process.env.GEOFENCE_WEBHOOK_URL || 'http://localhost:3000/api/geofence-webhook',
+    TILE38_WEBHOOK_SECRET: process.env.TILE38_WEBHOOK_SECRET,
+};
 
-if (!TILE38_WEBHOOK_SECRET) {
+if (!config.TILE38_WEBHOOK_SECRET) {
     throw new Error('TILE38_WEBHOOK_SECRET is not set in environment variables');
 }
 
 // Initialize Tile38 client
-const tile38 = new Tile38(TILE38_HOST);
-
-// Log Tile38 connection events
+const tile38 = new Tile38(config.TILE38_HOST);
 tile38.on('connect', () => console.log('Connected to Tile38'));
 tile38.on('error', (err) => console.error(`Tile38 error: ${err}`));
 
-// Helper function to set a Tile38 geofence
+// Validation Schemas
+const schemas = {
+    saveGeofence: z.object({
+        clerkId: z.string().min(1, 'Invalid clerk ID'),
+        name: z.string().min(1, 'Invalid name: must be a non-empty string'),
+        coordinates: z.object({
+            latitude: z.number().min(-90, 'Invalid latitude: must be between -90 and 90').max(90),
+            longitude: z.number().min(-180, 'Invalid longitude: must be between -180 and 180').max(180),
+        }),
+        radius: z.number().positive('Invalid radius: must be a positive number'),
+    }),
+    getGeofences: z.object({
+        clerkId: z.string().min(1, 'Invalid clerk ID'),
+        page: z.number().int().min(1, 'Invalid page: must be a positive integer').default(1),
+        pageSize: z.number().int().min(1, 'Invalid pageSize: must be a positive integer').default(10),
+        filters: z
+            .object({
+                name: z.string().optional(),
+                minRadius: z.number().min(0, 'Invalid minRadius: must be a non-negative number').optional(),
+                maxRadius: z.number().positive('Invalid maxRadius: must be a positive number').optional(),
+            })
+            .refine((data) => !data.minRadius || !data.maxRadius || data.minRadius <= data.maxRadius, {
+                message: 'Invalid range: minRadius cannot be greater than maxRadius',
+            })
+            .optional(),
+    }),
+    geofenceId: z.string().min(1, 'Invalid geofence ID'),
+    updateGeofence: z.object({
+        clerkId: z.string().min(1, 'Invalid clerk ID'),
+        geofenceId: z.string().min(1, 'Invalid geofence ID'),
+        data: z.object({
+            name: z.string().min(1, 'Invalid name: must be a non-empty string').optional(),
+            geoJson: z
+                .object({
+                    type: z.literal('Point', 'Invalid geoJson: must be a Point object'),
+                    coordinates: z.tuple([
+                        z.number().min(-180, 'Invalid longitude: must be between -180 and 180').max(180),
+                        z.number().min(-90, 'Invalid latitude: must be between -90 and 90').max(90),
+                    ]),
+                    radius: z.number().positive('Invalid radius: must be a positive number'),
+                })
+                .optional(),
+        }),
+    }),
+};
+
+// Custom Error
+class GeofenceError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'GeofenceError';
+    }
+}
+
+// Utility Functions
+function handleError(error: unknown, context: string): never {
+    const errorMsg =
+        error instanceof z.ZodError
+            ? error.errors.map((e) => e.message).join(', ')
+            : error instanceof Error
+              ? error.message
+              : String(error);
+    console.error(`${context} error: ${errorMsg}`);
+    throw new GeofenceError(`Failed to ${context}: ${errorMsg}`);
+}
+
+async function checkUserAuthorization(
+    clerkId: string,
+    roleRequired: Role | Role[],
+    ownerId?: string,
+): Promise<{ user: any; owner?: any }> {
+    const user = await db.user.findUnique({ where: { clerkId }, include: { owner: true } });
+    if (!user) throw new GeofenceError('User not found');
+
+    const roles = Array.isArray(roleRequired) ? roleRequired : [roleRequired];
+    if (!roles.includes(user.role)) throw new GeofenceError('User role not authorized');
+
+    if (user.role === Role.OWNER && !user.owner) throw new GeofenceError('User is not an owner');
+    if (ownerId && user.role === Role.OWNER && user.owner?.id !== ownerId) {
+        throw new GeofenceError('User does not own this geofence');
+    }
+
+    return { user, owner: user.owner };
+}
+
+function formatGeofence(geofence: any): Geofence {
+    return {
+        id: geofence.id,
+        ownerId: geofence.ownerId,
+        name: geofence.name,
+        geoJson: geofence.geoJson,
+        createdAt: geofence.createdAt.toISOString(),
+    };
+}
+
 async function setTile38Geofence(geofence: {
     id: string;
     geoJson: { type: string; coordinates: [number, number]; radius: number };
@@ -37,109 +134,64 @@ async function setTile38Geofence(geofence: {
         const [longitude, latitude] = geofence.geoJson.coordinates;
         const radius = geofence.geoJson.radius;
         await tile38
-            .setHook(hookName, WEBHOOK_URL)
-            .meta({ secret: TILE38_WEBHOOK_SECRET })
+            .setHook(hookName, config.WEBHOOK_URL)
+            .meta({ secret: config.TILE38_WEBHOOK_SECRET })
             .nearby('fleet')
-            .detect(['enter', 'exit'] as any) // Replace with proper Detect type
+            .detect(['enter', 'exit'] as any)
             .point(latitude, longitude, radius)
             .exec();
         console.log(`Set Tile38 geofence: ${hookName} (ID: ${geofence.id})`);
     } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`setTile38Geofence error for geofence ${geofence.id}: ${errorMsg}`);
-        throw new Error(`Failed to set Tile38 geofence: ${errorMsg}`);
+        handleError(error, `setTile38Geofence for geofence ${geofence.id}`);
     }
 }
 
-// Helper function to delete a Tile38 geofence
 async function deleteTile38Geofence(geofenceId: string) {
     try {
         const hookName = `geofence${geofenceId}`;
         await tile38.delHook(hookName);
         console.log(`Deleted Tile38 geofence: ${hookName} (ID: ${geofenceId})`);
     } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`deleteTile38Geofence error for geofence ${geofenceId}: ${errorMsg}`);
-        throw new Error(`Failed to delete Tile38 geofence: ${errorMsg}`);
+        handleError(error, `deleteTile38Geofence for geofence ${geofenceId}`);
     }
 }
 
+// Save Geofence
 export async function saveGeofence(
     clerkId: string,
     {
         name,
         coordinates,
         radius,
-    }: {
-        name: string;
-        coordinates: { latitude: number; longitude: number };
-        radius: number;
-    },
+    }: { name: string; coordinates: { latitude: number; longitude: number }; radius: number },
 ): Promise<Geofence> {
     try {
-        // Validate inputs
-        if (!clerkId || typeof clerkId !== 'string') {
-            throw new Error('Invalid clerk ID');
-        }
-        if (!name || typeof name !== 'string' || !name.trim()) {
-            throw new Error('Invalid name: must be a non-empty string');
-        }
-        if (!coordinates || typeof coordinates !== 'object') {
-            throw new Error('Invalid coordinates: must be an object with latitude and longitude');
-        }
-        if (!Number.isFinite(coordinates.latitude) || coordinates.latitude < -90 || coordinates.latitude > 90) {
-            throw new Error('Invalid latitude: must be between -90 and 90');
-        }
-        if (!Number.isFinite(coordinates.longitude) || coordinates.longitude < -180 || coordinates.longitude > 180) {
-            throw new Error('Invalid longitude: must be between -180 and 180');
-        }
-        if (!Number.isFinite(radius) || radius <= 0) {
-            throw new Error('Invalid radius: must be a positive number');
-        }
+        const validatedData = schemas.saveGeofence.parse({ clerkId, name, coordinates, radius });
+        const { owner } = await checkUserAuthorization(clerkId, Role.OWNER);
 
-        // Check if user is an OWNER
-        const user = await db.user.findUnique({
-            where: { clerkId },
-            include: { owner: true },
-        });
-
-        if (!user || user.role !== Role.OWNER || !user.owner) {
-            throw new Error('User is not authorized to save geofences');
-        }
-
-        // Create new geofence in Prisma
         const geofence = await db.geofence.create({
             data: {
-                ownerId: user.owner.id,
-                name,
+                ownerId: owner.id,
+                name: validatedData.name,
                 geoJson: {
                     type: 'Point',
-                    coordinates: [coordinates.longitude, coordinates.latitude],
-                    radius,
+                    coordinates: [validatedData.coordinates.longitude, validatedData.coordinates.latitude],
+                    radius: validatedData.radius,
                 },
                 h3Index: 'some_h3_index', // Replace with actual H3 index calculation
-                resolution: 9, // Replace with appropriate resolution
-                color: '#000000', // Default color
+                resolution: 9,
+                color: '#000000',
             },
         });
 
-        // Sync with Tile38
         await setTile38Geofence({ id: geofence.id, geoJson: geofence.geoJson });
-
-        return {
-            id: geofence.id,
-            ownerId: geofence.ownerId,
-            name: geofence.name,
-            geoJson: geofence.geoJson,
-            createdAt: geofence.createdAt.toISOString(),
-        };
+        return formatGeofence(geofence);
     } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`saveGeofence error: ${errorMsg}`);
-        throw new Error(`Failed to save geofence: ${errorMsg}`);
+        handleError(error, 'saveGeofence');
     }
 }
 
+// Get Geofences
 export async function getGeofences({
     clerkId,
     page = 1,
@@ -152,128 +204,59 @@ export async function getGeofences({
     filters?: { name?: string; minRadius?: number; maxRadius?: number };
 }): Promise<{ geofences: Geofence[]; total: number }> {
     try {
-        // Validate inputs
-        if (!clerkId || typeof clerkId !== 'string') {
-            throw new Error('Invalid clerk ID');
-        }
-        const skip = (page - 1) * pageSize;
-        if (!Number.isFinite(skip) || skip < 0) {
-            throw new Error(`Invalid pagination: page=${page}, pageSize=${pageSize}, skip=${skip}`);
-        }
-        if (filters.minRadius != null && (!Number.isFinite(filters.minRadius) || filters.minRadius < 0)) {
-            throw new Error('Invalid minRadius: must be a non-negative number');
-        }
-        if (filters.maxRadius != null && (!Number.isFinite(filters.maxRadius) || filters.maxRadius <= 0)) {
-            throw new Error('Invalid maxRadius: must be a positive number');
-        }
-        if (filters.minRadius != null && filters.maxRadius != null && filters.minRadius > filters.maxRadius) {
-            throw new Error('Invalid range: minRadius cannot be greater than maxRadius');
-        }
+        const validatedData = schemas.getGeofences.parse({ clerkId, page, pageSize, filters });
+        const { user, owner } = await checkUserAuthorization(clerkId, [Role.OWNER, Role.PASSENGER, Role.DRIVER]);
 
-        // Check if user exists and has a valid role
-        const user = await db.user.findUnique({
-            where: { clerkId },
-            include: { owner: true },
-        });
-
-        if (!user) {
-            throw new Error('User not found');
-        }
-
-        if (![Role.OWNER, Role.PASSENGER, Role.DRIVER].includes(user.role)) {
-            throw new Error('User role not authorized to access geofences');
-        }
-
-        let where = {};
-        if (user.role === Role.OWNER && user.owner) {
-            where = {
-                ownerId: user.owner.id,
-                ...(filters.name && { name: { contains: filters.name, mode: 'insensitive' as const } }),
-                // Note: Filtering on geoJson.radius requires raw SQL or client-side filtering
-            };
-        } else {
-            where = {
-                ...(filters.name && { name: { contains: filters.name, mode: 'insensitive' as const } }),
-            };
-        }
+        const where =
+            user.role === Role.OWNER && owner
+                ? {
+                      ownerId: owner.id,
+                      ...(validatedData.filters.name && {
+                          name: { contains: validatedData.filters.name, mode: 'insensitive' },
+                      }),
+                  }
+                : {
+                      ...(validatedData.filters.name && {
+                          name: { contains: validatedData.filters.name, mode: 'insensitive' },
+                      }),
+                  };
 
         const [geofences, total] = await Promise.all([
             db.geofence.findMany({
                 where,
-                skip,
-                take: pageSize,
+                skip: (validatedData.page - 1) * validatedData.pageSize,
+                take: validatedData.pageSize,
                 orderBy: { createdAt: 'desc' },
             }),
             db.geofence.count({ where }),
         ]);
 
-        const formattedGeofences: Geofence[] = geofences.map((geofence) => ({
-            id: geofence.id,
-            ownerId: geofence.ownerId,
-            name: geofence.name,
-            geoJson: geofence.geoJson,
-            createdAt: geofence.createdAt.toISOString(),
-        }));
-
-        return { geofences: formattedGeofences, total };
+        return { geofences: geofences.map(formatGeofence), total };
     } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`getGeofences error: ${errorMsg}`);
-        throw new Error(`Failed to fetch geofences: ${errorMsg}`);
+        handleError(error, 'getGeofences');
     }
 }
 
+// Get Geofence by ID
 export async function getGeofenceById(clerkId: string, geofenceId: string): Promise<Geofence> {
     try {
-        // Validate inputs
-        if (!clerkId || typeof clerkId !== 'string') {
-            throw new Error('Invalid clerk ID');
-        }
-        if (!geofenceId || typeof geofenceId !== 'string') {
-            throw new Error('Invalid geofence ID');
-        }
+        const validatedData = schemas.geofenceId.parse(geofenceId);
+        const { user, owner } = await checkUserAuthorization(clerkId, [Role.OWNER, Role.PASSENGER, Role.DRIVER]);
 
-        // Check if user exists and has a valid role
-        const user = await db.user.findUnique({
-            where: { clerkId },
-            include: { owner: true },
-        });
+        const geofence = await db.geofence.findUnique({ where: { id: validatedData } });
+        if (!geofence) throw new GeofenceError('Geofence not found');
 
-        if (!user) {
-            throw new Error('User not found');
+        if (user.role === Role.OWNER && owner && geofence.ownerId !== owner.id) {
+            throw new GeofenceError('User does not own this geofence');
         }
 
-        if (![Role.OWNER, Role.PASSENGER, Role.DRIVER].includes(user.role)) {
-            throw new Error('User role not authorized to access geofences');
-        }
-
-        // Fetch geofence
-        const geofence = await db.geofence.findUnique({
-            where: { id: geofenceId },
-        });
-
-        if (!geofence) {
-            throw new Error('Geofence not found');
-        }
-
-        if (user.role === Role.OWNER && user.owner && geofence.ownerId !== user.owner.id) {
-            throw new Error('User does not own this geofence');
-        }
-
-        return {
-            id: geofence.id,
-            ownerId: geofence.ownerId,
-            name: geofence.name,
-            geoJson: geofence.geoJson,
-            createdAt: geofence.createdAt.toISOString(),
-        };
+        return formatGeofence(geofence);
     } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`getGeofenceById error: ${errorMsg}`);
-        throw new Error(`Failed to fetch geofence: ${errorMsg}`);
+        handleError(error, 'getGeofenceById');
     }
 }
 
+// Update Geofence
 export async function updateGeofence(
     clerkId: string,
     geofenceId: string,
@@ -283,124 +266,41 @@ export async function updateGeofence(
     }>,
 ): Promise<Geofence> {
     try {
-        // Validate inputs
-        if (!clerkId || typeof clerkId !== 'string') {
-            throw new Error('Invalid clerk ID');
-        }
-        if (!geofenceId || typeof geofenceId !== 'string') {
-            throw new Error('Invalid geofence ID');
-        }
-        if (data.name != null && (typeof data.name !== 'string' || !data.name.trim())) {
-            throw new Error('Invalid name: must be a non-empty string');
-        }
-        if (data.geoJson != null) {
-            if (typeof data.geoJson !== 'object' || data.geoJson.type !== 'Point') {
-                throw new Error('Invalid geoJson: must be a Point object');
-            }
-            const [longitude, latitude] = data.geoJson.coordinates;
-            if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
-                throw new Error('Invalid latitude: must be between -90 and 90');
-            }
-            if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-                throw new Error('Invalid longitude: must be between -180 and 180');
-            }
-            if (!Number.isFinite(data.geoJson.radius) || data.geoJson.radius <= 0) {
-                throw new Error('Invalid radius: must be a positive number');
-            }
-        }
+        const validatedData = schemas.updateGeofence.parse({ clerkId, geofenceId, data });
+        const { owner } = await checkUserAuthorization(clerkId, Role.OWNER);
 
-        // Check if user is an OWNER
-        const user = await db.user.findUnique({
-            where: { clerkId },
-            include: { owner: true },
-        });
+        const geofence = await db.geofence.findUnique({ where: { id: validatedData.geofenceId } });
+        if (!geofence) throw new GeofenceError('Geofence not found');
+        if (geofence.ownerId !== owner.id) throw new GeofenceError('User does not own this geofence');
 
-        if (!user || user.role !== Role.OWNER || !user.owner) {
-            throw new Error('User is not authorized to update geofences');
-        }
-
-        // Fetch geofence to verify ownership
-        const geofence = await db.geofence.findUnique({
-            where: { id: geofenceId },
-        });
-
-        if (!geofence) {
-            throw new Error('Geofence not found');
-        }
-
-        if (geofence.ownerId !== user.owner.id) {
-            throw new Error('User does not own this geofence');
-        }
-
-        // Update geofence in Prisma
         const updatedGeofence = await db.geofence.update({
-            where: { id: geofenceId },
+            where: { id: validatedData.geofenceId },
             data: {
-                name: data.name ?? undefined,
-                geoJson: data.geoJson ?? undefined,
+                name: validatedData.data.name ?? undefined,
+                geoJson: validatedData.data.geoJson ?? undefined,
             },
         });
 
-        // Sync with Tile38
         await setTile38Geofence({ id: updatedGeofence.id, geoJson: updatedGeofence.geoJson });
-
-        return {
-            id: updatedGeofence.id,
-            ownerId: updatedGeofence.ownerId,
-            name: updatedGeofence.name,
-            geoJson: updatedGeofence.geoJson,
-            createdAt: updatedGeofence.createdAt.toISOString(),
-        };
+        return formatGeofence(updatedGeofence);
     } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`updateGeofence error: ${errorMsg}`);
-        throw new Error(`Failed to update geofence: ${errorMsg}`);
+        handleError(error, 'updateGeofence');
     }
 }
 
+// Delete Geofence
 export async function deleteGeofence(clerkId: string, geofenceId: string): Promise<void> {
     try {
-        // Validate inputs
-        if (!clerkId || typeof clerkId !== 'string') {
-            throw new Error('Invalid clerk ID');
-        }
-        if (!geofenceId || typeof geofenceId !== 'string') {
-            throw new Error('Invalid geofence ID');
-        }
+        const validatedData = schemas.geofenceId.parse(geofenceId);
+        const { owner } = await checkUserAuthorization(clerkId, Role.OWNER);
 
-        // Check if user is an OWNER
-        const user = await db.user.findUnique({
-            where: { clerkId },
-            include: { owner: true },
-        });
+        const geofence = await db.geofence.findUnique({ where: { id: validatedData } });
+        if (!geofence) throw new GeofenceError('Geofence not found');
+        if (geofence.ownerId !== owner.id) throw new GeofenceError('User does not own this geofence');
 
-        if (!user || user.role !== Role.OWNER || !user.owner) {
-            throw new Error('User is not authorized to delete geofences');
-        }
-
-        // Fetch geofence to verify ownership
-        const geofence = await db.geofence.findUnique({
-            where: { id: geofenceId },
-        });
-
-        if (!geofence) {
-            throw new Error('Geofence not found');
-        }
-
-        if (geofence.ownerId !== user.owner.id) {
-            throw new Error('User does not own this geofence');
-        }
-
-        // Delete geofence from Tile38
         await deleteTile38Geofence(geofenceId);
-
-        // Delete geofence from Prisma
-        await db.geofence.delete({
-            where: { id: geofenceId },
-        });
+        await db.geofence.delete({ where: { id: validatedData } });
     } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`deleteGeofence error: ${errorMsg}`);
-        throw new Error(`Failed to delete geofence: ${errorMsg}`);
+        handleError(error, 'deleteGeofence');
     }
 }
