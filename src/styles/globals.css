@@ -92,11 +92,11 @@
         font-family: var(--font-inter);
         padding: 0;
         margin: 0;
+        overflow: hidden;
     }
 
     html {
         font-family: var(--font-inter);
-        overflow: visible;
     }
 
     /* Standard keyframe definitions */

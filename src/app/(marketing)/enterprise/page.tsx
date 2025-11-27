@@ -35,7 +35,7 @@ const EnterprisePage = async () => {
     const user = await currentUser().catch(() => null);
 
     return (
-        <div className="overflow-x-hidden scrollbar-hide size-full">
+        <div className="min-h-screen w-full scrollbar-hide">
             {/* Hero Section */}
             <HeroSection user={user} />
 
@@ -43,9 +43,9 @@ const EnterprisePage = async () => {
             <PartnersSection />
 
             {/* Features Section (with BentoGrid) */}
-            <MaxWidthWrapper className="py-10">
+            <MaxWidthWrapper className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AnimationContainer delay={0.1}>
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="grid grid-cols-12 items-center justify-center bg-gradient-to-t from-background text-center py-8">
                         <MagicBadge>Features</MagicBadge>
                         <h2 className="mt-6 text-3xl font-medium font-heading text-[hsl(var(--foreground))] !leading-[1.1] md:text-5xl">
                             Smart Matatu Management For Everyone
@@ -75,7 +75,7 @@ const EnterprisePage = async () => {
             </MaxWidthWrapper>
 
             {/* Process Section */}
-            <MaxWidthWrapper className="py-10">
+            <MaxWidthWrapper className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AnimationContainer delay={0.1}>
                     <div className="flex flex-col items-center justify-center py-8 max-w-xl mx-auto text-center">
                         <MagicBadge>How it Works</MagicBadge>
@@ -115,7 +115,7 @@ const EnterprisePage = async () => {
             </MaxWidthWrapper>
 
             {/* Pricing Section */}
-            <MaxWidthWrapper className="py-10">
+            <MaxWidthWrapper className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AnimationContainer delay={0.1}>
                     <div className="flex flex-col items-center justify-center py-8 max-w-xl mx-auto text-center">
                         <MagicBadge>Flexible Plans</MagicBadge>
@@ -174,7 +174,7 @@ const EnterprisePage = async () => {
             </MaxWidthWrapper>
 
             {/* Testimonials Section */}
-            <MaxWidthWrapper className="py-10">
+            <MaxWidthWrapper className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AnimationContainer delay={0.1}>
                     <div className="flex flex-col items-center justify-center py-8 max-w-xl mx-auto text-center">
                         <MagicBadge>Success Stories</MagicBadge>
@@ -222,7 +222,7 @@ const EnterprisePage = async () => {
             </MaxWidthWrapper>
 
             {/* Use Cases Section */}
-            <MaxWidthWrapper className="py-10">
+            <MaxWidthWrapper className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AnimationContainer delay={0.1}>
                     <div className="flex flex-col items-center justify-center py-8 max-w-xl mx-auto text-center">
                         <MagicBadge>Real World Impact</MagicBadge>

@@ -9,25 +9,24 @@ interface Props {
 
 const MarketingLayout = ({ children }: Props) => {
     return (
-        <div className="flex flex-col min-h-screen relative">
+        <div className="relative flex flex-col min-h-screen w-full ">
             {/* Decorative Background Grid */}
-            <div
-                id="home"
-                className="absolute inset-0 min-h-screen bg-[linear-gradient(to_right,#161616_1px,transparent_1px),linear-gradient(to_bottom,#161616_1px,transparent_1px)] bg-[length:24px_24px]"
-            />
+            <div className="absolute inset-0 -z-10 w-full min-h-screen bg-[linear-gradient(to_right,#161616_1px,transparent_1px),linear-gradient(to_bottom,#161616_1px,transparent_1px)] bg-[length:24px_24px]" />
+
             {/* Navbar */}
             <Navbar className="fixed top-0 left-0 right-0 z-50 bg-[hsl(var(--background))]" />
-            {/* Main Content with Functional Grid */}
+
+            {/* Main Content */}
             <main
                 className={cn(
-                    'relative z-0 flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-16',
-                    'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 auto-rows-min',
+                    'relative z-10 flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 overflow-x-hidden',
                 )}
             >
                 {children}
             </main>
+
             {/* Footer */}
-            <Footer className="z-10 bg-[hsl(var(--background))]" />
+            <Footer className="z-20 bg-[hsl(var(--background))]" />
         </div>
     );
 };

@@ -18,10 +18,10 @@ const HomePage = async () => {
     const user = await currentUser();
 
     return (
-        <div className="size-full overflow-x-hidden scrollbar-hide">
+        <div className="size-full min-h-screen scrollbar-hide">
             {/* Hero Section */}
             <MaxWidthWrapper>
-                <div className="flex w-full flex-col items-center justify-center bg-gradient-to-t from-background text-center">
+                <div className="grid grid-cols-12 items-center justify-center bg-gradient-to-t from-background text-center">
                     <AnimationContainer className="flex w-full flex-col items-center justify-center text-center">
                         <button className="group relative grid overflow-hidden rounded-full px-4 py-1 shadow-[0_1000px_0_0_hsl(0_0%_20%)_inset] transition-colors duration-200">
                             <span>
@@ -131,7 +131,7 @@ const HomePage = async () => {
                 </AnimationContainer>
             </MaxWidthWrapper>
             {/* Process Section */}
-            <MaxWidthWrapper className="py-10">
+            <MaxWidthWrapper className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AnimationContainer delay={0.1}>
                     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center py-8 lg:items-center">
                         <MagicBadge>The Process</MagicBadge>
@@ -163,7 +163,7 @@ const HomePage = async () => {
                 </div>
             </MaxWidthWrapper>
             {/* Pricing Section */}
-            <MaxWidthWrapper className="py-10">
+            <MaxWidthWrapper className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AnimationContainer delay={0.1}>
                     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center py-8 lg:items-center">
                         <MagicBadge>Simple Pricing</MagicBadge>
@@ -188,7 +188,7 @@ const HomePage = async () => {
                 </AnimationContainer>
             </MaxWidthWrapper>
             {/* Reviews Section */}
-            <MaxWidthWrapper className="py-10">
+            <MaxWidthWrapper className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AnimationContainer delay={0.1}>
                     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center py-8 lg:items-center">
                         <MagicBadge>Our Customers</MagicBadge>
@@ -276,7 +276,7 @@ const HomePage = async () => {
                 </div>
             </MaxWidthWrapper>
             {/* CTA Section */}
-            <MaxWidthWrapper className="mt-20 max-w-[100vw] overflow-x-hidden scrollbar-hide">
+            <MaxWidthWrapper className="mt-20 max-w-[100vw]  scrollbar-hide">
                 <AnimationContainer delay={0.1}>
                     <LampContainer>
                         <div className="relative flex w-full flex-col items-center justify-center text-center">
